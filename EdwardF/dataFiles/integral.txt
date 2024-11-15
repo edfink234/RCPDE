@@ -1,0 +1,17 @@
+/* Declare variables and parameters */
+declare(v, noun);
+declare(xi, noun);
+declare(t, noun);
+declare(A, real);
+
+/* Assume properties of parameters */
+assume(A > 0, σ > 0, Ω > 0, 2*A not equal integer); /* Explicitly state 2*A is not an integer */
+
+/* Define the integrand */
+integrand1: sech(A*(x - xi(t)))^2 * x;
+
+/* Perform the integral */
+result1: integrate(integrand1, x, -inf, inf);
+
+/* Display the result */
+result1;

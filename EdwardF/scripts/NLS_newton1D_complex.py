@@ -61,7 +61,7 @@ err = 1  # Initial error
 tol = 1e-13  # Convergence tolerance
 
 # Set modulus-squared Dirichlet boundary conditions
-alpha, beta = 1.0, 1.0  # Desired |u(0)|^2 = alpha and |u(N-1)|^2 = beta
+alpha, beta = 1.5, 1.5  # Desired |u(0)|^2 = alpha and |u(N-1)|^2 = beta
 
 # Inside the Newton iteration loop:
 while err > tol:
@@ -86,17 +86,17 @@ while err > tol:
     F = np.hstack([Fr, Fi])  # Combine real and imaginary RHS
 
     # Apply modulus-squared Dirichlet boundary conditions
-    F[0] = Ur[0]**2 + Ui[0]**2 - alpha  # Enforce |u(0)|^2 = alpha
+    F[0] = (Ur[0]**2 + Ui[0]**2)**.5 - alpha**.5  # Enforce |u(0)|^2 = alpha
 #    F[Nx-1] = Ur[-1]**2 + Ui[-1]**2 - beta  # Enforce |u(N-1)|^2 = beta
 #    F[Nx] = Ur[0]**2 + Ui[0]**2 - alpha  # Enforce |u(0)|^2 = alpha
-    F[-1] = Ur[-1]**2 + Ui[-1]**2 - beta  # Enforce |u(N-1)|^2 = beta
+    F[-1] = (Ur[-1]**2 + Ui[-1]**2)**.5 - beta**.5  # Enforce |u(N-1)|^2 = beta
     
     # Modify Jacobian for boundary conditions
-    J[0, 0] = 2 * Ur[0]  # Real part at left boundary ∂F_0/∂U_r
-    J[0, Nx] = 2 * Ui[0]  # Imaginary part at left boundary ∂F_0/∂U_i
+    J[0, 0] = Ur[0]/(Ur[0]**2 + Ui[0]**2)**.5  # Real part at left boundary ∂F_0/∂U_r
+    J[0, Nx] = Ui[0]/(Ur[0]**2 + Ui[0]**2)**.5  # Imaginary part at left boundary ∂F_0/∂U_i
     
-    J[-1, Nx-1] = 2 * Ur[-1]  # Real part at right boundary ∂F_1/∂U_r
-    J[-1, 2*Nx-1] = 2 * Ui[-1]  # Imaginary part at right boundary ∂F_1/∂U_i
+    J[-1, Nx-1] = Ur[-1]/(Ur[-1]**2 + Ui[-1]**2)**.5  # Real part at right boundary ∂F_1/∂U_r
+    J[-1, 2*Nx-1] = Ui[-1]/(Ur[-1]**2 + Ui[-1]**2)**.5  # Imaginary part at right boundary ∂F_1/∂U_i
 
     # Newton correction
     DU = spla.spsolve(J, -F)
@@ -134,3 +134,5 @@ plt.ylabel('u')
 plt.title('Final Solution')
 plt.legend()
 plt.show()
+
+
