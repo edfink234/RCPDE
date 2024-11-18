@@ -1,78 +1,122 @@
-// Parameters
-w = 0.5; // Temporal frequency of sought steady state
-g = -1; // g = 1 is defocusing, g = -1 is focusing
-L = -10; R = 10; // Left and right bounds of interval
-Nx = 301; // Number of mesh points
-x = linspace(L, R, Nx)'; // Discrete space
-dx = x(2) - x(1); // Mesh size
-ONE = ones(Nx, 1); // Unit vector for the discrete Laplacian
-D2 = spdiags([ONE, -2 * ONE, ONE], -1:1, Nx, Nx); // Discrete Laplacian
-D2(1, Nx) = 1; D2(Nx, 1) = 1; // Periodic Boundary Conditions
-D2 = D2 / (dx^2);
+% Parameters
+params.nls.npts = 301;  % Number of grid points
+params.nls.dx = (10 - (-10)) / 300;  % Mesh size
+params.nls.V = zeros(params.nls.npts, 1);  % Potential
+params.nls.mu = 1;  % Temporal frequency
+params.nls.g = 1;  % Defocusing parameter
+npts = params.nls.npts;
 
-// Indices for real and imaginary parts
-indR = 1:Nx;
-indI = Nx+1:2*Nx;
+% Spatial grid
+L = -10; R = 10;
+x = linspace(L, R, npts)';
 
-// Initial guess
+% Initial guess
+w = params.nls.mu;
 A = sqrt(2 * w);
-x0 = (R + L) / 2; // Amplitude and position of initial guess
-u0 = A * sech(A * (x - x0)); // Unperturbed initial guess (sech soliton)
+x0 = (R + L) / 2;  % Center of initial guess
+u0 = A * tanh(A * (x - x0));  % Initial guess (tanh soliton)
 
-// Perturbation
-rng('default'); // Reset random generator
-pert = 0.3; // Size of perturbation
-up = u0 + pert * (rand(Nx, 1) - 0.5) .* exp(-x.^2 / 10); // Perturbed initial condition
-U = [real(up); imag(up)]; // Combine real and imaginary parts into one vector
+% Perturbed initial guess
+rng(0);  % For reproducibility
+pert = 0;
+up = u0 + pert * (rand(npts, 1) - 0.5) .* exp(-x.^2 / 10);
+U = [real(up); imag(up)];  % Real and imaginary parts concatenated
 
-// Newton method
+% Newton's method
 it = 0;
-err = 1; // Initializing error
-if ~exist('V', 'var')
-    V = 0; // If no potential, set V = 0
-end
+err = 1;
+tol = 1e-9;
 
-// Iteration loop
-while err > 1e-10
+while err > tol
     it = it + 1;
-    Ur = U(indR);
-    Ui = U(indI); // Real and imaginary parts of U
+    
+    % Compute residual using nls1d_msd
+    F = nls1d_msd(U, params);
+    
+    % Decompose U into real and imaginary parts
+    Ur = U(1:npts);
+    Ui = U(npts+1:end);
+    dx = params.nls.dx;
+    V = params.nls.V;
+    mu = params.nls.mu;
 
-    // Modulus squared of u
-    U2 = Ur.^2 + Ui.^2;
+    % Finite difference Laplacian for a 1D grid
+    D2 = spdiags([ones(npts, 1), -2*ones(npts, 1), ones(npts, 1)], -1:1, npts, npts) / dx^2;
 
-    // Jacobian matrix components
-    J11 = -0.5 * D2 + diag(g * (3 * Ur.^2 + Ui.^2) + V + w);
-    J22 = -0.5 * D2 + diag(g * (Ur.^2 + 3 * Ui.^2) + V + w);
-    J12 = g * diag(2 * Ur .* Ui);
+    % Diagonal terms for J11 and J22
+    J11 = -0.5 * D2 + spdiags(2*Ur.^2 + V - mu, 0, npts, npts);  % Real part X
+    J22 = -0.5 * D2 + spdiags(2*Ui.^2 + V - mu, 0, npts, npts);  % Imaginary part Y
 
-    // Full Jacobian matrix
-    J = [J11, J12; J12, J22];
+    % Off-diagonal terms J12 and J21
+    J12 = spdiags(2 * Ur .* Ui, 0, npts, npts);
+    J21 = spdiags(2 * Ur .* Ui, 0, npts, npts);
 
-    // RHS of the system
-    Fr = -0.5 * D2 * Ur + (g * U2 + V + w) .* Ur;
-    Fi = -0.5 * D2 * Ui + (g * U2 + V + w) .* Ui;
-    F = [Fr; Fi]; // Combine real and imaginary RHS
+    % Assemble the full Jacobian as a block matrix
+    J = [J11, J12; J21, J22];
 
-    // Newton correction
-    DU = -J \ F;
+    % Newton correction
+    DU = J \ (-F);
     U1 = U + DU;
-    err = norm(F); // Update error
-
-    // Plotting progress of iteration
-    figure(1);
-    plot(x, U(indR), '.', x, U(indI), '.', x, U1(indR), x, U1(indI), x, V);
-    xlabel('x');
-    ylabel('u');
-    title(['it=', num2str(it), ', error=', num2str(err)]);
-    legend('Re(previous)', 'Im(previous)', 'Re(current)', 'Im(current)', 'V(x)', 'Location', 'NE');
-    drawnow;
-    fprintf('Press any key to continue...\n');
-    pause;
-
-    // Update U for the next iteration
+    err = norm(F);
+    fprintf('Iteration %d, Error: %.2e\n', it, err);
+    
+    % Update U
     U = U1;
 end
 
-// Final solution
-u = U(indR) + 1i * U(indI); // Combine real and imaginary parts into a complex vector
+% Final solution
+u = U(1:npts) + 1i * U(npts+1:end);
+
+% Plot the final solution
+figure;
+plot(x, real(u), 'DisplayName', 'Re(u)');
+hold on;
+plot(x, imag(u), 'DisplayName', 'Im(u)');
+xlabel('x');
+ylabel('u');
+title('Final Solution');
+legend;
+grid on;
+
+function resid = nls1d_msd(psi, params)
+    % Unpack parameters
+    npts = params.nls.npts;
+    dx = params.nls.dx;
+    V = params.nls.V;
+    mu = params.nls.mu;
+    
+    % Pre-allocate nonlinear residual
+    resid = zeros(2 * npts, 1);
+    
+    % Decompose the field into real and imaginary parts
+    X = psi(1:npts);
+    Y = psi(npts+1:end);
+    
+    % Compute the density and common term
+    dens = X.^2 + Y.^2;
+    comm = dens + V - mu;
+    
+    % Compute the 1D Laplacians inside the domain (finite differences)
+    d2Xdx2 = diff(X,2) / dx^2;
+    d2Ydx2 = diff(Y,2) / dx^2;
+
+    % Compute the common term (see, the term in the square brackets in Eq.
+    % (3.4) in Hermano Ricardo's paper)--I am calling it \Omega:
+    term_l = ( d2Xdx2(1).*X(2)+d2Ydx2(1).*Y(2) ) / dens(2);
+    term_r = ( d2Xdx2(npts-2).*X(npts-1)+d2Ydx2(npts-2).*Y(npts-1) ) / dens(npts-1);
+    Omega_l = term_l - 2 * ( dens(2) - dens(1) + V(2) - V(1) );
+    Omega_r = term_r - 2 * ( dens(npts-1) - dens(npts) + V(npts-1) - V(npts) );
+
+    % Compute the 2nd-order derivatives of X and Y and the endpoints:
+    Xdd_l = Omega_l * X(1); Xdd_r = Omega_r * X(npts);
+    Ydd_l = Omega_l * Y(1); Ydd_r = Omega_r * Y(npts);
+
+    % Update the pre-computed derivatives/Concatenate the vectors:
+    d2Xdx2 = [ Xdd_l; d2Xdx2; Xdd_r ];
+    d2Ydx2 = [ Ydd_l; d2Ydx2; Ydd_r ];
+    
+    % Return the system of nonlinear equations
+    resid(1:npts) = -0.5 * d2Xdx2 + comm .* X;
+    resid(npts+1:end) = -0.5 * d2Ydx2 + comm .* Y;
+end
+

@@ -3,130 +3,145 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
 
+def nls1d_msd(psi, params):
+    """
+    Compute the residual for the 1D Nonlinear Schrödinger equation with 
+    modulus-squared Dirichlet boundary conditions.
+
+    Parameters:
+        psi (numpy.ndarray): Concatenated real and imaginary parts of the wave function.
+        params (dict): Dictionary containing problem parameters.
+
+    Returns:
+        numpy.ndarray: Residual of the nonlinear system.
+    """
+    # Unpack parameters
+    npts = params['nls']['npts']
+    dx = params['nls']['dx']
+    V = np.array(params['nls']['V'])
+    mu = params['nls']['mu']
+    
+    # Pre-allocate nonlinear residual
+    resid = np.zeros(2 * npts)
+    
+    # Decompose the field into real and imaginary parts
+    X = psi[:npts]
+    Y = psi[npts:]
+    
+    # Compute the density and common term
+    dens = X**2 + Y**2
+    comm = dens + V - mu * np.ones(npts)
+    
+    # Compute the 1D Laplacians inside the domain (finite differences)
+    d2Xdx2 = np.diff(X, 2) / dx**2
+    d2Ydx2 = np.diff(Y, 2) / dx**2
+    
+    # Compute common terms (Ω) at the boundaries
+    term_l = (d2Xdx2[0] * X[1] + d2Ydx2[0] * Y[1]) / dens[1]
+    term_r = (d2Xdx2[-1] * X[-2] + d2Ydx2[-1] * Y[-2]) / dens[-2]
+    
+    Omega_l = term_l - 2 * (dens[1] - dens[0] + V[1] - V[0]) #a = 1/2 in Ricardo's paper eq 3.4
+    Omega_r = term_r - 2 * (dens[-2] - dens[-1] + V[-2] - V[-1]) #a = 1/2 in Ricardo's paper eq 3.4
+    
+    # Compute second-order derivatives at the endpoints
+    Xdd_l = Omega_l * X[0]
+    Xdd_r = Omega_r * X[-1]
+    Ydd_l = Omega_l * Y[0]
+    Ydd_r = Omega_r * Y[-1]
+    
+    # Update second derivatives with boundary values
+    d2Xdx2 = np.concatenate(([Xdd_l], d2Xdx2, [Xdd_r]))
+    d2Ydx2 = np.concatenate(([Ydd_l], d2Ydx2, [Ydd_r]))
+    
+    # Return the system of nonlinear equations
+    resid[:npts] = -0.5 * d2Xdx2 + comm * X
+    resid[npts:] = -0.5 * d2Ydx2 + comm * Y
+    
+    return resid
+
+
 # Parameters
-w = 0.5  # Temporal frequency of sought steady state
-g = 1   # g = 1 is defocusing, g = -1 is focusing
-L, R = -10, 10  # Left and right bounds of interval
-Nx = 301  # Number of mesh points
-x = np.linspace(L, R, Nx)  # Discrete space
-dx = x[1] - x[0]  # Mesh size
+params = {
+    'nls': {
+        'npts': 301,  # Number of grid points
+        'dx': (10 - (-10)) / 300,  # Mesh size
+        'V': 0,  # Potential
+        'mu': 1.4,  # Temporal frequency
+        'g': 1,  # Defocusing parameter
+    }
+}
+params['nls']['V'] = np.zeros(params['nls']['npts'])
+Nx = params['nls']['npts']
 
-alpha = 1.0  # Set desired |u(0)|^2 value
-beta = 1.0   # Set desired |u(N-1)|^2 value
-
-# Discrete Laplacian with periodic boundary conditions
-ONE = np.ones(Nx)
-D2 = sp.diags([ONE, -2 * ONE, ONE], offsets=[-1, 0, 1], shape=(Nx, Nx), format='csr')
-
-'''
-u_{x+1} + u_{x-1} - 2 u_{x}
-'''
-##
-#D2[0, -1] = 1
-#D2[-1, 0] = 1
-D2 /= dx**2
-#D2[0,0] = 1
-#D2[0,1] = 0
-#D2[1,0] = 0
-#D2[-1,-1] = 1
-#D2[-1, -2] = 0
-#D2[-2, -1] = 0
-
-print(D2.toarray())
-#exit()
-#D2[
-# Indices for real and imaginary parts
-indR = np.arange(Nx)
-indI = np.arange(Nx, 2 * Nx)
+# Spatial grid
+L, R = -10, 10
+x = np.linspace(L, R, params['nls']['npts'])
 
 # Initial guess
-A = np.sqrt(2 * w)
-x0 = (R + L) / 2  # Amplitude and position of initial guess
-u0 = -A * np.abs(np.tanh(A * (x - x0)))  # Unperturbed initial guess (sech soliton)
-#u0 = A * np.cosh(A * (x - x0))**-1  # Unperturbed initial guess (sech soliton)
+w = params['nls']['mu']
+A = 1.2#np.sqrt(2 * 1)
+x0 = (R + L) / 2  # Center of initial guess
+u0 = A * np.tanh(1 * (x - x0))  # Initial guess (sech soliton)
 
-# Perturbation
-np.random.seed(0)  # Reset random generator for reproducibility
-pert = 0  # Size of perturbation
-up = u0 + pert * (np.random.rand(Nx) - 0.5) * np.exp(-x**2 / 10)  # Perturbed initial condition
-U = np.hstack([up.real, up.imag])  # Initial guess with real and imaginary parts
-print(U.shape)
+# Perturbed initial guess
+np.random.seed(0)  # For reproducibility
+pert = 2
+up = u0 + pert * (np.random.rand(params['nls']['npts']) - 0.5) * np.exp(-x**2 / 10)
+U = np.hstack([up.real, up.imag])  # Real and imaginary parts concatenated
 
-# Potential V (set to zero if not defined)
-#V = 0.5*(x**2) + 10*np.exp(-x**2)
-V = 0
 # Newton's method
 it = 0
-err = 1  # Initial error
-tol = 1e-13  # Convergence tolerance
+err = 1
+tol = 1e-9
 
-# Set modulus-squared Dirichlet boundary conditions
-alpha, beta = 1.5, 1.5  # Desired |u(0)|^2 = alpha and |u(N-1)|^2 = beta
-
-# Inside the Newton iteration loop:
 while err > tol:
     it += 1
-    Ur = U[indR]
-    Ui = U[indI]
-
-    # Modulus squared of u
-    U2 = Ur**2 + Ui**2
-
-    # Jacobian matrix components
-    J11 = -0.5 * D2 + sp.diags(g * (3 * Ur**2 + Ui**2) + V + w)
-    J22 = -0.5 * D2 + sp.diags(g * (Ur**2 + 3 * Ui**2) + V + w)
-    J12 = sp.diags(2 * g * Ur * Ui)
-
-    # Full Jacobian matrix
-    J = sp.bmat([[J11, J12], [J12, J22]], format='csr')
-
-    # RHS of the system
-    Fr = -0.5 * D2 @ Ur + (g * U2 + V + w) * Ur
-    Fi = -0.5 * D2 @ Ui + (g * U2 + V + w) * Ui
-    F = np.hstack([Fr, Fi])  # Combine real and imaginary RHS
-
+    
+    # Compute residual using nls1d_msd
+    F = nls1d_msd(U, params)
+    
     # Apply modulus-squared Dirichlet boundary conditions
-    F[0] = (Ur[0]**2 + Ui[0]**2)**.5 - alpha**.5  # Enforce |u(0)|^2 = alpha
-#    F[Nx-1] = Ur[-1]**2 + Ui[-1]**2 - beta  # Enforce |u(N-1)|^2 = beta
-#    F[Nx] = Ur[0]**2 + Ui[0]**2 - alpha  # Enforce |u(0)|^2 = alpha
-    F[-1] = (Ur[-1]**2 + Ui[-1]**2)**.5 - beta**.5  # Enforce |u(N-1)|^2 = beta
-    
-    # Modify Jacobian for boundary conditions
-    J[0, 0] = Ur[0]/(Ur[0]**2 + Ui[0]**2)**.5  # Real part at left boundary ∂F_0/∂U_r
-    J[0, Nx] = Ui[0]/(Ur[0]**2 + Ui[0]**2)**.5  # Imaginary part at left boundary ∂F_0/∂U_i
-    
-    J[-1, Nx-1] = Ur[-1]/(Ur[-1]**2 + Ui[-1]**2)**.5  # Real part at right boundary ∂F_1/∂U_r
-    J[-1, 2*Nx-1] = Ui[-1]/(Ur[-1]**2 + Ui[-1]**2)**.5  # Imaginary part at right boundary ∂F_1/∂U_i
+    Ur = U[:params['nls']['npts']]
+    Ui = U[params['nls']['npts']:]
+    npts = params['nls']['npts']
+    dx = params['nls']['dx']
+    V = np.array(params['nls']['V'])
+    mu = params['nls']['mu']
 
+    # Finite difference Laplacian for a 1D grid
+    D2 = sp.diags([np.ones(npts), -2 * np.ones(npts), np.ones(npts)], [-1, 0, 1], shape=(npts, npts)) / dx**2
+
+    # Diagonal terms for J11 and J22
+    J11 = -0.5 * D2 + sp.diags(3*Ur**2 + Ui**2 + V - mu)  # Real part X
+    J22 = -0.5 * D2 + sp.diags(3*Ui**2 + Ur**2 + V - mu)  # Imaginary part Y
+
+    # Off-diagonal terms J12 and J21
+    J12 = sp.diags(2 * Ur * Ui)
+    J21 = sp.diags(2 * Ur * Ui)
+
+    # Assemble the full Jacobian as a block matrix
+    J = sp.bmat([[J11, J12], [J21, J22]], format='csr')
+
+    
+#    J[0, 0] = 2 * Ur[0]  # Real part at left boundary ∂F_0/∂U_r
+#    J[0, Nx] = 2 * Ui[0]  # Imaginary part at left boundary ∂F_0/∂U_i
+#
+#    J[-1, Nx-1] = 2 * Ur[-1]  # Real part at right boundary ∂F_1/∂U_r
+#    J[-1, 2*Nx-1] = 2 * Ui[-1]  # Imaginary part at right boundary ∂F_1/∂U_i
+    
     # Newton correction
     DU = spla.spsolve(J, -F)
     U1 = U + DU
-    err = np.linalg.norm(F)  # Update error
-    print(f"err={err:.2e}",end='\r',flush=True)
-
-    # Plotting progress of iteration
-#    plt.figure(1)
-#    plt.plot(x, U[indR], '.', label="Re(previous)")
-#    plt.plot(x, U[indI], '.', label="Im(previous)")
-#    plt.plot(x, U1[indR], label="Re(current)")
-#    plt.plot(x, U1[indI], label="Im(current)")
-#    plt.plot(x, V * np.ones_like(x), label="V(x)")
-#    plt.xlabel('x')
-#    plt.ylabel('u')
-#    #plt.ylim(0,1)
-#    plt.title(f'Iteration = {it}, Error = {err:.2e}')
-#    plt.legend(loc='upper right')
-#    plt.draw()
-#    plt.pause(1e-45)
-#    plt.clf()
-
-    # Update U for the next iteration
+    err = np.linalg.norm(F)
+    print(f"Iteration {it}, Error: {err:.2e}")
+    
+    # Update U
     U = U1
 
 # Final solution
-u = U[indR] + 1j * U[indI]  # Combine real and imaginary parts into a complex vector
+u = U[:params['nls']['npts']] + 1j * U[params['nls']['npts']:]
 
-# Final plot
+# Plot the final solution
 plt.plot(x, u.real, label="Re(u)")
 plt.plot(x, u.imag, label="Im(u)")
 plt.xlabel('x')
@@ -134,5 +149,4 @@ plt.ylabel('u')
 plt.title('Final Solution')
 plt.legend()
 plt.show()
-
 
