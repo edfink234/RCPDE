@@ -3,120 +3,182 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
 
+
+def nls2d_msd(psi, params):
+    """
+    Compute the residual for the 2D Nonlinear Schrödinger equation with
+    modulus-squared Dirichlet boundary conditions.
+
+    Parameters:
+        psi (numpy.ndarray): Concatenated real and imaginary parts of the wave function.
+        params (dict): Dictionary containing problem parameters.
+
+    Returns:
+        numpy.ndarray: Residual of the nonlinear system.
+    """
+    # Unpack parameters
+    npts_x, npts_y = params['nls']['npts']
+    dx, dy = params['nls']['dx'], params['nls']['dy']
+    V = np.array(params['nls']['V']).reshape(npts_x, npts_y)
+    mu = params['nls']['mu']
+
+    # Pre-allocate nonlinear residual
+    resid = np.zeros(2 * npts_x * npts_y)
+
+    # Decompose the field into real and imaginary parts
+    X = psi[:npts_x * npts_y].reshape(npts_x, npts_y)
+    Y = psi[npts_x * npts_y:].reshape(npts_x, npts_y)
+
+    # Compute the density and common term
+    dens = X**2 + Y**2
+    comm = dens + V - mu
+
+    d2Xdx2 = np.diff(X, 2, axis=0) / dx**2
+    d2Xdy2 = np.diff(X, 2, axis=1) / dy**2
+    d2Ydx2 = np.diff(Y, 2, axis=0) / dx**2
+    d2Ydy2 = np.diff(Y, 2, axis=1) / dy**2
+    
+    # Total second derivatives
+    d2X = d2Xdx2[:, 1:-1] + d2Xdy2[1:-1, :]
+    d2Y = d2Ydx2[:, 1:-1] + d2Ydy2[1:-1, :]
+    # Now d2X and d2Y are (npts-2) x (npts-2) matrices
+    # Now we have to add the boundary padding
+    
+    # Compute common terms (Ω) at the boundaries
+    term_l = (d2X[:, 0] * X[1:-1, 1] + d2Y[:, 0] * Y[1:-1, 1]) / dens[1:-1, 1]
+    term_r = (d2X[:, -1] * X[1:-1, -2] + d2Y[:, -1] * Y[1:-1, -2]) / dens[1:-1, -2]
+    term_t = (d2X[0] * X[1, 1:-1] + d2Y[0] * Y[1, 1:-1]) / dens[1, 1:-1]
+    term_b = (d2X[-1] * X[-2, 1:-1] + d2Y[-1] * Y[-2, 1:-1]) / dens[-2, 1:-1]
+    
+    Omega_l = term_l - 2 * (dens[1:-1, 1] - dens[1:-1, 0] + V[1:-1, 1] - V[1:-1, 0]) #a = 1/2 in Ricardo's paper eq 3.4
+    Omega_r = term_r - 2 * (dens[1:-1, -2] - dens[1:-1, -1] + V[1:-1, -2] - V[1:-1, -1]) #a = 1/2 in Ricardo's paper eq 3.4
+    Omega_t = term_t - 2 * (dens[1, 1:-1] - dens[0, 1:-1] + V[1, 1:-1] - V[0, 1:-1]) #a = 1/2 in Ricardo's paper eq 3.4
+    Omega_b = term_b - 2 * (dens[-2, 1:-1] - dens[-1, 1:-1] + V[-2, 1:-1] - V[-1, 1:-1]) #a = 1/2 in Ricardo's paper eq 3.4
+    
+    # Compute second-order derivatives at the endpoints
+    Xdd_l = Omega_l * X[1:-1, 0]
+    Xdd_r = Omega_r * X[1:-1, -1]
+    Xdd_t = Omega_t * X[0, 1:-1]
+    Xdd_b = Omega_b *  X[-1, 1:-1]
+    
+    Ydd_l = Omega_l * Y[1:-1, 0]
+    Ydd_r = Omega_r * Y[1:-1, -1]
+    Ydd_t = Omega_t * Y[0, 1:-1]
+    Ydd_b = Omega_b * Y[-1, 1:-1]
+    
+    d2X = np.pad(d2X, pad_width=1, mode='constant', constant_values=0)
+    d2Y = np.pad(d2Y, pad_width=1, mode='constant', constant_values=0)
+    
+    # Update second derivatives with boundary values
+    d2X[0, 1:-1] = Xdd_t
+    d2X[-1, 1:-1] = Xdd_b
+    d2X[1:-1, 0] = Xdd_l
+    d2X[1:-1, -1] = Xdd_r
+    
+    d2Y[0, 1:-1] = Ydd_t
+    d2Y[-1, 1:-1] = Ydd_b
+    d2Y[1:-1, 0] = Ydd_l
+    d2Y[1:-1, -1] = Ydd_r
+
+    # Return the system of nonlinear equations
+    resid[:npts_x * npts_y] = (-0.5 * d2X + comm * X).flatten()
+    resid[npts_x * npts_y:] = (-0.5 * d2Y + comm * Y).flatten()
+
+    return resid
+
+
 # Parameters
-w = 0.5  # Temporal frequency of sought steady state
-g = 1   # g = 1 is defocusing, g = -1 is focusing
-L, R = -10, 10  # Bounds for x and y
-Nx, Ny = 101, 101  # Number of points in x and y
-x = np.linspace(L, R, Nx)
-y = np.linspace(L, R, Ny)
-dx = x[1] - x[0]
-dy = y[1] - y[0]
-
-# 2D meshgrid
-X, Y = np.meshgrid(x, y, indexing='ij')
-
-# Discrete 2D Laplacian with periodic boundary conditions
-ONE_x = np.ones(Nx)
-ONE_y = np.ones(Ny)
-D2x = sp.diags([ONE_x, -2 * ONE_x, ONE_x], offsets=[-1, 0, 1], shape=(Nx, Nx), format='lil')
-#D2x[0, -1] = 1
-#D2x[-1, 0] = 1
-D2x /= dx**2
-
-D2y = sp.diags([ONE_y, -2 * ONE_y, ONE_y], offsets=[-1, 0, 1], shape=(Ny, Ny), format='lil')
-#D2y[0, -1] = 1
-#D2y[-1, 0] = 1
-D2y /= dy**2
-
-D2 = sp.kron(sp.eye(Ny), D2x) + sp.kron(D2y, sp.eye(Nx))  # 2D Laplacian
-
-# Indices for real and imaginary parts
-Nxy = Nx * Ny
-indR = np.arange(Nxy)
-indI = np.arange(Nxy, 2 * Nxy)
+params = {
+    'nls': {
+        'npts': (101, 101),  # Number of grid points in x and y directions
+        'dx': (10 - (-10)) / 100,  # Mesh size in x direction
+        'dy': (10 - (-10)) / 100,  # Mesh size in y direction
+        'V': 0,  # Potential
+        'mu': 2,  # Temporal frequency = A^2
+    }
+}
+npts_x, npts_y = params['nls']['npts']
+x = np.linspace(-10, 10, npts_x)
+y = np.linspace(-10, 10, npts_y)
+x_grid, y_grid = np.meshgrid(x, y, indexing='ij')
+params['nls']['V'] = np.zeros((npts_x, npts_y))
 
 # Initial guess
-A = np.sqrt(2 * w)
-x0, y0 = 0, 0  # Center of initial guess
-u0 = A * np.tanh(np.sqrt((X - x0)**2 + (Y - y0)**2))**2  # 2D tanh soliton
+w = params['nls']['mu']
+A = np.sqrt(w)
+r0 = 0.0  # Radius for initial guess
+u0 = A * np.tanh(A * np.sqrt((x_grid**2 + y_grid**2)) - r0) * np.exp(1j*np.arctan2(y_grid, x_grid))  # Initial guess
 
-# Perturbation
-np.random.seed(0)
-pert = 0.1
-up = u0 + pert * (np.random.rand(Nx, Ny) - 0.5) * np.exp(-((X**2 + Y**2) / 10))
-U = np.hstack([up.real.ravel(), np.zeros_like(up.real).ravel()])  # Initial guess
-
-# Potential V (set to zero if not defined)
-V = np.zeros((Nx, Ny)).ravel()
+# Perturbed initial guess
+np.random.seed(0)  # For reproducibility
+pert = 2
+up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+U = np.hstack([up.real.flatten(), up.imag.flatten()])
 
 # Newton's method
 it = 0
-err = np.inf
-tol = 1e-10
-alpha = 1
+err = 1
+tol = 1e-4
 
-# Set up the initial plot
-fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-surf = ax.plot_surface(X, Y, U[indR].reshape(Nx, Ny), cmap="viridis")
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.set_zlabel('Re(u)')
-ax.set_title(f'Iteration = 0, Error = {err:.2e}')
-
-# Set up the boundary condition enforcement
-def apply_boundary_condition(U, J, F, boundary_value=1.0):
-    """Apply boundary conditions to U at the boundary indices."""
-    pass
-
-
-# Iteration loop
 while err > tol:
     it += 1
-    Ur = U[indR].reshape(Nx, Ny)
-    Ui = U[indI].reshape(Nx, Ny)
 
-    # Modulus squared of u
-    U2 = Ur**2 + Ui**2
+    # Compute residual using nls2d_msd
+    F = nls2d_msd(U, params)
 
-    # Jacobian matrix components
-    J11 = -0.5 * D2 + sp.diags(g * (3 * Ur.ravel()**2 + Ui.ravel()**2) + V + w)
-    J22 = -0.5 * D2 + sp.diags(g * (Ur.ravel()**2 + 3 * Ui.ravel()**2) + V + w)
-    J12 = sp.diags(2 * g * Ur.ravel() * Ui.ravel())
+    # Apply modulus-squared Dirichlet boundary conditions
+    Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+    Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
 
-    # Full Jacobian matrix
-    J = sp.bmat([[J11, J12], [J12, J22]], format='csr')
+    # Laplacian operators for 2D grid
+    Ix = sp.eye(npts_x)
+    Iy = sp.eye(npts_y)
+    Dx = sp.diags([np.ones(npts_x - 1), -2 * np.ones(npts_x), np.ones(npts_x - 1)], [-1, 0, 1], shape=(npts_x, npts_x)) / params['nls']['dx']**2
+    Dy = sp.diags([np.ones(npts_y - 1), -2 * np.ones(npts_y), np.ones(npts_y - 1)], [-1, 0, 1], shape=(npts_y, npts_y)) / params['nls']['dy']**2
+    Laplacian = sp.kron(Iy, Dx) + sp.kron(Dy, Ix)
 
-    # RHS of the system
-    Fr = (-0.5 * D2 @ Ur.ravel() + (g * U2.ravel() + V + w) * Ur.ravel())
-    Fi = (-0.5 * D2 @ Ui.ravel() + (g * U2.ravel() + V + w) * Ui.ravel())
-    F = np.hstack([Fr, Fi])
-    
-    apply_boundary_condition(U, J, F, boundary_value=1.0)
+    # Diagonal terms for J11 and J22
+    dens = Ur**2 + Ui**2
+    V_flat = params['nls']['V'].flatten()
+    J11 = -0.5 * Laplacian + sp.diags(3 * Ur.flatten()**2 + Ui.flatten()**2 + V_flat - params['nls']['mu'])
+    J22 = -0.5 * Laplacian + sp.diags(3 * Ui.flatten()**2 + Ur.flatten()**2 + V_flat - params['nls']['mu'])
+
+    # Off-diagonal terms J12 and J21
+    J12 = sp.diags(2 * Ur.flatten() * Ui.flatten())
+    J21 = sp.diags(2 * Ur.flatten() * Ui.flatten())
+
+    # Assemble the full Jacobian as a block matrix
+    J = sp.bmat([[J11, J12], [J21, J22]], format='csr')
 
     # Newton correction
     DU = spla.spsolve(J, -F)
-    U1 = U + alpha * DU
+    U1 = U + DU
     err = np.linalg.norm(F)
-    print("err =", err)
-#    if err < 8.2e-6:
-#        alpha *= 0.5
-    
-    # Update U for the next iteration
+    print(f"Iteration {it}, Error: {err:.2e}")
+
+    # Update U
     U = U1
 
-    # Update the surface plot data instead of clearing the figure
-    surf.remove()  # Remove the previous surface plot
-    surf = ax.plot_surface(X, Y, Ur, cmap="viridis")  # Redraw the updated surface
-    ax.set_title(f'Iteration = {it}, Error = {err:.2e}')
-    ax.set_zlim(0,1)
-    plt.draw()
-    plt.pause(2)
+# Final solution
+u = (U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:]).reshape(npts_x, npts_y)
 
-plt.close()
+# Plot the final solution
+# Create a 3D plot
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
 
-## Final plot
-fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-surf = ax.plot_surface(X, Y, Ur, cmap="viridis")
-ax.set_title(f'Final, Error = {err:.2e}')
+# Plot the surface
+surf = ax.plot_surface(x_grid, y_grid, np.abs(u), cmap='viridis', edgecolor='none')
+
+# Add a color bar
+fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label='|u|')
+
+# Label the axes
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('|u|')
+
+# Add a title
+ax.set_title('Final Solution Magnitude')
+
 plt.show()

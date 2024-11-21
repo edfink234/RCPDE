@@ -66,27 +66,27 @@ params = {
         'npts': 301,  # Number of grid points
         'dx': (10 - (-10)) / 300,  # Mesh size
         'V': 0,  # Potential
-        'mu': 1.4,  # Temporal frequency
-        'g': 1,  # Defocusing parameter
+        'mu': 9,  # Temporal frequency = A^2
     }
 }
-params['nls']['V'] = np.zeros(params['nls']['npts'])
-Nx = params['nls']['npts']
+npts = params['nls']['npts']
+params['nls']['V'] = np.zeros(npts)
+
 
 # Spatial grid
 L, R = -10, 10
-x = np.linspace(L, R, params['nls']['npts'])
+x = np.linspace(L, R, npts)
 
 # Initial guess
 w = params['nls']['mu']
-A = 1.2#np.sqrt(2 * 1)
+A = np.sqrt(w)
 x0 = (R + L) / 2  # Center of initial guess
-u0 = A * np.tanh(1 * (x - x0))  # Initial guess (sech soliton)
+u0 = A * np.tanh(A * (x - x0))  # Initial guess (sech soliton)
 
 # Perturbed initial guess
 np.random.seed(0)  # For reproducibility
 pert = 2
-up = u0 + pert * (np.random.rand(params['nls']['npts']) - 0.5) * np.exp(-x**2 / 10)
+up = u0 + pert * (np.random.rand(npts) - 0.5) * np.exp(-x**2 / 10)
 U = np.hstack([up.real, up.imag])  # Real and imaginary parts concatenated
 
 # Newton's method
@@ -101,9 +101,9 @@ while err > tol:
     F = nls1d_msd(U, params)
     
     # Apply modulus-squared Dirichlet boundary conditions
-    Ur = U[:params['nls']['npts']]
-    Ui = U[params['nls']['npts']:]
-    npts = params['nls']['npts']
+    Ur = U[:npts]
+    Ui = U[npts:]
+    
     dx = params['nls']['dx']
     V = np.array(params['nls']['V'])
     mu = params['nls']['mu']
@@ -121,13 +121,6 @@ while err > tol:
 
     # Assemble the full Jacobian as a block matrix
     J = sp.bmat([[J11, J12], [J21, J22]], format='csr')
-
-    
-#    J[0, 0] = 2 * Ur[0]  # Real part at left boundary ∂F_0/∂U_r
-#    J[0, Nx] = 2 * Ui[0]  # Imaginary part at left boundary ∂F_0/∂U_i
-#
-#    J[-1, Nx-1] = 2 * Ur[-1]  # Real part at right boundary ∂F_1/∂U_r
-#    J[-1, 2*Nx-1] = 2 * Ui[-1]  # Imaginary part at right boundary ∂F_1/∂U_i
     
     # Newton correction
     DU = spla.spsolve(J, -F)
@@ -139,7 +132,7 @@ while err > tol:
     U = U1
 
 # Final solution
-u = U[:params['nls']['npts']] + 1j * U[params['nls']['npts']:]
+u = U[:npts] + 1j * U[npts:]
 
 # Plot the final solution
 plt.plot(x, u.real, label="Re(u)")
