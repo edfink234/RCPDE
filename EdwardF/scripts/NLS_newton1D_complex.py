@@ -81,7 +81,7 @@ x = np.linspace(L, R, npts)
 w = params['nls']['mu']
 A = np.sqrt(w)
 x0 = (R + L) / 2  # Center of initial guess
-u0 = A * np.tanh(A * (x - x0))  # Initial guess (sech soliton)
+u0 = A * np.tanh(A * (x - x0))  # Initial guess (tanh soliton)
 
 # Perturbed initial guess
 np.random.seed(0)  # For reproducibility

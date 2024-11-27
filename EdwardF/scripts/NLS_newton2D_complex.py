@@ -2,6 +2,8 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
+from numpy import tanh, exp, cos, sin, cosh, arccos, arccos as acos, log, sqrt
+sech = lambda x: 1/np.cosh(x)
 
 
 def nls2d_msd(psi, params):
@@ -21,13 +23,12 @@ def nls2d_msd(psi, params):
     dx, dy = params['nls']['dx'], params['nls']['dy']
     V = np.array(params['nls']['V']).reshape(npts_x, npts_y)
     mu = params['nls']['mu']
-
+    npts = npts_x * npts_y
     # Pre-allocate nonlinear residual
-    resid = np.zeros(2 * npts_x * npts_y)
-
+    resid = np.zeros(2 * npts)
     # Decompose the field into real and imaginary parts
-    X = psi[:npts_x * npts_y].reshape(npts_x, npts_y)
-    Y = psi[npts_x * npts_y:].reshape(npts_x, npts_y)
+    X = psi[:npts].reshape(npts_x, npts_y)
+    Y = psi[npts:].reshape(npts_x, npts_y)
 
     # Compute the density and common term
     dens = X**2 + Y**2
@@ -81,8 +82,8 @@ def nls2d_msd(psi, params):
     d2Y[1:-1, -1] = Ydd_r
 
     # Return the system of nonlinear equations
-    resid[:npts_x * npts_y] = (-0.5 * d2X + comm * X).flatten()
-    resid[npts_x * npts_y:] = (-0.5 * d2Y + comm * Y).flatten()
+    resid[:npts_x * npts_y] = (-0.5 * d2X + comm * X).ravel()
+    resid[npts_x * npts_y:] = (-0.5 * d2Y + comm * Y).ravel()
 
     return resid
 
@@ -100,6 +101,7 @@ params = {
 npts_x, npts_y = params['nls']['npts']
 x = np.linspace(-10, 10, npts_x)
 y = np.linspace(-10, 10, npts_y)
+
 x_grid, y_grid = np.meshgrid(x, y, indexing='ij')
 params['nls']['V'] = np.zeros((npts_x, npts_y))
 
@@ -107,18 +109,28 @@ params['nls']['V'] = np.zeros((npts_x, npts_y))
 w = params['nls']['mu']
 A = np.sqrt(w)
 r0 = 0.0  # Radius for initial guess
-u0 = A * np.tanh(A * np.sqrt((x_grid**2 + y_grid**2)) - r0) * np.exp(1j*np.arctan2(y_grid, x_grid))  # Initial guess
+r = np.sqrt((x_grid**2 + y_grid**2))
+#u0 = A * np.tanh(A * r - r0) * np.exp(1j*np.arctan2(y_grid, x_grid))  # Initial guess
+
+u0 = A * np.tanh(A * 0.8 * r - r0) * np.exp(1j*np.arctan2(y_grid, x_grid))# Initial guess
 
 # Perturbed initial guess
 np.random.seed(0)  # For reproducibility
-pert = 2
+pert = 0
 up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
-U = np.hstack([up.real.flatten(), up.imag.flatten()])
+U = np.hstack([up.real.ravel(), up.imag.ravel()])
 
 # Newton's method
 it = 0
 err = 1
 tol = 1e-4
+
+Ix = sp.eye(npts_x)
+Iy = sp.eye(npts_y)
+Dx = sp.diags([np.ones(npts_x - 1), -2 * np.ones(npts_x), np.ones(npts_x - 1)], [-1, 0, 1], shape=(npts_x, npts_x)) / params['nls']['dx']**2
+Dy = sp.diags([np.ones(npts_y - 1), -2 * np.ones(npts_y), np.ones(npts_y - 1)], [-1, 0, 1], shape=(npts_y, npts_y)) / params['nls']['dy']**2
+Laplacian = -0.5 * (sp.kron(Iy, Dx) + sp.kron(Dy, Ix))
+V_flat = params['nls']['V'].ravel()
 
 while err > tol:
     it += 1
@@ -130,22 +142,19 @@ while err > tol:
     Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
     Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
 
-    # Laplacian operators for 2D grid
-    Ix = sp.eye(npts_x)
-    Iy = sp.eye(npts_y)
-    Dx = sp.diags([np.ones(npts_x - 1), -2 * np.ones(npts_x), np.ones(npts_x - 1)], [-1, 0, 1], shape=(npts_x, npts_x)) / params['nls']['dx']**2
-    Dy = sp.diags([np.ones(npts_y - 1), -2 * np.ones(npts_y), np.ones(npts_y - 1)], [-1, 0, 1], shape=(npts_y, npts_y)) / params['nls']['dy']**2
-    Laplacian = sp.kron(Iy, Dx) + sp.kron(Dy, Ix)
-
+    # Laplacian operators for 2D grid, TODO: sparse?
+    
+    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+    
     # Diagonal terms for J11 and J22
     dens = Ur**2 + Ui**2
-    V_flat = params['nls']['V'].flatten()
-    J11 = -0.5 * Laplacian + sp.diags(3 * Ur.flatten()**2 + Ui.flatten()**2 + V_flat - params['nls']['mu'])
-    J22 = -0.5 * Laplacian + sp.diags(3 * Ui.flatten()**2 + Ur.flatten()**2 + V_flat - params['nls']['mu'])
+    
+    J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+    J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
 
     # Off-diagonal terms J12 and J21
-    J12 = sp.diags(2 * Ur.flatten() * Ui.flatten())
-    J21 = sp.diags(2 * Ur.flatten() * Ui.flatten())
+    J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+    J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
 
     # Assemble the full Jacobian as a block matrix
     J = sp.bmat([[J11, J12], [J21, J22]], format='csr')
