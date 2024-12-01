@@ -48,6 +48,8 @@ class XiModel(nn.Module):
 
 # Instantiate the model
 model = XiModel()
+mps_device = torch.device("mps")
+model.to(mps_device)
 #best_loss = 0.0006978716119192541
 best_loss = np.inf
 
@@ -117,7 +119,7 @@ def rk4_step(x, v, xi_t, dt):
 
 # Define the xi function using the neural network
 def xi(t):
-    t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
+    t_input = torch.tensor([[t]], dtype=torch.float32).to(mps_device)  # Convert to tensor
     return model(t_input)[0, 0]  # Get the output from the model
 
 # Loss function for optimization
