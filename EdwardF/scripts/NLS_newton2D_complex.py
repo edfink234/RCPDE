@@ -4,9 +4,11 @@ import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
 from numpy import tanh, exp, cos, sin, cosh, arccos, arccos as acos, log, sqrt
 from os import system
+from numpy.linalg import cond
 from scipy.sparse.linalg import LinearOperator, spilu
 from time import time
 from matplotlib.colors import LightSource
+from scipy.sparse import diags
 
 sech = lambda x: 1/np.cosh(x)
 
@@ -143,8 +145,8 @@ w = params['nls']['mu']
 A = np.sqrt(w)
 x_0, y_0 = 0.0, 0.0  # Initial guess location
 dist = np.sqrt( ((x_grid-x_0)**2 + (y_grid-y_0)**2) )
-#u0 = A * np.tanh(A * dist) * np.exp(1j*np.arctan2(y_grid, x_grid))  # Initial guess
-u0 = A * np.tanh(A * 0.8 * dist) * np.exp(1j*np.arctan2((y_grid-y_0), (x_grid-x_0)))  # Initial guess
+u0 = A * np.tanh(A * dist) * np.exp(1j*np.arctan2(y_grid, x_grid))  # Initial guess
+#u0 = A * np.tanh(A * 0.8 * dist) * np.exp(1j*np.arctan2((y_grid-y_0), (x_grid-x_0)))  # Initial guess
 
 # Perturbed initial guess
 np.random.seed(0)  # For reproducibility
@@ -165,20 +167,85 @@ Laplacian = -0.5 * (sp.kron(Iy, Dx) + sp.kron(Dy, Ix))
 V_flat = params['nls']['V'].ravel()
 
 # Plot 1: Number of iterations vs. perturbation size
-pert_range = np.linspace(0.1, 3, 10)
-iterations = []
-err = np.inf
+def Plot1():
+    pert_range = np.linspace(0.1, 3, 10)
+    iterations = []
+    err = np.inf
 
-start=time()
+    start=time()
 
-for pert in pert_range:
+    for pert in pert_range:
+        np.random.seed(0)
+        up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+        U = np.hstack([up.real.ravel(), up.imag.ravel()])
+        
+        it = 0
+        err = np.inf
+        
+        while err > tol:
+            print(f"Iteration {it}, Error: {err:.2e}")
+            it += 1
+
+            # Compute residual using nls2d_msd
+            F = nls2d_msd(U, params)
+
+            # Apply modulus-squared Dirichlet boundary conditions
+            Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+            Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+            
+        #    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+            
+            # Diagonal terms for J11 and J22
+            dens = Ur**2 + Ui**2
+            
+            J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+            J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+
+            # Off-diagonal terms J12 and J21
+            J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+            J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+
+            # Assemble the full Jacobian as a block matrix
+            J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
+
+            # Newton correction
+            
+            DU, info = spla.cg(J, -F, tol=1e-10)
+            assert(info==0)
+    #        DU = spla.spsolve(J, -F)
+
+            U1 = U + DU
+            err = np.linalg.norm(F)
+            
+
+            # Update U
+            U = U1
+        print(f"Iteration {it}, Error: {err:.2e}")
+        iterations.append(it)
+
+    print(f"time taken = {time() - start}")
+
+    plt.figure()
+    plt.plot(pert_range, iterations, '-o')
+    plt.xlabel(r'Perturbation Size $\epsilon$')
+    plt.ylabel('Number of Iterations')
+    plt.title(r'Iterations vs. Perturbation Size $\epsilon$')
+    plt.yticks(np.arange(min(iterations), max(iterations)+1, 1))  # This sets the x-ticks as integers
+    plt.savefig(f'{save_path}iterations_vs_perturbation_2D.svg')
+    system(f"rsvg-convert -f pdf -o {save_path}iterations_vs_perturbation_2D.pdf {save_path}iterations_vs_perturbation_2D.svg")
+    system(f"open {save_path}iterations_vs_perturbation_2D.pdf")
+    system(f"rm {save_path}iterations_vs_perturbation_2D.svg")
+
+# Plot 2: Error vs. number of iterations for a fixed perturbation size
+def Plot2():
+    pert = 1.0
+    it = 0
+    err = np.inf
     np.random.seed(0)
     up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
     U = np.hstack([up.real.ravel(), up.imag.ravel()])
-    
-    it = 0
-    err = np.inf
-    
+    errors = []
+
     while err > tol:
         print(f"Iteration {it}, Error: {err:.2e}")
         it += 1
@@ -210,7 +277,7 @@ for pert in pert_range:
         
         DU, info = spla.cg(J, -F, tol=1e-10)
         assert(info==0)
-#        DU = spla.spsolve(J, -F)
+    #        DU = spla.spsolve(J, -F)
 
         U1 = U + DU
         err = np.linalg.norm(F)
@@ -218,170 +285,349 @@ for pert in pert_range:
 
         # Update U
         U = U1
-    print(f"Iteration {it}, Error: {err:.2e}")
-    iterations.append(it)
+        errors.append(err)
 
-print(f"time taken = {time() - start}")
+    plt.figure()
+    plt.plot(errors, '-o')
+    plt.xlabel('Iteration')
+    plt.ylabel('Error')
+    plt.title(r'Error vs. Iterations for $\epsilon = 1$')
+    plt.yscale('log')
+    # Set x-axis ticks to integers
+    plt.xticks(np.arange(0, len(errors), 10))  # This sets the x-ticks as integers
 
-plt.figure()
-plt.plot(pert_range, iterations, '-o')
-plt.xlabel(r'Perturbation Size $\epsilon$')
-plt.ylabel('Number of Iterations')
-plt.title(r'Iterations vs. Perturbation Size $\epsilon$')
-plt.yticks(np.arange(min(iterations), max(iterations)+1, 1))  # This sets the x-ticks as integers
-plt.savefig(f'{save_path}iterations_vs_perturbation_2D.svg')
-system(f"rsvg-convert -f pdf -o {save_path}iterations_vs_perturbation_2D.pdf {save_path}iterations_vs_perturbation_2D.svg")
-system(f"open {save_path}iterations_vs_perturbation_2D.pdf")
-system(f"rm {save_path}iterations_vs_perturbation_2D.svg")
-
-# Plot 2: Error vs. number of iterations for a fixed perturbation size
-pert = 1.0
-it = 0
-err = np.inf
-np.random.seed(0)
-up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
-U = np.hstack([up.real.ravel(), up.imag.ravel()])
-errors = []
-
-while err > tol:
-    print(f"Iteration {it}, Error: {err:.2e}")
-    it += 1
-
-    # Compute residual using nls2d_msd
-    F = nls2d_msd(U, params)
-
-    # Apply modulus-squared Dirichlet boundary conditions
-    Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
-    Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
-    
-#    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
-    
-    # Diagonal terms for J11 and J22
-    dens = Ur**2 + Ui**2
-    
-    J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
-    J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
-
-    # Off-diagonal terms J12 and J21
-    J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
-    J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
-
-    # Assemble the full Jacobian as a block matrix
-    J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
-
-
-    # Newton correction
-    
-    DU, info = spla.cg(J, -F, tol=1e-10)
-    assert(info==0)
-#        DU = spla.spsolve(J, -F)
-
-    U1 = U + DU
-    err = np.linalg.norm(F)
-    
-
-    # Update U
-    U = U1
-    errors.append(err)
-
-plt.figure()
-plt.plot(errors, '-o')
-plt.xlabel('Iteration')
-plt.ylabel('Error')
-plt.title(r'Error vs. Iterations for $\epsilon = 1$')
-plt.yscale('log')
-# Set x-axis ticks to integers
-plt.xticks(np.arange(0, len(errors), 10))  # This sets the x-ticks as integers
-
-plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
-system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
-system(f"open {save_path}error_vs_iterations_2D.pdf")
-system(f"rm {save_path}error_vs_iterations_2D.svg")
+    plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
+    system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
+    system(f"open {save_path}error_vs_iterations_2D.pdf")
+    system(f"rm {save_path}error_vs_iterations_2D.svg")
 
 # Plot 3: Solution evolution vs. number of iterations
-pert = 1.0
-it = 0
-err = np.inf
-np.random.seed(0)
-up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
-U = np.hstack([up.real.ravel(), up.imag.ravel()])
-solutions = [(np.abs(U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:])**2).reshape(npts_x, npts_y)]
+def Plot3():
+    pert = 1.0
+    it = 0
+    err = np.inf
+    np.random.seed(0)
+    up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+    U = np.hstack([up.real.ravel(), up.imag.ravel()])
+    solutions = [(np.abs(U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:])**2).reshape(npts_x, npts_y)]
 
-while err > tol:
-    print(f"Iteration {it}, Error: {err:.2e}")
-    it += 1
+    while err > tol:
+        print(f"Iteration {it}, Error: {err:.2e}")
+        it += 1
 
-    # Compute residual using nls2d_msd
-    F = nls2d_msd(U, params)
+        # Compute residual using nls2d_msd
+        F = nls2d_msd(U, params)
 
-    # Apply modulus-squared Dirichlet boundary conditions
-    Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
-    Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+        # Apply modulus-squared Dirichlet boundary conditions
+        Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+        Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+        
+    #    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+        
+        # Diagonal terms for J11 and J22
+        dens = Ur**2 + Ui**2
+        
+        J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+        J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+
+        # Off-diagonal terms J12 and J21
+        J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+        J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+
+        # Assemble the full Jacobian as a block matrix
+        J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
+
+
+        # Newton correction
+        
+        DU, info = spla.cg(J, -F, tol=1e-10)
+        assert(info==0)
+    #        DU = spla.spsolve(J, -F)
+
+        U1 = U + DU
+        err = np.linalg.norm(F)
+        
+
+        # Update U
+        U = U1
+        solutions.append((np.abs(U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:])**2).reshape(npts_x, npts_y))
+
+    fig = plt.figure(figsize=(15.5, 5))  # Adjust figure size for 3 subplots
+
+    # Select the three specific iterations: 0, 1, and len(solutions)-1
+    indices_to_plot = [0, 1, len(solutions) - 1]
+    length = len(indices_to_plot)
+    # Define RGB colors for the three iterations
+    default_colors = plt.cm.tab10.colors  # tab10 is the default color cycle in many versions of Matplotlib
+    colors = default_colors[:len(indices_to_plot)]  # Get the first 3 colors
+    ls = LightSource(azdeg=180, altdeg=45)
+
+    # Create subplots
+    for idx, i in enumerate(indices_to_plot):
+        ax = fig.add_subplot(1, length, idx + 1, projection='3d')  # Create 3 subplots in a row
+        
+        # Create the facecolor array with RGB tuples
+        face_color = np.empty((x_grid.shape[0], x_grid.shape[1], 3), dtype=float)  # (M, N, 3) for RGB
+        for j in range(x_grid.shape[0]):
+            for k in range(x_grid.shape[1]):
+                face_color[j, k] = colors[idx]  # Assign the RGB color
+
+        # Plot the surface with the specified facecolors
+        ax.plot_surface(x_grid, y_grid, solutions[i], facecolors=face_color, linewidth=0, edgecolor='none')
+        ax.set_title(f"Iteration {i}")  # Optional: Add a title for each subplot
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel(r'$|u|^2$')
+
+    fig.suptitle('Solution Evolution $|u|^2$ for $\epsilon = 1$')
+    #plt.tight_layout(rect=[0., 0, 1, 1])  # Adjust left and right margins
+
+    plt.savefig(f'{save_path}solution_evolution_2D.svg')
+    system(f"rsvg-convert -f pdf -o {save_path}solution_evolution_2D.pdf {save_path}solution_evolution_2D.svg")
+    system(f"open {save_path}solution_evolution_2D.pdf")
+    system(f"rm {save_path}solution_evolution_2D.svg")
+
+    system(f"ls {save_path}")
+
+# Plot 4: Physics guess vs SR guess
+def Plot4():
+    pert = 1.0
+    it = 0
+    err = np.inf
+    np.random.seed(0)
+    params['nls']['mu'] = 1
+    A = params['nls']['mu']**0.5
     
-#    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+    #Physics guess
+    u0_ = A * np.tanh(A * dist) * np.exp(1j*np.arctan2((y_grid-y_0), (x_grid-x_0)))  # Initial guess
+    up = u0_ + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+    U = np.hstack([up.real.ravel(), up.imag.ravel()])
+    errors = []
+
+    while err > tol:
+        print(f"Iteration {it}, Error: {err:.2e}")
+        it += 1
+
+        # Compute residual using nls2d_msd
+        F = nls2d_msd(U, params)
+
+        # Apply modulus-squared Dirichlet boundary conditions
+        Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+        Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+        
+    #    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+        
+        # Diagonal terms for J11 and J22
+        dens = Ur**2 + Ui**2
+        
+        J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+        J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+
+        # Off-diagonal terms J12 and J21
+        J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+        J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+
+        # Assemble the full Jacobian as a block matrix
+        J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
+
+        # Newton correction
+        
+        DU, info = spla.cg(J, -F, tol=1e-10)
+        assert(info==0)
+    #        DU = spla.spsolve(J, -F)
+
+        U1 = U + DU
+        err = np.linalg.norm(F)
+        
+
+        # Update U
+        U = U1
+        errors.append(err)
+
+    plt.figure()
+    plt.plot(errors, '-o')
+    plt.xlabel('Iteration')
+    plt.ylabel('Error')
+    plt.title(r'Error vs. Iterations for $\epsilon = 1$')
+    plt.yscale('log')
+    # Set x-axis ticks to integers
+    plt.xticks(np.arange(0, len(errors), 30))  # This sets the x-ticks as integers
+
+    plt.show()
+    plt.close()
     
-    # Diagonal terms for J11 and J22
-    dens = Ur**2 + Ui**2
+#    plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
+#    system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
+#    system(f"open {save_path}error_vs_iterations_2D.pdf")
+#    system(f"rm {save_path}error_vs_iterations_2D.svg")
+
+    #SR guess
     
-    J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
-    J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+    it = 0
+    err = np.inf
+    u0_ = A * (tanh(dist) * sqrt(sech(sqrt(sech(-(-(dist))))))) * np.exp(1j*np.arctan2((y_grid-y_0), (x_grid-x_0)))  # Initial guess
+    up = u0_ + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+    U = np.hstack([up.real.ravel(), up.imag.ravel()])
+    errors = []
 
-    # Off-diagonal terms J12 and J21
-    J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
-    J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+    while err > tol:
+        print(f"Iteration {it}, Error: {err:.2e}")
+        it += 1
 
-    # Assemble the full Jacobian as a block matrix
-    J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
+        # Compute residual using nls2d_msd
+        F = nls2d_msd(U, params)
+
+        # Apply modulus-squared Dirichlet boundary conditions
+        Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+        Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+        
+    #    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+        
+        # Diagonal terms for J11 and J22
+        dens = Ur**2 + Ui**2
+        
+        J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+        J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+
+        # Off-diagonal terms J12 and J21
+        J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+        J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+
+        # Assemble the full Jacobian as a block matrix
+        J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
 
 
-    # Newton correction
+        # Newton correction
+        
+        DU, info = spla.cg(J, -F, tol=1e-10)
+        assert(info==0)
+    #        DU = spla.spsolve(J, -F)
+
+        U1 = U + DU
+        err = np.linalg.norm(F)
+        
+
+        # Update U
+        U = U1
+        errors.append(err)
+
+    plt.figure()
+    plt.plot(errors, '-o')
+    plt.xlabel('Iteration')
+    plt.ylabel('Error')
+    plt.title(r'Error vs. Iterations for $\epsilon = 1$')
+    plt.yscale('log')
+    # Set x-axis ticks to integers
+    plt.xticks(np.arange(0, len(errors), 30))  # This sets the x-ticks as integers
+
+    plt.show()
     
-    DU, info = spla.cg(J, -F, tol=1e-10)
-    assert(info==0)
-#        DU = spla.spsolve(J, -F)
+#    plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
+#    system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
+#    system(f"open {save_path}error_vs_iterations_2D.pdf")
+#    system(f"rm {save_path}error_vs_iterations_2D.svg")
 
-    U1 = U + DU
-    err = np.linalg.norm(F)
+# Plot 5: Error vs. number of iterations for a fixed perturbation size
+def Plot5():
+    def diagonal_preconditioner(matrix):
+        diag = matrix.diagonal()
+        inv_diag = 1.0 / diag
+        return diags(inv_diag)
+        
+    pert = 1.0
+    it = 0
+    err = np.inf
+    np.random.seed(0)
+    up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+    U = np.hstack([up.real.ravel(), up.imag.ravel()])
+    errors = []
+    condition_numbers = []
+
+    while err > tol:
+        print(f"Iteration {it}, Error: {err:.2e}")
+        it += 1
+
+        # Compute residual using nls2d_msd
+        F = nls2d_msd(U, params)
+
+        # Apply modulus-squared Dirichlet boundary conditions
+        Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+        Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+        
+    #    print(f"Ix.shape = {Ix.shape}, Iy.shape = {Iy.shape}, Dx.shape = {Dx.shape}, Dy.shape = {Dy.shape}, Laplacian.shape = {Laplacian.shape}")
+        
+        # Diagonal terms for J11 and J22
+        dens = Ur**2 + Ui**2
+        
+        J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+        J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+
+        # Off-diagonal terms J12 and J21
+        J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+        J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+
+        # Assemble the full Jacobian as a block matrix
+        J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
+
+        ew1, ev = spla.eigsh(J, which='LM')
+        ew2, ev = spla.eigsh(J, sigma=1e-8)   #<--- takes a long time
+
+        ew1 = abs(ew1)
+        ew2 = abs(ew2)
+
+        condA = ew1.max()/ew2.min()
+        
+        condition_numbers.append(condA)
+        # Newton correction
+        
+        DU, info = spla.cg(J, -F, tol=1e-10)
+        assert(info==0)
+    #        DU = spla.spsolve(J, -F)
+        U1 = U + DU
+        err = np.linalg.norm(F)
+        
+
+        # Update U
+        U = U1
+        errors.append(err)
+
+    plt.figure()
+    
+    e_k_plus_1 = np.array(errors[1:])
+    e_k = np.array(errors[:-1])
+    ratio = e_k_plus_1/(e_k**2)
+    plt.plot(ratio, '-o')
+    plt.xlabel('Iteration')
+    plt.ylabel(r'$e_{k+1}/e_{k}$')
+    plt.title(r'Error ratio vs. Iterations for $\epsilon = 1$')
+    plt.yscale('log')
+    # Set x-axis ticks to integers
+    plt.xticks(np.arange(0, len(errors), 10))  # This sets the x-ticks as integers
+
+    plt.savefig(f'{save_path}rel_error_vs_iterations_2D.svg')
+    system(f"rsvg-convert -f pdf -o {save_path}rel_error_vs_iterations_2D.pdf {save_path}rel_error_vs_iterations_2D.svg")
+    system(f"open {save_path}rel_error_vs_iterations_2D.pdf")
+    system(f"rm {save_path}rel_error_vs_iterations_2D.svg")
+    plt.close()
+    
+    
+    plt.plot(condition_numbers, '-o')
+    plt.xlabel('Iteration')
+    plt.ylabel(r'Condition Number of Jacobian')
+    plt.title(r'Evolution of cond(J) for $\epsilon = 1$')
+    # Set x-axis ticks to integers
+    plt.xticks(np.arange(0, len(errors), 10))  # This sets the x-ticks as integers
+
+    plt.savefig(f'{save_path}Jac_condition_number_2D.svg')
+    system(f"rsvg-convert -f pdf -o {save_path}Jac_condition_number_2D.pdf {save_path}Jac_condition_number_2D.svg")
+    system(f"open {save_path}Jac_condition_number_2D.pdf")
+    system(f"rm {save_path}Jac_condition_number_2D.svg")
     
 
-    # Update U
-    U = U1
-    solutions.append((np.abs(U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:])**2).reshape(npts_x, npts_y))
+#Plot1()
+#Plot2()
+#Plot3()
+#Plot4()
+Plot5()
 
-fig = plt.figure(figsize=(15.5, 5))  # Adjust figure size for 3 subplots
-
-# Select the three specific iterations: 0, 1, and len(solutions)-1
-indices_to_plot = [0, 1, len(solutions) - 1]
-length = len(indices_to_plot)
-# Define RGB colors for the three iterations
-default_colors = plt.cm.tab10.colors  # tab10 is the default color cycle in many versions of Matplotlib
-colors = default_colors[:len(indices_to_plot)]  # Get the first 3 colors
-ls = LightSource(azdeg=180, altdeg=45)
-
-# Create subplots
-for idx, i in enumerate(indices_to_plot):
-    ax = fig.add_subplot(1, length, idx + 1, projection='3d')  # Create 3 subplots in a row
-    
-    # Create the facecolor array with RGB tuples
-    face_color = np.empty((x_grid.shape[0], x_grid.shape[1], 3), dtype=float)  # (M, N, 3) for RGB
-    for j in range(x_grid.shape[0]):
-        for k in range(x_grid.shape[1]):
-            face_color[j, k] = colors[idx]  # Assign the RGB color
-
-    # Plot the surface with the specified facecolors
-    ax.plot_surface(x_grid, y_grid, solutions[i], facecolors=face_color, linewidth=0, edgecolor='none')
-    ax.set_title(f"Iteration {i}")  # Optional: Add a title for each subplot
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel(r'$|u|^2$')
-
-fig.suptitle('Solution Evolution $|u|^2$ for $\epsilon = 1$')
-#plt.tight_layout(rect=[0., 0, 1, 1])  # Adjust left and right margins
-
-plt.savefig(f'{save_path}solution_evolution_2D.svg')
-system(f"rsvg-convert -f pdf -o {save_path}solution_evolution_2D.pdf {save_path}solution_evolution_2D.svg")
-system(f"open {save_path}solution_evolution_2D.pdf")
-system(f"rm {save_path}solution_evolution_2D.svg")
-
-system(f"ls {save_path}")
 
