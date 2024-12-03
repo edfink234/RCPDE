@@ -228,7 +228,7 @@ except KeyboardInterrupt:
     model.load_state_dict(torch.load(new_model_path, weights_only=True))
     xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
     # Save data to CSV
-    data_path = "trajectory_data.csv"
+    data_path = "../dataFiles/trajectory_data.csv"
     x_values, v_values, xi_values = [], [], []
     x, v = x_start, v_start # Initial conditions
     print(f"x_0, v_0 = {x}, {v}")
