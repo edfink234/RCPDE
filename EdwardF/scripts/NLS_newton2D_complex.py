@@ -93,56 +93,85 @@ def nls2d_msd(psi, params):
     assert(d2X.shape == X.shape)
     assert(d2Y.shape == Y.shape)
     assert(dens.shape == X.shape and dens.shape == Y.shape)
+    term_tl = (d2X[1, 1] * X[1, 1] + d2Y[1, 1] * Y[1, 1]) / dens[1, 1]
+    term_tr = (d2X[1, -2] * X[1, -2] + d2Y[1, -2] * Y[1, -2]) / dens[1, -2]
+    term_bl = (d2X[-2, 1] * X[-2, 1] + d2Y[-2, 1] * Y[-2, 1]) / dens[-2, 1]
+    term_br = (d2X[-2, -2] * X[-2, -2] + d2Y[-2, -2] * Y[-2, -2]) / dens[-2, -2]
     
-    term_tl = (d2X[0, 1] * X[0, 1] + d2Y[0, 1] * Y[0, 1]) / dens[0, 1]
-    term_tr = (d2X[0, -2] * X[0, -2] + d2Y[0, -2] * Y[0, -2]) / dens[0, -2]
-    term_bl = (d2X[-1, 1] * X[-1, 1] + d2Y[-1, 1] * Y[-1, 1]) / dens[-1, 1]
-    term_br = (d2X[-1, -2] * X[-1, -2] + d2Y[-1, -2] * Y[-1, -2]) / dens[-1, -2]
+    Omega_tl = term_tl - 2 * (dens[1, 1] - dens[0, 0] + V[1, 1] - V[0, 0])
+    Omega_tr = term_tr - 2 * (dens[1, -2] - dens[0, -1] + V[1, -2] - V[0, -1])
+    Omega_bl = term_bl - 2 * (dens[-2, 1] - dens[-1, 0] + V[-2, 1] - V[-1, 0])
+    Omega_br = term_br - 2 * (dens[-2, -2] - dens[-1, -1] + V[-2, -2] - V[-1, -1])
     
-    Omega_tl = term_tl - 2 * (dens[0, 1] - dens[0, 0] + V[0, 1] - V[0, 0])
-    Omega_tr = term_tr - 2 * (dens[0, -2] - dens[0, -1] + V[0, -2] - V[0, -1])
-    Omega_bl = term_bl - 2 * (dens[-1, 1] - dens[-1, 0] + V[-1, 1] - V[-1, 0])
-    Omega_br = term_br - 2 * (dens[-1, -2] - dens[-1, -1] + V[-1, -2] - V[-1, -1])
+    Xdd_tl = Omega_tl * X[0, 0]
+    Xdd_tr = Omega_tr * X[-1, 0]
+    Xdd_bl = Omega_bl * X[0, -1]
+    Xdd_br = Omega_br * X[-1, -1]
     
-    Xdd_tl_lr = Omega_tl * X[0, 0]
-    Xdd_tr_lr = Omega_tr * X[-1, 0]
-    Xdd_bl_lr = Omega_bl * X[0, -1]
-    Xdd_br_lr = Omega_br * X[-1, -1]
+    Ydd_tl = Omega_tl * Y[0, 0]
+    Ydd_tr = Omega_tr * Y[-1, 0]
+    Ydd_bl = Omega_bl * Y[0, -1]
+    Ydd_br = Omega_br * Y[-1, -1]
     
-    Ydd_tl_lr = Omega_tl * Y[0, 0]
-    Ydd_tr_lr = Omega_tr * Y[-1, 0]
-    Ydd_bl_lr = Omega_bl * Y[0, -1]
-    Ydd_br_lr = Omega_br * Y[-1, -1]
+    d2X[0, 0] = Xdd_tl
+    d2X[-1, 0] = Xdd_tr
+    d2X[0, -1] = Xdd_bl
+    d2X[-1, -1] = Xdd_br
     
-    term_tl = (d2X[1, 0] * X[1, 0] + d2Y[1, 0] * Y[1, 0]) / dens[1, 0]
-    term_tr = (d2X[1, -1] * X[1, -1] + d2Y[1, -1] * Y[1, -1]) / dens[1, -1]
-    term_bl = (d2X[-2, 0] * X[-2, 0] + d2Y[-2, 0] * Y[-2, 0]) / dens[-2, 0]
-    term_br = (d2X[-2, -1] * X[-2, -1] + d2Y[-2, -1] * Y[-2, -1]) / dens[-2, -1]
-    
-    Omega_tl = term_tl - 2 * (dens[1, 0] - dens[0, 0] + V[1, 0] - V[0, 0])
-    Omega_tr = term_tr - 2 * (dens[1, -1] - dens[0, -1] + V[1, -1] - V[0, -1])
-    Omega_bl = term_bl - 2 * (dens[-2, 0] - dens[-1, 0] + V[-2, 0] - V[-1, 0])
-    Omega_br = term_br - 2 * (dens[-2, -1] - dens[-1, -1] + V[-2, -1] - V[-1, -1])
-    
-    Xdd_tl_tb = Omega_tl * X[0, 0]
-    Xdd_tr_tb = Omega_tr * X[-1, 0]
-    Xdd_bl_tb = Omega_bl * X[0, -1]
-    Xdd_br_tb = Omega_br * X[-1, -1]
-    
-    Ydd_tl_tb = Omega_tl * Y[0, 0]
-    Ydd_tr_tb = Omega_tr * Y[-1, 0]
-    Ydd_bl_tb = Omega_bl * Y[0, -1]
-    Ydd_br_tb = Omega_br * Y[-1, -1]
-    
-    d2X[0, 0] = (Xdd_tl_lr + Xdd_tl_tb)/2.0
-    d2X[-1, 0] = (Xdd_tr_lr + Xdd_tr_tb)/2.0
-    d2X[0, -1] = (Xdd_bl_lr + Xdd_bl_tb)/2.0
-    d2X[-1, -1] = (Xdd_br_lr + Xdd_br_tb)/2.0
-    
-    d2Y[0, 0] = (Ydd_tl_lr + Ydd_tl_tb)/2.0
-    d2Y[-1, 0] = (Ydd_tr_lr + Ydd_tr_tb)/2.0
-    d2Y[0, -1] = (Ydd_bl_lr + Ydd_bl_tb)/2.0
-    d2Y[-1, -1] = (Ydd_br_lr + Ydd_br_tb)/2.0
+    d2Y[0, 0] = Ydd_tl
+    d2Y[-1, 0] = Ydd_tr
+    d2Y[0, -1] = Ydd_bl
+    d2Y[-1, -1] = Ydd_br
+#
+#    term_tl = (d2X[0, 1] * X[0, 1] + d2Y[0, 1] * Y[0, 1]) / dens[0, 1]
+#    term_tr = (d2X[0, -2] * X[0, -2] + d2Y[0, -2] * Y[0, -2]) / dens[0, -2]
+#    term_bl = (d2X[-1, 1] * X[-1, 1] + d2Y[-1, 1] * Y[-1, 1]) / dens[-1, 1]
+#    term_br = (d2X[-1, -2] * X[-1, -2] + d2Y[-1, -2] * Y[-1, -2]) / dens[-1, -2]
+#    
+#    Omega_tl = term_tl - 2 * (dens[0, 1] - dens[0, 0] + V[0, 1] - V[0, 0])
+#    Omega_tr = term_tr - 2 * (dens[0, -2] - dens[0, -1] + V[0, -2] - V[0, -1])
+#    Omega_bl = term_bl - 2 * (dens[-1, 1] - dens[-1, 0] + V[-1, 1] - V[-1, 0])
+#    Omega_br = term_br - 2 * (dens[-1, -2] - dens[-1, -1] + V[-1, -2] - V[-1, -1])
+#    
+#    Xdd_tl_lr = Omega_tl * X[0, 0]
+#    Xdd_tr_lr = Omega_tr * X[-1, 0]
+#    Xdd_bl_lr = Omega_bl * X[0, -1]
+#    Xdd_br_lr = Omega_br * X[-1, -1]
+#    
+#    Ydd_tl_lr = Omega_tl * Y[0, 0]
+#    Ydd_tr_lr = Omega_tr * Y[-1, 0]
+#    Ydd_bl_lr = Omega_bl * Y[0, -1]
+#    Ydd_br_lr = Omega_br * Y[-1, -1]
+#    
+#    term_tl = (d2X[1, 0] * X[1, 0] + d2Y[1, 0] * Y[1, 0]) / dens[1, 0]
+#    term_tr = (d2X[1, -1] * X[1, -1] + d2Y[1, -1] * Y[1, -1]) / dens[1, -1]
+#    term_bl = (d2X[-2, 0] * X[-2, 0] + d2Y[-2, 0] * Y[-2, 0]) / dens[-2, 0]
+#    term_br = (d2X[-2, -1] * X[-2, -1] + d2Y[-2, -1] * Y[-2, -1]) / dens[-2, -1]
+#    
+#    Omega_tl = term_tl - 2 * (dens[1, 0] - dens[0, 0] + V[1, 0] - V[0, 0])
+#    Omega_tr = term_tr - 2 * (dens[1, -1] - dens[0, -1] + V[1, -1] - V[0, -1])
+#    Omega_bl = term_bl - 2 * (dens[-2, 0] - dens[-1, 0] + V[-2, 0] - V[-1, 0])
+#    Omega_br = term_br - 2 * (dens[-2, -1] - dens[-1, -1] + V[-2, -1] - V[-1, -1])
+#    
+#    Xdd_tl_tb = Omega_tl * X[0, 0]
+#    Xdd_tr_tb = Omega_tr * X[-1, 0]
+#    Xdd_bl_tb = Omega_bl * X[0, -1]
+#    Xdd_br_tb = Omega_br * X[-1, -1]
+#    
+#    Ydd_tl_tb = Omega_tl * Y[0, 0]
+#    Ydd_tr_tb = Omega_tr * Y[-1, 0]
+#    Ydd_bl_tb = Omega_bl * Y[0, -1]
+#    Ydd_br_tb = Omega_br * Y[-1, -1]
+#    
+#    d2X[0, 0] = (Xdd_tl_lr + Xdd_tl_tb)/2.0
+#    d2X[-1, 0] = (Xdd_tr_lr + Xdd_tr_tb)/2.0
+#    d2X[0, -1] = (Xdd_bl_lr + Xdd_bl_tb)/2.0
+#    d2X[-1, -1] = (Xdd_br_lr + Xdd_br_tb)/2.0
+#    
+#    d2Y[0, 0] = (Ydd_tl_lr + Ydd_tl_tb)/2.0
+#    d2Y[-1, 0] = (Ydd_tr_lr + Ydd_tr_tb)/2.0
+#    d2Y[0, -1] = (Ydd_bl_lr + Ydd_bl_tb)/2.0
+#    d2Y[-1, -1] = (Ydd_br_lr + Ydd_br_tb)/2.0
 
     # Return the system of nonlinear equations
     resid[:npts_x * npts_y] = (-0.5 * d2X + comm * X).ravel()
@@ -642,8 +671,8 @@ def Plot5():
     system(f"open {save_path}Jac_condition_number_2D.pdf")
     system(f"rm {save_path}Jac_condition_number_2D.svg")
     
-#Plot1()
-#Plot2()
-#Plot3()
+Plot1()
+Plot2()
+Plot3()
 Plot4()
 #Plot5()
