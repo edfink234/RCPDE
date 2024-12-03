@@ -52,12 +52,13 @@ def nls2d_msd(psi, params):
     # Now d2X and d2Y are (npts-2) x (npts-2) matrices
     # Now we have to add the boundary padding
     
-    # Compute common terms (Ω) at the boundaries
+    # Compute common terms (Ω) at the boundaries: equation 3.5 for `A` in Ricardo's paper
     term_l = (d2X[:, 0] * X[1:-1, 1] + d2Y[:, 0] * Y[1:-1, 1]) / dens[1:-1, 1]
     term_r = (d2X[:, -1] * X[1:-1, -2] + d2Y[:, -1] * Y[1:-1, -2]) / dens[1:-1, -2]
     term_t = (d2X[0] * X[1, 1:-1] + d2Y[0] * Y[1, 1:-1]) / dens[1, 1:-1]
     term_b = (d2X[-1] * X[-2, 1:-1] + d2Y[-1] * Y[-2, 1:-1]) / dens[-2, 1:-1]
     
+    #Term in square brackets in both equations in equation 3.4 of Ricardo's paper
     Omega_l = term_l - 2 * (dens[1:-1, 1] - dens[1:-1, 0] + V[1:-1, 1] - V[1:-1, 0]) #a = 1/2 in Ricardo's paper eq 3.4
     Omega_r = term_r - 2 * (dens[1:-1, -2] - dens[1:-1, -1] + V[1:-1, -2] - V[1:-1, -1]) #a = 1/2 in Ricardo's paper eq 3.4
     Omega_t = term_t - 2 * (dens[1, 1:-1] - dens[0, 1:-1] + V[1, 1:-1] - V[0, 1:-1]) #a = 1/2 in Ricardo's paper eq 3.4
@@ -89,32 +90,59 @@ def nls2d_msd(psi, params):
     d2Y[1:-1, -1] = Ydd_r
     
     # Compute corner terms using MSD boundary conditions
-#    dens_tl = dens[1, 0]  # Top-left adjacent density
-#    dens_tr = dens[1, -1]  # Top-right adjacent density
-#    dens_bl = dens[-2, 0]  # Bottom-left adjacent density
-#    dens_br = dens[-2, -1]  # Bottom-right adjacent density
-#
-#    Xdd_tl = 2 * (dens_tl - dens[0, 0] + V[1, 0] - V[0, 0]) * X[0, 0]
-#    Xdd_tr = 2 * (dens_tr - dens[0, -1] + V[1, -1] - V[0, -1]) * X[0, -1]
-#    Xdd_bl = 2 * (dens_bl - dens[-1, 0] + V[-2, 0] - V[-1, 0]) * X[-1, 0]
-#    Xdd_br = 2 * (dens_br - dens[-1, -1] + V[-2, -1] - V[-1, -1]) * X[-1, -1]
-#
-#    Ydd_tl = 2 * (dens_tl - dens[0, 0] + V[1, 0] - V[0, 0]) * Y[0, 0]
-#    Ydd_tr = 2 * (dens_tr - dens[0, -1] + V[1, -1] - V[0, -1]) * Y[0, -1]
-#    Ydd_bl = 2 * (dens_bl - dens[-1, 0] + V[-2, 0] - V[-1, 0]) * Y[-1, 0]
-#    Ydd_br = 2 * (dens_br - dens[-1, -1] + V[-2, -1] - V[-1, -1]) * Y[-1, -1]
-#
-#    # Assign computed values to the corners
-#    d2X[0, 0] = Xdd_tl
-#    d2X[0, -1] = Xdd_tr
-#    d2X[-1, 0] = Xdd_bl
-#    d2X[-1, -1] = Xdd_br
-#
-#    d2Y[0, 0] = Ydd_tl
-#    d2Y[0, -1] = Ydd_tr
-#    d2Y[-1, 0] = Ydd_bl
-#    d2Y[-1, -1] = Ydd_br
-
+    assert(d2X.shape == X.shape)
+    assert(d2Y.shape == Y.shape)
+    assert(dens.shape == X.shape and dens.shape == Y.shape)
+    
+    term_tl = (d2X[0, 1] * X[0, 1] + d2Y[0, 1] * Y[0, 1]) / dens[0, 1]
+    term_tr = (d2X[0, -2] * X[0, -2] + d2Y[0, -2] * Y[0, -2]) / dens[0, -2]
+    term_bl = (d2X[-1, 1] * X[-1, 1] + d2Y[-1, 1] * Y[-1, 1]) / dens[-1, 1]
+    term_br = (d2X[-1, -2] * X[-1, -2] + d2Y[-1, -2] * Y[-1, -2]) / dens[-1, -2]
+    
+    Omega_tl = term_tl - 2 * (dens[0, 1] - dens[0, 0] + V[0, 1] - V[0, 0])
+    Omega_tr = term_tr - 2 * (dens[0, -2] - dens[0, -1] + V[0, -2] - V[0, -1])
+    Omega_bl = term_bl - 2 * (dens[-1, 1] - dens[-1, 0] + V[-1, 1] - V[-1, 0])
+    Omega_br = term_br - 2 * (dens[-1, -2] - dens[-1, -1] + V[-1, -2] - V[-1, -1])
+    
+    Xdd_tl_lr = Omega_tl * X[0, 0]
+    Xdd_tr_lr = Omega_tr * X[-1, 0]
+    Xdd_bl_lr = Omega_bl * X[0, -1]
+    Xdd_br_lr = Omega_br * X[-1, -1]
+    
+    Ydd_tl_lr = Omega_tl * Y[0, 0]
+    Ydd_tr_lr = Omega_tr * Y[-1, 0]
+    Ydd_bl_lr = Omega_bl * Y[0, -1]
+    Ydd_br_lr = Omega_br * Y[-1, -1]
+    
+    term_tl = (d2X[1, 0] * X[1, 0] + d2Y[1, 0] * Y[1, 0]) / dens[1, 0]
+    term_tr = (d2X[1, -1] * X[1, -1] + d2Y[1, -1] * Y[1, -1]) / dens[1, -1]
+    term_bl = (d2X[-2, 0] * X[-2, 0] + d2Y[-2, 0] * Y[-2, 0]) / dens[-2, 0]
+    term_br = (d2X[-2, -1] * X[-2, -1] + d2Y[-2, -1] * Y[-2, -1]) / dens[-2, -1]
+    
+    Omega_tl = term_tl - 2 * (dens[1, 0] - dens[0, 0] + V[1, 0] - V[0, 0])
+    Omega_tr = term_tr - 2 * (dens[1, -1] - dens[0, -1] + V[1, -1] - V[0, -1])
+    Omega_bl = term_bl - 2 * (dens[-2, 0] - dens[-1, 0] + V[-2, 0] - V[-1, 0])
+    Omega_br = term_br - 2 * (dens[-2, -1] - dens[-1, -1] + V[-2, -1] - V[-1, -1])
+    
+    Xdd_tl_tb = Omega_tl * X[0, 0]
+    Xdd_tr_tb = Omega_tr * X[-1, 0]
+    Xdd_bl_tb = Omega_bl * X[0, -1]
+    Xdd_br_tb = Omega_br * X[-1, -1]
+    
+    Ydd_tl_tb = Omega_tl * Y[0, 0]
+    Ydd_tr_tb = Omega_tr * Y[-1, 0]
+    Ydd_bl_tb = Omega_bl * Y[0, -1]
+    Ydd_br_tb = Omega_br * Y[-1, -1]
+    
+    d2X[0, 0] = (Xdd_tl_lr + Xdd_tl_tb)/2.0
+    d2X[-1, 0] = (Xdd_tr_lr + Xdd_tr_tb)/2.0
+    d2X[0, -1] = (Xdd_bl_lr + Xdd_bl_tb)/2.0
+    d2X[-1, -1] = (Xdd_br_lr + Xdd_br_tb)/2.0
+    
+    d2Y[0, 0] = (Ydd_tl_lr + Ydd_tl_tb)/2.0
+    d2Y[-1, 0] = (Ydd_tr_lr + Ydd_tr_tb)/2.0
+    d2Y[0, -1] = (Ydd_bl_lr + Ydd_bl_tb)/2.0
+    d2Y[-1, -1] = (Ydd_br_lr + Ydd_br_tb)/2.0
 
     # Return the system of nonlinear equations
     resid[:npts_x * npts_y] = (-0.5 * d2X + comm * X).ravel()
@@ -232,6 +260,7 @@ def Plot1():
     plt.title(r'Iterations vs. Perturbation Size $\epsilon$')
     plt.yticks(np.arange(min(iterations), max(iterations)+1, 1))  # This sets the x-ticks as integers
     plt.savefig(f'{save_path}iterations_vs_perturbation_2D.svg')
+    plt.close()
     system(f"rsvg-convert -f pdf -o {save_path}iterations_vs_perturbation_2D.pdf {save_path}iterations_vs_perturbation_2D.svg")
     system(f"open {save_path}iterations_vs_perturbation_2D.pdf")
     system(f"rm {save_path}iterations_vs_perturbation_2D.svg")
@@ -294,9 +323,10 @@ def Plot2():
     plt.title(r'Error vs. Iterations for $\epsilon = 1$')
     plt.yscale('log')
     # Set x-axis ticks to integers
-    plt.xticks(np.arange(0, len(errors), 10))  # This sets the x-ticks as integers
+    plt.xticks(np.arange(0, len(errors), 1))  # This sets the x-ticks as integers
 
     plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
+    plt.close()
     system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
     system(f"open {save_path}error_vs_iterations_2D.pdf")
     system(f"rm {save_path}error_vs_iterations_2D.svg")
@@ -383,6 +413,7 @@ def Plot3():
     #plt.tight_layout(rect=[0., 0, 1, 1])  # Adjust left and right margins
 
     plt.savefig(f'{save_path}solution_evolution_2D.svg')
+    plt.close()
     system(f"rsvg-convert -f pdf -o {save_path}solution_evolution_2D.pdf {save_path}solution_evolution_2D.svg")
     system(f"open {save_path}solution_evolution_2D.pdf")
     system(f"rm {save_path}solution_evolution_2D.svg")
@@ -391,7 +422,7 @@ def Plot3():
 
 # Plot 4: Physics guess vs SR guess
 def Plot4():
-    pert = 1.0
+    pert = 0.0
     it = 0
     err = np.inf
     np.random.seed(0)
@@ -445,24 +476,11 @@ def Plot4():
         errors.append(err)
 
     plt.figure()
-    plt.plot(errors, '-o')
-    plt.xlabel('Iteration')
-    plt.ylabel('Error')
-    plt.title(r'Error vs. Iterations for $\epsilon = 1$')
-    plt.yscale('log')
+    plt.plot(errors, '-o', label = "Traditional Physics Ansatz")
     # Set x-axis ticks to integers
-    plt.xticks(np.arange(0, len(errors), 30))  # This sets the x-ticks as integers
-
-    plt.show()
-    plt.close()
-    
-#    plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
-#    system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
-#    system(f"open {save_path}error_vs_iterations_2D.pdf")
-#    system(f"rm {save_path}error_vs_iterations_2D.svg")
+    length_errors_trad = len(errors)
 
     #SR guess
-    
     it = 0
     err = np.inf
     u0_ = A * (tanh(dist) * sqrt(sech(sqrt(sech(-(-(dist))))))) * np.exp(1j*np.arctan2((y_grid-y_0), (x_grid-x_0)))  # Initial guess
@@ -511,21 +529,22 @@ def Plot4():
         U = U1
         errors.append(err)
 
-    plt.figure()
-    plt.plot(errors, '-o')
+#    plt.figure()
+    plt.plot(errors, '-o', label = "Symbolic Regression Approach")
     plt.xlabel('Iteration')
     plt.ylabel('Error')
-    plt.title(r'Error vs. Iterations for $\epsilon = 1$')
+    plt.title(r'Error vs. Iterations for $\epsilon = 0$')
     plt.yscale('log')
     # Set x-axis ticks to integers
-    plt.xticks(np.arange(0, len(errors), 30))  # This sets the x-ticks as integers
-
-    plt.show()
+    length_errors_sr = len(errors)
+    plt.xticks(np.arange(0, max(length_errors_sr, length_errors_trad), 1))  # This sets the x-ticks as integers
+    plt.legend()
     
-#    plt.savefig(f'{save_path}error_vs_iterations_2D.svg')
-#    system(f"rsvg-convert -f pdf -o {save_path}error_vs_iterations_2D.pdf {save_path}error_vs_iterations_2D.svg")
-#    system(f"open {save_path}error_vs_iterations_2D.pdf")
-#    system(f"rm {save_path}error_vs_iterations_2D.svg")
+    plt.savefig(f'{save_path}trad_vs_sr_2D.svg')
+    plt.close()
+    system(f"rsvg-convert -f pdf -o {save_path}trad_vs_sr_2D.pdf {save_path}trad_vs_sr_2D.svg")
+    system(f"open {save_path}trad_vs_sr_2D.pdf")
+    system(f"rm {save_path}trad_vs_sr_2D.svg")
 
 # Plot 5: Error vs. number of iterations for a fixed perturbation size
 def Plot5():
@@ -617,17 +636,14 @@ def Plot5():
     plt.title(r'Evolution of cond(J) for $\epsilon = 1$')
     # Set x-axis ticks to integers
     plt.xticks(np.arange(0, len(errors), 10))  # This sets the x-ticks as integers
-
+    plt.close()
     plt.savefig(f'{save_path}Jac_condition_number_2D.svg')
     system(f"rsvg-convert -f pdf -o {save_path}Jac_condition_number_2D.pdf {save_path}Jac_condition_number_2D.svg")
     system(f"open {save_path}Jac_condition_number_2D.pdf")
     system(f"rm {save_path}Jac_condition_number_2D.svg")
     
-
 #Plot1()
 #Plot2()
 #Plot3()
-#Plot4()
-Plot5()
-
-
+Plot4()
+#Plot5()
