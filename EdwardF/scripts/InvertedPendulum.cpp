@@ -21,6 +21,7 @@
 #include <cassert>
 #include <thread>
 #include <mutex>
+#include <csignal>
 #include <atomic>
 #include <latch>
 #include <tuple>
@@ -33,6 +34,16 @@
 #include <boost/unordered/concurrent_flat_map.hpp>
 
 using Clock = std::chrono::high_resolution_clock;
+std::atomic<bool> stop_flag(false);
+
+void signalHandler(int signal)
+{
+    if (signal == SIGINT)
+    {
+        stop_flag.store(true);
+        std::cout << "\nSIGINT received. Stopping...\n";
+    }
+}
 
 //Returns the number of seconds since `start_time`
 template <typename T>
@@ -4128,6 +4139,7 @@ void SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::string 
     
     std::vector<std::thread> threads(num_threads);
     std::latch sync_point(num_threads);
+    std::signal(SIGINT, signalHandler); // Register signal handler
     
     /*
      Outside of thread:
@@ -4274,7 +4286,7 @@ void SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::string 
         }
         updateScore();
         
-        for (int i = 0; (timeElapsedSince(start_time) < time); i++)
+        for (int i = 0; ((timeElapsedSince(start_time) < time) && (!stop_flag.load())); i++)
         {
             if (i && (i%50000 == 0))
             {
@@ -4322,6 +4334,7 @@ void GP(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type 
     
     std::vector<std::thread> threads(num_threads);
     std::latch sync_point(num_threads);
+    std::signal(SIGINT, signalHandler); // Register signal handler
     
     /*
      Outside of thread:
@@ -4541,7 +4554,7 @@ void GP(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type 
         };
 
         
-        for (/*int ngen = 0*/; (timeElapsedSince(start_time) < time); /*ngen++*/)
+        for (/*int ngen = 0*/; ((timeElapsedSince(start_time) < time) && (!stop_flag.load())); /*ngen++*/)
         {
 //            if (ngen && (ngen%5 == 0))
 //            {
@@ -4602,6 +4615,7 @@ void PSO(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type
     
     std::vector<std::thread> threads(num_threads);
     std::latch sync_point(num_threads);
+    std::signal(SIGINT, signalHandler); // Register signal handler
     
     /*
      Outside of thread:
@@ -4654,7 +4668,7 @@ void PSO(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type
          
          */
         
-        for (int iter = 0; (timeElapsedSince(start_time) < time); iter++)
+        for (int iter = 0; ((timeElapsedSince(start_time) < time) && (!stop_flag.load())); iter++)
         {
             if (iter && (iter%50000 == 0))
             {
@@ -4767,6 +4781,7 @@ void ConcurrentMCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expr
     
     std::vector<std::thread> threads(num_threads);
     std::latch sync_point(num_threads);
+    std::signal(SIGINT, signalHandler); // Register signal handler
     
     /*
      Outside of thread:
@@ -4813,7 +4828,7 @@ void ConcurrentMCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expr
             }
         };
         
-        for (int i = 0; (timeElapsedSince(start_time) < time); i++)
+        for (int i = 0; ((timeElapsedSince(start_time) < time) && (!stop_flag.load())); i++)
         {
             if (i && (i%1000 == 0))
             {
@@ -5016,6 +5031,7 @@ void MCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_typ
     
     std::vector<std::thread> threads(num_threads);
     std::latch sync_point(num_threads);
+    std::signal(SIGINT, signalHandler); // Register signal handler
     
     /*
      Outside of thread:
@@ -5059,7 +5075,7 @@ void MCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_typ
             }
         };
         
-        for (int i = 0; (timeElapsedSince(start_time) < time); i++)
+        for (int i = 0; ((timeElapsedSince(start_time) < time) && (!stop_flag.load())); i++)
         {
             if (i && (i%500 == 0))
             {
@@ -5175,6 +5191,8 @@ void RandomSearch(const Eigen::MatrixXf& data, const int depth = 3, const std::s
     
     std::vector<std::thread> threads(num_threads);
     std::latch sync_point(num_threads);
+    std::signal(SIGINT, signalHandler); // Register signal handler
+    std::signal(SIGINT, signalHandler); // Register signal handler
 
     /*
      Outside of thread:
@@ -5201,7 +5219,7 @@ void RandomSearch(const Eigen::MatrixXf& data, const int depth = 3, const std::s
         float score = 0.0f;
         std::vector<std::string> temp_legal_moves;
         size_t temp_sz;
-        while (timeElapsedSince(start_time) < time)
+        while ((timeElapsedSince(start_time) < time) && (!stop_flag.load()))
         {
             while ((score = x.complete_status()) == -1)
             {
