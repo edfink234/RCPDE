@@ -5270,12 +5270,73 @@ void RandomSearch(const Eigen::MatrixXf& data, const int depth = 3, const std::s
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
 }
 
-int main()
+struct DataRow
 {
+    float x0;
+    float mse;
+    int depth;
+    std::string expression_type;
+    std::string expression;
+};
+
+DataRow findClosestRow(float target)
+{
+    std::ifstream file("../dataFiles/IC_expressions.txt");
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Could not open file.");
+    }
+
+    std::string line;
+    std::getline(file, line);  // Skip header
+
+    DataRow closestRow;
+    float minDiff = std::numeric_limits<float>::max();
+
+    while (std::getline(file, line))
+    {
+        std::istringstream ss(line);
+        DataRow row;
+        std::string depthStr;
+
+        if (std::getline(ss, line, ',')) row.x0 = std::stof(line);
+        if (std::getline(ss, line, ',')) row.mse = std::stof(line);
+        if (std::getline(ss, line, ',')) row.depth = std::stoi(line);
+        if (std::getline(ss, row.expression, ','))
+        {
+            float diff = std::fabs(row.x0 - target);
+            if (diff < minDiff)
+            {
+                minDiff = diff;
+                closestRow = row;
+            }
+        }
+    }
+
+    file.close();
+    return closestRow;
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc != 3)
+    {
+        std::cerr << "Usage: " << argv[0] << " <float_value> <int_value>\n";
+        return 1;
+    }
+
+    float x_0 = std::stof(argv[1]);
+    std::cout << x_0 << '\n';
+    
     constexpr double time = 10000;
     
+    if (std::stoi(argv[2]))
+    {
+        DataRow result = findClosestRow(x_0);
+        SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, result.depth /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 sech exp exp sqrt sech") /*seed expression for simulated annealing*/);
+    }
+        
     RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 7 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
-//    SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 5 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 sech exp exp sqrt sech") /*seed expression for simulated annealing*/);
     return 0;
 }
 
