@@ -1,7 +1,10 @@
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
+from matplotlib.animation import FFMpegWriter
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.colors import LightSource
 from numpy import tanh, exp, cos, sin, cosh, arccos, arccos as acos, log, sqrt
 from os import system
 from numpy.linalg import cond
@@ -405,7 +408,8 @@ def Plot3():
 
         U1 = U + DU
         err = np.linalg.norm(F)
-        
+        if err <= tol:
+            break
 
         # Update U
         U = U1
@@ -455,6 +459,7 @@ def Plot4():
     it = 0
     err = np.inf
     np.random.seed(0)
+    mu_curr = params['nls']['mu']
     params['nls']['mu'] = 1
     A = params['nls']['mu']**0.5
     
@@ -574,6 +579,7 @@ def Plot4():
     system(f"rsvg-convert -f pdf -o {save_path}trad_vs_sr_2D.pdf {save_path}trad_vs_sr_2D.svg")
     system(f"open {save_path}trad_vs_sr_2D.pdf")
     system(f"rm {save_path}trad_vs_sr_2D.svg")
+    params['nls']['mu'] = mu_curr
 
 # Plot 5: Error vs. number of iterations for a fixed perturbation size
 def Plot5():
@@ -671,8 +677,76 @@ def Plot5():
     system(f"open {save_path}Jac_condition_number_2D.pdf")
     system(f"rm {save_path}Jac_condition_number_2D.svg")
     
-Plot1()
-Plot2()
+def create_convergence_movie():
+    """Create a movie showing convergence of the solution during iterations."""
+    save_path = "/Users/edwardfinkelstein/RCPDE/EdwardF/movies/NLS_MSD_movies/NLS_2D_MSD_movies/"
+    pert = 1
+    it = 0
+    err = np.inf
+    np.random.seed(0)
+    up = u0 + pert * (np.random.rand(npts_x, npts_y) - 0.5) * np.exp(-(x_grid**2 + y_grid**2) / 10)
+    U = np.hstack([up.real.ravel(), up.imag.ravel()])
+    solutions = [(np.abs(U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:])**2).reshape(npts_x, npts_y)]
+
+    while err > tol:
+        print(f"Iteration {it}, Error: {err:.2e}")
+        it += 1
+
+        # Compute residual using nls2d_msd
+        F = nls2d_msd(U, params)
+
+        # Apply modulus-squared Dirichlet boundary conditions
+        Ur = U[:npts_x * npts_y].reshape(npts_x, npts_y)
+        Ui = U[npts_x * npts_y:].reshape(npts_x, npts_y)
+        
+        # Diagonal terms for J11 and J22
+        J11 = Laplacian + sp.diags(3 * Ur.ravel()**2 + Ui.ravel()**2 + V_flat - params['nls']['mu'])
+        J22 = Laplacian + sp.diags(3 * Ui.ravel()**2 + Ur.ravel()**2 + V_flat - params['nls']['mu'])
+
+        # Off-diagonal terms J12 and J21
+        J12 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+        J21 = sp.diags(2 * Ur.ravel() * Ui.ravel())
+
+        # Assemble the full Jacobian as a block matrix
+        J = sp.bmat([[J11, J12], [J21, J22]], format='csc')
+
+        # Newton correction
+        DU, info = spla.cg(J, -F, tol=1e-10)
+        assert info == 0
+
+        U1 = U + DU
+        err = np.linalg.norm(F)
+
+        # Update U
+        U = U1
+        solutions.append((np.abs(U[:npts_x * npts_y] + 1j * U[npts_x * npts_y:])**2).reshape(npts_x, npts_y))
+
+    # Create the animation
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    writer = FFMpegWriter(fps=2, metadata={'title': 'Solution Evolution'})
+
+#    ls = LightSource(azdeg=180, altdeg=45)
+    with writer.saving(fig, f"{save_path}solution_evolution_2D.mp4", dpi=200):
+        for i, sol in enumerate(solutions):
+            ax.clear()
+            ax.plot_surface(x_grid, y_grid, sol, cmap='viridis', edgecolor='none', lw=0)
+            ax.set_title(f"Iteration {i}")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel(r'$|u|^2$')
+            ax.set_xlim(x_grid.min(), x_grid.max())
+            ax.set_ylim(y_grid.min(), y_grid.max())
+            ax.set_zlim(0, np.max([np.max(s) for s in solutions]))
+            writer.grab_frame()
+            print(f"Saved frame for iteration {i}")
+
+    print(f"Saved to {save_path}solution_evolution_2D.mp4")
+    system(f"open {save_path}solution_evolution_2D.mp4")
+
+#Plot1()
+#Plot2()
 Plot3()
-Plot4()
+#Plot4()
 #Plot5()
+#create_convergence_movie()

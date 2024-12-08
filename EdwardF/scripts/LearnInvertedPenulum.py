@@ -9,6 +9,9 @@ from os import system
 import pandas as pd
 import csv
 
+sech = lambda x: 1/torch.cosh(x)
+torch.sech = sech
+
 def flt_to_str(flt):
     return str(flt).replace(".","_point_")
 
@@ -22,7 +25,7 @@ dt = 0.01      # Time step
 x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
-x_start, v_start = -1., 0.0 #IC
+x_start, v_start = 0.0, 0.0 #IC
 x_start = float(x_start)
 
 # Define the neural network for xi(t)
@@ -52,11 +55,16 @@ model = XiModel()
 best_loss = np.inf
 
 df = {}
-with open("../dataFiles/ICs.txt", 'r') as f:
-    reader = csv.reader(f)
-    for row in reader:
-        df[float(row[0])] = float(row[1])
-    print(df)
+try:
+    with open("../dataFiles/ICs.txt", 'r') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            df[float(row[0])] = float(row[1])
+        print(df)
+except FileNotFoundError:
+    # Create the file if it doesn't exist
+    with open("../dataFiles/ICs.txt", 'w') as f:
+        print("File created successfully.")
 
 closest_x = x_start
 if x_start in df:
@@ -78,7 +86,7 @@ if os.path.exists(model_path):
     model.load_state_dict(torch.load(model_path, weights_only=True))
     print("Model loaded from file.")
 else:
-    raise ValueError("No saved model found.")
+    print("No saved model found.")
 
 print("closest_x =",closest_x)
 print("best_loss =",best_loss)
@@ -88,7 +96,8 @@ if ans.lower() != 'y':
 
 # Function to compute the force (negative derivative of potential)
 def force(x, xi):
-    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * torch.exp(-(x - xi)**2 / sigma)
+#    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * torch.exp(-(x - xi)**2 / sigma)
+    return -(Omega**2 * x) + (2 * A**3 * torch.sech(A * (x - xi))**2 * torch.tanh(A * (x - xi)))
 
 # RK4 step for updating state
 def rk4_step(x, v, xi_t, dt):
@@ -134,7 +143,7 @@ def loss_func():
         
         # Perform RK4 step
         x, v = rk4_step(x, v, xi_t, dt)
-        
+    print("Variance of xi =", np.var([i.detach().numpy() for i in xi_values_temp]))
     print(f"x = {x:.4f}, v = {v:.4f}, x_star = {x_star:.4f}, v_th = {v_th:.4f}, xi(T) = {xi_values_temp[-1]:.4f}")
 
     # Compute the smoothness penalty
@@ -163,12 +172,14 @@ def loss_func():
     assert(MSE > 0)
 
     # Combine MSE with smoothness penalty (scale the penalty as needed)
-    total_loss = MSE + 0.000025 * smoothness_penalty  # Adjust the scale factor (0.1) to tune the smoothness constraint
+    total_loss = MSE + 0.0000025 * smoothness_penalty  # Adjust the scale factor (0.1) to tune the smoothness constraint
     return total_loss
 
 # Training loop
-learning_rate = 0.01
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+learning_rate = 0.0001
+#optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+
 plot_progress = False
 epoch = 0
 

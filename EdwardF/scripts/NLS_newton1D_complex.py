@@ -3,6 +3,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
 from os import system
+from matplotlib.animation import FuncAnimation
 
 def nls1d_msd(psi, params):
     """
@@ -260,13 +261,14 @@ def Plot3():
         U1 = U + DU
         err = np.linalg.norm(F)
         print(f"Iteration {it}, Error: {err:.2e}")
-        
+        if err <= tol:
+            break
         # Update U
         U = U1
         solutions.append(np.abs(U[:npts] + 1j * U[npts:])**2)
 
-    # Select the three specific iterations: 0, len(solutions)//2, and len(solutions)-1
-    indices_to_plot = [0, (len(solutions)-1) // 3, len(solutions) - 1]
+    # Select the three specific iterations: 0, 1, and len(solutions)-2
+    indices_to_plot = [0, 1, len(solutions) - 1]
 
     plt.figure()
     for i in indices_to_plot:
@@ -373,8 +375,84 @@ def Plot4():
     system(f"open {save_path}Jac_condition_number_1D.pdf")
     system(f"rm {save_path}Jac_condition_number_1D.svg")
 
+def create_convergence_movie():
+    """Create a movie showing convergence of the solution during iterations."""
+    save_path = "/Users/edwardfinkelstein/RCPDE/EdwardF/movies/NLS_MSD_movies/NLS_1D_MSD_movies/"
+    # Initialize variables
+    pert = 2.0
+    it = 0
+    err = np.inf
+    np.random.seed(0)
+    up = u0 + pert * (np.random.rand(npts) - 0.5) * np.exp(-x**2 / 10)
+    U = np.hstack([up.real, up.imag])
+    solutions = [np.abs(U[:npts] + 1j * U[npts:])**2]
+
+    # Perform iterations
+    while err > tol:
+        it += 1
+        
+        # Compute residual using nls1d_msd
+        F = nls1d_msd(U, params)
+        
+        # Apply modulus-squared Dirichlet boundary conditions
+        Ur = U[:npts]
+        Ui = U[npts:]
+        dx = params['nls']['dx']
+        V = np.array(params['nls']['V'])
+        mu = params['nls']['mu']
+
+        # Finite difference Laplacian for a 1D grid
+        D2 = sp.diags([np.ones(npts), -2 * np.ones(npts), np.ones(npts)], [-1, 0, 1], shape=(npts, npts)) / dx**2
+
+        # Diagonal terms for J11 and J22
+        J11 = -0.5 * D2 + sp.diags(3*Ur**2 + Ui**2 + V - mu)  # Real part X
+        J22 = -0.5 * D2 + sp.diags(3*Ui**2 + Ur**2 + V - mu)  # Imaginary part Y
+
+        # Off-diagonal terms J12 and J21
+        J12 = sp.diags(2 * Ur * Ui)
+        J21 = sp.diags(2 * Ur * Ui)
+
+        # Assemble the full Jacobian as a block matrix
+        J = sp.bmat([[J11, J12], [J21, J22]], format='csr')
+        
+        # Newton correction
+        DU = spla.spsolve(J, -F)
+        U1 = U + DU
+        err = np.linalg.norm(F)
+        print(f"Iteration {it}, Error: {err:.2e}")
+        
+        # Update U
+        U = U1
+        solutions.append(np.abs(U[:npts] + 1j * U[npts:])**2)
+
+    # Create movie
+    fig, ax = plt.subplots()
+    ax.set_xlim(x.min(), x.max())
+    ax.set_ylim(0, max(max(sol) for sol in solutions))
+    line, = ax.plot([], [], lw=2)
+
+    def init():
+        line.set_data([], [])
+        return line,
+
+    def update(frame):
+        line.set_data(x, solutions[frame])
+        ax.set_title(f"Iteration {frame}")
+        return line,
+
+    ani = FuncAnimation(fig, update, frames=len(solutions), init_func=init, blit=True)
+
+    # Save the movie
+    movie_path = f"{save_path}convergence_movie.mp4"
+    ani.save(movie_path, writer='ffmpeg', fps=1.5)
+    print(f"Movie saved to {movie_path}")
+    plt.close(fig)
+    system(f"open {movie_path}")
+
+
 
 #Plot1()
 #Plot2()
-#Plot3()
-Plot4()
+Plot3()
+#Plot4()
+#create_convergence_movie()

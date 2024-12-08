@@ -16,13 +16,12 @@ v_th = 0.01    # Velocity threshold
 sech = lambda x: 1/np.cosh(x)
 # Define the symbolic regression solution for xi(t)
 def xi(t):
-#    return tanh(((1.761061 + (t * cos(4.590427))) * (t / (t + sech(10.000000))))) #MSE = 2.66621e-05
-    return ((tanh(sqrt(t)) / 2) / (sech(sech(t)) ** ((exp(0) - (0 - t)) - -((2 - 0.482596)))))
-
+    return sech(sqrt(exp(exp(sech(t)))))
 
 # Function to compute the force (negative derivative of potential)
 def force(x, xi):
-    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * np.exp(-(x - xi)**2 / sigma)
+#    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * np.exp(-(x - xi)**2 / sigma)
+    return -(Omega**2 * x) + (2 * A**3 * sech(A * (x - xi))**2 * tanh(A * (x - xi)))
 
 # RK4 step for updating state
 def rk4_step(x, v, xi_t, dt):
