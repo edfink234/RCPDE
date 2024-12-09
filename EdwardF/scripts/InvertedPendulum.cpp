@@ -35,6 +35,7 @@
 
 using Clock = std::chrono::high_resolution_clock;
 std::atomic<bool> stop_flag(false);
+const char* file_path = "../dataFiles/IC_expressions.txt";
 
 void signalHandler(int signal)
 {
@@ -3788,347 +3789,231 @@ struct Board
     }
 };
 
-std::vector<std::string> VortexRadialProfile(Board& x)
+std::string process_str(const std::string& expression)
 {
-    std::vector<std::string> result;
-    result.reserve(100);
-    std::vector<int> grasp;
-    std::vector<std::string> R_prime;
-    std::string mu = "1";
-    std::string S = "1";
-    if (x.expression_type == "prefix")
+    std::string new_string;
+    new_string.reserve(2*expression.size());
+    for (size_t i = 0; i < expression.size(); i++)
     {
-        //- + + * / 1 2 R'' * / 1 * 2 r R' * - mu / * S S * * 2 r r R * * R R R
-        result.push_back("-");
-        result.push_back("+");
-        result.push_back("+");
-        result.push_back("*");
-        result.push_back("/");
-        result.push_back("1");
-        result.push_back("2");
-        x.derivePrefix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        R_prime = x.derivat;
-        x.derivePrefix(0, R_prime.size()-1, "x0", R_prime, grasp); //derivat will store second derivative of R_prime
-        for (const std::string& i: x.derivat) //R''
+        if (expression[i] == '~')
         {
-            result.push_back(i);
+            new_string += '-';
         }
-        result.push_back("*");
-        result.push_back("/");
-        result.push_back("1");
-        result.push_back("*");
-        result.push_back("2");
-        result.push_back("x0"); //r
-        for (const std::string& i: R_prime) //R'
+        else if (expression[i] == '^')
         {
-            result.push_back(i);
+            new_string += '*';
+            new_string += '*';
         }
-        result.push_back("*");
-        result.push_back("-");
-        result.push_back(mu);
-        result.push_back("/");
-        result.push_back("*");
-        result.push_back(S);
-        result.push_back(S);
-        result.push_back("*");
-        result.push_back("*");
-        result.push_back("2");
-        result.push_back("x0"); //r
-        result.push_back("x0"); //r
-        for (const std::string& i: x.pieces) //R
+        else if ((i < (expression.size() - 1)) && (expression[i] == 'x') && (expression[i+1] == '0'))
         {
-            result.push_back(i);
+            new_string += 't';
+            i++;
         }
-        result.push_back("*");
-        result.push_back("*");
-        for (const std::string& i: x.pieces) //R
+        else
         {
-            result.push_back(i);
-        }
-        for (const std::string& i: x.pieces) //R
-        {
-            result.push_back(i);
-        }
-        for (const std::string& i: x.pieces) //R
-        {
-            result.push_back(i);
+            new_string += expression[i];
         }
     }
-    else if (x.expression_type == "postfix")
-    {
-        //1 2 / R'' * 1 2 r * / R' * + mu S S * 2 r r * * / - R * + R R * R * -
-        result.push_back("1");
-        result.push_back("2");
-        result.push_back("/");
-        x.derivePostfix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        R_prime = x.derivat;
-        x.derivePostfix(0, R_prime.size()-1, "x0", R_prime, grasp); //derivat will store second derivative of R_prime
-        for (const std::string& i: x.derivat) //R''
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("1");
-        result.push_back("2");
-        result.push_back("x0"); //r
-        result.push_back("*");
-        result.push_back("/");
-        for (const std::string& i: R_prime) //R'
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("+");
-        result.push_back(mu);
-        result.push_back(S);
-        result.push_back(S);
-        result.push_back("*");
-        result.push_back("2");
-        result.push_back("x0"); //r
-        result.push_back("x0"); //r
-        result.push_back("*");
-        result.push_back("*");
-        result.push_back("/");
-        result.push_back("-");
-        for (const std::string& i: x.pieces) //R
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("+");
-        for (const std::string& i: x.pieces) //R
-        {
-            result.push_back(i);
-        }
-        for (const std::string& i: x.pieces) //R
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        for (const std::string& i: x.pieces) //R
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("-");
-
-    }
-    return result;
+    return new_string;
 }
 
-//x0 -> x, x1 -> y, x2 -> t
-std::vector<std::string> TwoDAdvectionDiffusion_1(Board& x)
+struct DataRow
 {
-    std::vector<std::string> result;
-    result.reserve(100);
-    std::vector<int> grasp;
-    grasp.reserve(100);
-    std::vector<std::string> temp;
-    temp.reserve(50);
-    std::string kappa = "1";
-    if (x.expression_type == "prefix")
+    float x0;
+    float mse;
+    int depth;
+    std::string expression_type;
+    std::string expression;
+    std::string orig_expression;
+    DataRow(float x0_val, float mse_val, int depth_val, std::string expression_type_val, std::string expression_val, std::string orig_expression_val)
+    : x0{x0_val}, mse{mse_val}, depth{depth_val}, expression_type{expression_type_val}, expression{expression_val}, orig_expression{orig_expression_val}
+    {}
+    DataRow() = default;
+    std::string toCSVRow() const
     {
-        //- + T_t * - 1 * y y T_x * kappa + T_{xx} T_{yy}
-        result.push_back("-"); //-
-        result.push_back("+"); //+
-        x.derivePrefix(0, x.pieces.size()-1, "x2", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_t
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("-");
-        result.push_back("1");
-        result.push_back("*");
-        result.push_back("x1");
-        result.push_back("x1");
-        x.derivePrefix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_x
-        {
-            result.push_back(i);
-        }
-        result.push_back("*"); //*
-        result.push_back(kappa); //kappa
-        result.push_back("+"); //+
-        x.derivePrefix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePrefix(0, temp.size()-1, "x0", temp, grasp);
-        for (const std::string& i: x.derivat) //T_xx
-        {
-            result.push_back(i);
-        }
-        x.derivePrefix(0, x.pieces.size()-1, "x1", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePrefix(0, temp.size()-1, "x1", temp, grasp);
-        for (const std::string& i: x.derivat) //T_yy
-        {
-            result.push_back(i);
-        }
+        std::ostringstream oss;
+        oss << x0 << "," << mse << "," << depth << ","
+            << expression_type << "," << process_str(expression) << "," << orig_expression;
+        return oss.str();
     }
-    else if (x.expression_type == "postfix")
-    {
-        //T_t 1 y y * - T_x * + kappa T_{xx} T_{yy} + * -
-        x.derivePostfix(0, x.pieces.size()-1, "x2", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_t
-        {
-            result.push_back(i);
-        }
-        result.push_back("1");
-        result.push_back("x1");
-        result.push_back("x1");
-        result.push_back("*");
-        result.push_back("-");
-        x.derivePostfix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_x
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("+"); //+
-        result.push_back(kappa); //kappa
-        x.derivePostfix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePostfix(0, temp.size()-1, "x0", temp, grasp);
-        for (const std::string& i: x.derivat) //T_xx
-        {
-            result.push_back(i);
-        }
-        
-        x.derivePostfix(0, x.pieces.size()-1, "x1", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePostfix(0, temp.size()-1, "x1", temp, grasp);
-        for (const std::string& i: x.derivat) //T_yy
-        {
-            result.push_back(i);
-        }
-        result.push_back("+"); //+
-        result.push_back("*"); //*
-        result.push_back("-"); //-
-    }
-    return result;
+};
+
+// Global ostream operator
+std::ostream& operator<<(std::ostream& os, const DataRow& row)
+{
+    os << "x0: " << row.x0 << ", "
+       << "MSE: " << row.mse << ", "
+       << "Depth: " << row.depth << ", "
+       << "Expression Type: " << row.expression_type << ", "
+       << "Expression: " << process_str(row.expression) << ", "
+       << "Expression Orignal Format: " << row.orig_expression;
+    return os;
 }
 
-//x0 -> x, x1 -> y, x2 -> t
-std::vector<std::string> TwoDAdvectionDiffusion_2(Board& x)
+void overwriteCSVRow(const DataRow& result, const DataRow& new_result)
 {
-    std::vector<std::string> result;
-    result.reserve(100);
-    std::vector<int> grasp;
-    grasp.reserve(100);
-    std::vector<std::string> temp;
-    temp.reserve(50);
-    std::string kappa = "1";
-    if (x.expression_type == "prefix")
+    std::ifstream file_in(file_path);
+    if (!file_in.is_open())
     {
-        //- + + T_t * sin * 4 y T_x * cos * 4 x T_y * kappa + T_{xx} T_{yy}
-        result.push_back("-"); //-
-        result.push_back("+"); //+
-        result.push_back("+"); //+
-        
-        x.derivePrefix(0, x.pieces.size()-1, "x2", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_t
-        {
-            result.push_back(i);
-        }
-        result.push_back("*");
-        result.push_back("sin");
-        result.push_back("*");
-        result.push_back("4");
-        result.push_back("x1");
-        
-        x.derivePrefix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_x
-        {
-            result.push_back(i);
-        }
-        
-        result.push_back("*");
-        result.push_back("cos");
-        result.push_back("*");
-        result.push_back("4");
-        result.push_back("x0");
-        
-        x.derivePrefix(0, x.pieces.size()-1, "x1", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_y
-        {
-            result.push_back(i);
-        }
-        
-        result.push_back("*"); //*
-        result.push_back(kappa); //kappa
-        result.push_back("+"); //+
-        x.derivePrefix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePrefix(0, temp.size()-1, "x0", temp, grasp);
-        for (const std::string& i: x.derivat) //T_xx
-        {
-            result.push_back(i);
-        }
-        
-        x.derivePrefix(0, x.pieces.size()-1, "x1", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePrefix(0, temp.size()-1, "x1", temp, grasp);
-        for (const std::string& i: x.derivat) //T_yy
-        {
-            result.push_back(i);
-        }
-        
+        throw std::runtime_error("Could not open input file.");
     }
-    else if (x.expression_type == "postfix")
+
+    std::vector<std::string> lines;
+    std::string line;
+
+    // Read the header
+    if (std::getline(file_in, line))
     {
-        //T_t 4 y * sin T_x * + 4 x * cos T_y * + kappa T_{xx} T_{yy} + * -
-        x.derivePostfix(0, x.pieces.size()-1, "x2", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_t
-        {
-            result.push_back(i);
-        }
-        result.push_back("4");
-        result.push_back("x1");
-        result.push_back("*");
-        result.push_back("sin");
-        x.derivePostfix(0, x.pieces.size()-1, "x0", x.pieces, grasp); //derivat will store first derivative of temp wrt x
-        for (const std::string& i: x.derivat) //T_x
-        {
-            result.push_back(i);
-        }
-        result.push_back("*"); //*
-        result.push_back("+"); //+
-        result.push_back("4");
-        result.push_back("x0");
-        result.push_back("*");
-        result.push_back("cos");
-        x.derivePostfix(0, x.pieces.size()-1, "x1", x.pieces, grasp);
-        for (const std::string& i: x.derivat) //T_y
-        {
-            result.push_back(i);
-        }
-        result.push_back("*"); //*
-        result.push_back("+"); //+
-        result.push_back(kappa); //kappa
-        x.derivePostfix(0, x.pieces.size()-1, "x0", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePostfix(0, temp.size()-1, "x0", temp, grasp);
-        for (const std::string& i: x.derivat) //T_xx
-        {
-            result.push_back(i);
-        }
-        x.derivePostfix(0, x.pieces.size()-1, "x1", x.pieces, grasp);
-        temp = x.derivat;
-        x.derivePostfix(0, temp.size()-1, "x1", temp, grasp);
-        for (const std::string& i: x.derivat) //T_yy
-        {
-            result.push_back(i);
-        }
-        result.push_back("+"); //+
-        result.push_back("*"); //*
-        result.push_back("-"); //-
+        lines.push_back(line);  // Save the header
     }
-    return result;
+
+    bool found = false;
+
+    // Read and update rows
+    while (std::getline(file_in, line))
+    {
+        std::istringstream ss(line);
+        std::string token;
+        std::getline(ss, token, ',');
+        float x0_val = std::stof(token);
+
+        if (std::fabs(x0_val - result.x0) < 1e-6)
+        {
+            lines.push_back(new_result.toCSVRow());
+            found = true;
+        }
+        else
+        {
+            lines.push_back(line);
+        }
+    }
+    file_in.close();
+
+    if (!found)
+    {
+        throw std::runtime_error("Matching row not found.");
+    }
+
+    // Write updated content back to file
+    std::ofstream file_out(file_path, std::ios::trunc);
+    if (!file_out.is_open())
+    {
+        throw std::runtime_error("Could not open output file.");
+    }
+
+    for (const auto& l : lines)
+    {
+        file_out << l << '\n';
+    }
+    file_out.close();
+}
+
+void addRow(const DataRow& new_result)
+{
+    std::ifstream infile(file_path);
+    if (!infile.is_open())
+    {
+        throw std::runtime_error("Could not open input file.");
+    }
+
+    std::vector<std::string> lines;
+    std::string line;
+
+    // Read header
+    if (std::getline(infile, line))
+    {
+        lines.push_back(line);  // Save header
+    }
+
+    bool foundDuplicate = false;
+
+    // Read file and check for duplicates
+    while (std::getline(infile, line))
+    {
+        std::istringstream ss(line);
+        DataRow row(0, 0, 0, "", "", "");
+
+        if (std::getline(ss, line, ','))
+        {
+            row.x0 = std::stof(line);
+        }
+        else
+        {
+            std::cerr << "Error parsing x0 in line: " << line << std::endl;
+            continue;
+        }
+
+        if (std::getline(ss, line, ','))
+        {
+            row.mse = std::stof(line);
+        }
+        else
+        {
+            std::cerr << "Error parsing mse in line: " << line << std::endl;
+            continue;
+        }
+
+        if (std::getline(ss, line, ','))
+        {
+            row.depth = std::stoi(line);
+        }
+        else
+        {
+            std::cerr << "Error parsing depth in line: " << line << std::endl;
+            continue;
+        }
+
+        if (!std::getline(ss, row.expression_type, ',') ||
+            !std::getline(ss, row.expression, ',') ||
+            !std::getline(ss, row.orig_expression))
+        {
+            std::cerr << "Error parsing remaining fields in line: " << line << std::endl;
+            continue;
+        }
+
+
+        if (std::fabs(row.x0 - new_result.x0) < 1e-6)
+        {
+            if (new_result.mse < row.mse)
+            {
+                lines.push_back(new_result.toCSVRow());
+            }
+            else
+            {
+                lines.push_back(row.toCSVRow());
+            }
+            foundDuplicate = true;
+        }
+        else
+        {
+            lines.push_back(row.toCSVRow());
+        }
+    }
+    infile.close();
+
+    // Append if no duplicate found
+    if (!foundDuplicate)
+    {
+        lines.push_back(new_result.toCSVRow());
+    }
+
+    // Write updated content back to the file
+    std::ofstream outfile(file_path, std::ios::trunc);
+    if (!outfile.is_open())
+    {
+        throw std::runtime_error("Could not open output file.");
+    }
+
+    for (const auto& l : lines)
+    {
+        outfile << l << '\n';
+    }
+    outfile.close();
 }
 
 //https://dl.acm.org/doi/pdf/10.1145/3449639.3459345?casa_token=Np-_TMqxeJEAAAAA:8u-d6UyINV6Ex02kG9LthsQHAXMh2oxx3M4FG8ioP0hGgstIW45X8b709XOuaif5D_DVOm_FwFo
 //https://core.ac.uk/download/pdf/6651886.pdf
-void SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false, const std::vector<std::string>& seed_expression = {})
+DataRow SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false, const std::vector<std::string>& seed_expression = {})
 {
     
     if (num_threads == 0)
@@ -4315,16 +4200,20 @@ void SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::string 
     {
         threads[i].join();
     }
+
+    DataRow result(InvertedPendulum::x_0, best_MSE, depth, expression_type, best_expression, orig_expression);
     
     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
     std::cout << "Time spent fitting = " << Board::fit_time << " seconds\n";
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    
+    return result;
 }
 //
 ////https://arxiv.org/abs/2310.06609
-void GP(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
+DataRow GP(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
 {
     if (num_threads == 0)
     {
@@ -4598,14 +4487,18 @@ void GP(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type 
         threads[i].join();
     }
     
+    DataRow result(InvertedPendulum::x_0, best_MSE, depth, expression_type, best_expression, orig_expression);
+    
     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
     std::cout << "Time spent fitting = " << Board::fit_time << " seconds\n";
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    
+    return result;
 }
 
-void PSO(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
+DataRow PSO(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
 {
     if (num_threads == 0)
     {
@@ -4763,15 +4656,19 @@ void PSO(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type
         threads[i].join();
     }
         
+    DataRow result(InvertedPendulum::x_0, best_MSE, depth, expression_type, best_expression, orig_expression);
+    
     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
     std::cout << "Time spent fitting = " << Board::fit_time << " seconds\n";
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    
+    return result;
 }
 
 //https://arxiv.org/abs/2205.13134
-void ConcurrentMCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
+DataRow ConcurrentMCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
 {
     if (num_threads == 0)
     {
@@ -5013,15 +4910,19 @@ void ConcurrentMCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expr
         threads[i].join();
     }
     
+    DataRow result(InvertedPendulum::x_0, best_MSE, depth, expression_type, best_expression, orig_expression);
+    
     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
     std::cout << "Time spent fitting = " << Board::fit_time << " seconds\n";
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    
+    return result;
 }
 
 //https://arxiv.org/abs/2205.13134
-void MCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
+DataRow MCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_type = "prefix", std::string method = "LevenbergMarquardt", int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", bool cache = true, double time = 120, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
 {
     if (num_threads == 0)
     {
@@ -5174,14 +5075,18 @@ void MCTS(const Eigen::MatrixXf& data, int depth = 3, std::string expression_typ
         threads[i].join();
     }
     
+    DataRow result(InvertedPendulum::x_0, best_MSE, depth, expression_type, best_expression, orig_expression);
+    
     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
     std::cout << "Time spent fitting = " << Board::fit_time << " seconds\n";
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    
+    return result;
 }
 
-void RandomSearch(const Eigen::MatrixXf& data, const int depth = 3, const std::string expression_type = "prefix", const std::string method = "LevenbergMarquardt", const int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", const bool cache = true, const double time = 120.0 /*time to run the algorithm in seconds*/, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
+DataRow RandomSearch(const Eigen::MatrixXf& data, const int depth = 3, const std::string expression_type = "prefix", const std::string method = "LevenbergMarquardt", const int num_fit_iter = 1, const std::string& fit_grad_method = "naive_numerical", const bool cache = true, const double time = 120.0 /*time to run the algorithm in seconds*/, unsigned int num_threads = 0, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false)
 {
     if (num_threads == 0)
     {
@@ -5263,25 +5168,20 @@ void RandomSearch(const Eigen::MatrixXf& data, const int depth = 3, const std::s
         threads[i].join();
     }
     
+    DataRow result(InvertedPendulum::x_0, best_MSE, depth, expression_type, best_expression, orig_expression);
+    
     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
     std::cout << "Time spent fitting = " << Board::fit_time << " seconds\n";
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    
+    return result;
 }
-
-struct DataRow
-{
-    float x0;
-    float mse;
-    int depth;
-    std::string expression_type;
-    std::string expression;
-};
 
 DataRow findClosestRow(float target)
 {
-    std::ifstream file("../dataFiles/IC_expressions.txt");
+    std::ifstream file(file_path);
     if (!file.is_open())
     {
         throw std::runtime_error("Could not open file.");
@@ -5302,7 +5202,9 @@ DataRow findClosestRow(float target)
         if (std::getline(ss, line, ',')) row.x0 = std::stof(line);
         if (std::getline(ss, line, ',')) row.mse = std::stof(line);
         if (std::getline(ss, line, ',')) row.depth = std::stoi(line);
-        if (std::getline(ss, row.expression, ','))
+        if (std::getline(ss, line, ',')) row.expression_type = line;
+        if (std::getline(ss, line, ',')) row.expression = line;
+        if (std::getline(ss, row.orig_expression, ','))
         {
             float diff = std::fabs(row.x0 - target);
             if (diff < minDiff)
@@ -5325,18 +5227,35 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    float x_0 = std::stof(argv[1]);
-    std::cout << x_0 << '\n';
+    InvertedPendulum::x_0 = std::stof(argv[1]);
+    std::cout << InvertedPendulum::x_0 << '\n';
+    DataRow new_result;
     
     constexpr double time = 10000;
     
     if (std::stoi(argv[2]))
     {
-        DataRow result = findClosestRow(x_0);
-        SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, result.depth /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 sech exp exp sqrt sech") /*seed expression for simulated annealing*/);
-    }
+        DataRow result = findClosestRow(InvertedPendulum::x_0);
+        std::cout << result << '\n';
         
-    RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 7 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+        new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, result.depth /*fixed depth of generated solutions*/, result.expression_type /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split(result.orig_expression) /*seed expression for simulated annealing*/);
+        if (result.x0 == InvertedPendulum::x_0 && new_result.mse < result.mse)
+        {
+            //Update file with new result
+            puts("hello overwrite");
+            overwriteCSVRow(result, new_result);
+        }
+        else
+        {
+            puts("hello addRow");
+            addRow(new_result);
+        }
+    }
+    else
+    {
+        new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 7 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+        addRow(new_result);
+    }
     return 0;
 }
 
@@ -5345,4 +5264,3 @@ int main(int argc, char* argv[])
 //g++ -Wall -std=c++20 -o InvertedPendulum InvertedPendulum.cpp -O2 -I/opt/homebrew/opt/eigen/include/eigen3 -I/opt/homebrew/opt/eigen/include/eigen3 -I/Users/edwardfinkelstein/LBFGSpp -ffast-math -ftree-vectorize -L/opt/homebrew/Cellar/boost/1.84.0 -I/opt/homebrew/Cellar/boost/1.84.0/include -march=native
 
 //g++ -Wall -std=c++20 -o PrefixPostfixMultiThreadDiffSimplifySR_PrototypeImprovement PrefixPostfixMultiThreadDiffSimplifySR_PrototypeImprovement.cpp -g -I/opt/homebrew/opt/eigen/include/eigen3 -I/opt/homebrew/opt/eigen/include/eigen3 -I/Users/edwardfinkelstein/LBFGSpp -L/opt/homebrew/Cellar/boost/1.84.0 -I/opt/homebrew/Cellar/boost/1.84.0/include -march=native
-

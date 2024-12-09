@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy import sin, cos, tanh, arccos, sqrt, log as ln, arcsin, log, arcsin as asin, arccos as acos, exp
 from matplotlib import rcParams
+from sympy.parsing.sympy_parser import parse_expr
+from sympy.printing.latex import latex
 
 # Constants for the potential
 m = 1.0        # Mass
@@ -13,10 +15,27 @@ dt = 0.01      # Time step
 x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 
+def expression_to_latex(expression_str):
+    from sympy import symbols, sin, cos, tanh, sqrt, ln, acos, asin, acos as arccos, asin as arcsin
+    try:
+        # Define symbols used in the expression
+        t = symbols('t')
+        
+        # Parse the input expression
+        expr = parse_expr(expression_str, evaluate=False)
+        
+        # Convert to LaTeX
+        latex_expr = latex(expr)
+        from numpy import sin, cos, tanh, arccos, sqrt, log as ln, arcsin, log, arcsin as asin, arccos as acos, exp
+        return latex_expr
+    except Exception as e:
+        return f"Error: {e}"
+
 sech = lambda x: 1/np.cosh(x)
+xi_val = "(((tanh(2) / 2) / 0.860789) * (cos(-((2 - 0.847350))) ** (sech(sin(((2 * t) / 2))) / t)))"
 # Define the symbolic regression solution for xi(t)
 def xi(t):
-    return sech(sqrt(exp(exp(sech(t)))))
+    return eval(xi_val)
 
 # Function to compute the force (negative derivative of potential)
 def force(x, xi):
@@ -58,8 +77,14 @@ t_values = np.linspace(1e-8, T, int(T/dt))
 print(f"Number of t values = {len(t_values)}")
 
 # Initial conditions
-x = 1.0  # Initial position x(0)
-v = 0.0  # Initial velocity v(0)
+
+# Initial position x(0)
+x_0 = -1.5
+# Initial velocity v(0)
+v_0 = 0.0
+
+x = x_0
+v = v_0
 
 # Time evolution loop
 for t in t_values:
@@ -78,7 +103,7 @@ for t in t_values:
 plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
 plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
 #plt.scatter(t_values, xi_values, label = r'$\xi(t) = \xi(t) = \mathrm{cos}\left(\mathrm{sech}(1.165323) \cdot t\right) \cdot \mathrm{exp}\left(\frac{t}{-(10 + t)}\right)$', color='red', linestyle='--', s=point_sz)
-plt.plot(t_values, xi_values, label = r'$\xi(t) = -\tanh{\left(\frac{t \left(0.121659846700499 t - 1.761061\right)}{t + 9.07998593378173 \cdot 10^{-5}} \right)}$', color='red', linestyle='--')
+plt.plot(t_values, xi_values, label = rf'$\xi(t) = {expression_to_latex(xi_val)}$', color='red', linestyle='--')
 
 plt.xlabel('Time (s)')
 plt.grid(True)
