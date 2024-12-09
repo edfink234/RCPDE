@@ -5,20 +5,6 @@ from matplotlib import rcParams
 from sympy.parsing.sympy_parser import parse_expr
 from sympy.printing.latex import latex
 
-def read_vals():
-    try:
-        # Reading the string and float from the file
-        with open("data.txt", "r") as f:
-            line = f.readline().strip()
-            my_string, my_float = line.split(",")
-
-        # Convert the float back from string
-        my_float = float(my_float)
-        return my_string, my_float
-    except:
-        return tuple()
-
-args = read_vals()  # Exclude the script name
 # Constants for the potential
 m = 1.0        # Mass
 Omega = 1.0    # Frequency of the harmonic trap
@@ -30,7 +16,7 @@ x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 
 def expression_to_latex(expression_str):
-    from sympy import symbols, sin, cos, tanh, sqrt, ln, acos, asin, acos as arccos, asin as arcsin, simplify
+    from sympy import symbols, sin, cos, tanh, sqrt, ln, acos, asin, acos as arccos, asin as arcsin
     try:
         # Define symbols used in the expression
         t = symbols('t')
@@ -38,33 +24,15 @@ def expression_to_latex(expression_str):
         # Parse the input expression
         expr = parse_expr(expression_str, evaluate=False)
         
-        # Simplify the expression
-        simplified_expr = simplify(expr)
-        
         # Convert to LaTeX
-        latex_expr = latex(simplified_expr, mode='plain', mul_symbol='dot')
+        latex_expr = latex(expr)
         from numpy import sin, cos, tanh, arccos, sqrt, log as ln, arcsin, log, arcsin as asin, arccos as acos, exp
         return latex_expr
     except Exception as e:
         return f"Error: {e}"
 
-def float_to_string(value):
-    # Handle negative numbers
-    prefix = "minus_" if value < 0 else ""
-    
-    # Convert the absolute value to string
-    abs_value_str = f"{abs(value):.15g}"  # Avoid scientific notation
-
-    # Replace '.' with '_point_'
-    formatted_str = abs_value_str.replace('.', '_point_')
-
-    return prefix + formatted_str
-
 sech = lambda x: 1/np.cosh(x)
-if len(args) > 0:
-    xi_val = args[0]
-else:
-    xi_val = "(((tanh(2) / 2) / 0.860789) * (cos(-((2 - 0.847350))) ** (sech(sin(((2 * t) / 2))) / t)))"
+xi_val = "(((tanh(2) / 2) / 0.860789) * (cos(-((2 - 0.847350))) ** (sech(sin(((2 * t) / 2))) / t)))"
 # Define the symbolic regression solution for xi(t)
 def xi(t):
     return eval(xi_val)
@@ -111,10 +79,7 @@ print(f"Number of t values = {len(t_values)}")
 # Initial conditions
 
 # Initial position x(0)
-if len(args) > 1:
-    x_0 = args[1]
-else:
-    x_0 = -1.5
+x_0 = -1.5
 # Initial velocity v(0)
 v_0 = 0.0
 
@@ -143,7 +108,6 @@ plt.plot(t_values, xi_values, label = rf'$\xi(t) = {expression_to_latex(xi_val)}
 plt.xlabel('Time (s)')
 plt.grid(True)
 plt.legend()
-file_name = f"InvertedPendulumTrial_{float_to_string(x_0)}_.png"
-plt.savefig(file_name, dpi=5*96)
+plt.savefig("InvertedPendulumTrial.png", dpi=5*96)
 import os
-os.system(f"open {file_name}")
+os.system("open InvertedPendulumTrial.png")

@@ -25,19 +25,20 @@ dt = 0.01      # Time step
 x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
-x_start, v_start = 0.0, 0.0 #IC
+x_start, v_start = 1.0, 0.0 #IC
 x_start = float(x_start)
 
 # Define the neural network for xi(t)
 class XiModel(nn.Module):
     def __init__(self):
+        self.num_units = 4
         super(XiModel, self).__init__()
         # Initialize layers with reduced neurons
-        self.fc1 = nn.Linear(1, 4)
-        self.fc2 = nn.Linear(4, 4)
-        self.fc3 = nn.Linear(4, 4)
-        self.fc4 = nn.Linear(4, 4)
-        self.fc_out = nn.Linear(4, 1)
+        self.fc1 = nn.Linear(1, self.num_units)
+        self.fc2 = nn.Linear(self.num_units, self.num_units)
+        self.fc3 = nn.Linear(self.num_units, self.num_units)
+        self.fc4 = nn.Linear(self.num_units, self.num_units)
+        self.fc_out = nn.Linear(self.num_units, 1)
         self.fc_skip = nn.Linear(1, 1)
         
     def forward(self, inputs):
@@ -172,13 +173,18 @@ def loss_func():
     assert(MSE > 0)
 
     # Combine MSE with smoothness penalty (scale the penalty as needed)
-    total_loss = MSE + 0.0000025 * smoothness_penalty  # Adjust the scale factor (0.1) to tune the smoothness constraint
+    factor = 2.5e-7
+    
+#    > 3e-2 -> 2.5e-6
+#    > 3e-3 -> 2.5e-7
+#    > 3e-4 -> 2.5e-8
+    total_loss = MSE + factor * smoothness_penalty  # Adjust the scale factor (0.1) to tune the smoothness constraint
     return total_loss
 
 # Training loop
-learning_rate = 0.0001
+learning_rate = 0.01
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 plot_progress = False
 epoch = 0

@@ -824,7 +824,14 @@ struct Board
         if (Variance(xi_val) > this->upperVar)
         {
             this->MSE_curr = FLT_MAX;
+            return (1.0f / (1.0f + this->MSE_curr));
         }
+        float max_val = xi_val.cwiseAbs().maxCoeff();
+        if (max_val > std::max(InvertedPendulum::x_0, InvertedPendulum::x_star))
+        {
+            this->MSE_curr = FLT_MAX;
+        }
+        
 //        xi_deriv = xi_deriv.tail(xi_deriv.size() - 1) - xi_deriv.head(xi_deriv.size() - 1);
 //        float xi_deriv_Norm = xi_deriv.norm();
 //        if (xi_deriv_Norm > xi_deriv_th)
@@ -910,6 +917,12 @@ struct Board
 //        }
 //        this->MSE_curr += 0.005f*smoothness_penalty;
         if (Variance(xi_val) > this->upperVar)
+        {
+            this->MSE_curr = FLT_MAX;
+            return (1.0f / (1.0f + this->MSE_curr));
+        }
+        float max_val = xi_val.cwiseAbs().maxCoeff();
+        if (max_val > std::max(InvertedPendulum::x_0, InvertedPendulum::x_star))
         {
             this->MSE_curr = FLT_MAX;
         }
@@ -2043,6 +2056,11 @@ struct Board
             Eigen::VectorXf xi_val = this->expression_evaluator(x, this->pieces);
             float var_xi = Variance(xi_val);
             if (var_xi > this->upperVar)
+            {
+                grad(4) = FLT_MAX;
+            }
+            float max_val = xi_val.cwiseAbs().maxCoeff();
+            if (max_val > std::max(InvertedPendulum::x_0, InvertedPendulum::x_star))
             {
                 grad(4) = FLT_MAX;
             }
@@ -5238,7 +5256,7 @@ int main(int argc, char* argv[])
         DataRow result = findClosestRow(InvertedPendulum::x_0);
         std::cout << result << '\n';
         
-        new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, result.depth /*fixed depth of generated solutions*/, result.expression_type /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split(result.orig_expression) /*seed expression for simulated annealing*/);
+        new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, result.depth /*fixed depth of generated solutions*/, result.expression_type /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split(result.orig_expression) /*seed expression for simulated annealing*/);
         if (result.x0 == InvertedPendulum::x_0 && new_result.mse < result.mse)
         {
             //Update file with new result
@@ -5253,7 +5271,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 7 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.02 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+        new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 7 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
         addRow(new_result);
     }
     return 0;
