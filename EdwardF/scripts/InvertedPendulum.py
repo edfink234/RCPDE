@@ -37,9 +37,12 @@ def expression_to_latex(expression_str):
         
         # Parse the input expression
         expr = parse_expr(expression_str, evaluate=False)
-        
+        simplified_expr = expr
         # Simplify the expression
-        simplified_expr = simplify(expr)
+        try:
+            simplified_expr = simplify(expr)
+        except:
+            simplified_expr = expr
         
         # Convert to LaTeX
         latex_expr = latex(simplified_expr, mode='plain', mul_symbol='dot')
@@ -144,6 +147,7 @@ plt.xlabel('Time (s)')
 plt.grid(True)
 plt.legend()
 file_name = f"InvertedPendulumTrial_{float_to_string(x_0)}_.png"
+plt.title(rf"$x_0$ = {x_0}")
 plt.savefig(file_name, dpi=5*96)
 import os
 os.system(f"open {file_name}")

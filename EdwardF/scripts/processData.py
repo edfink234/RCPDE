@@ -11,8 +11,8 @@ def write_vals(my_string, my_float):
         f.write(f"{my_string},{my_float}\n")
 
 
-for val in vals:
-    system(f"./InvertedPendulum {val} 0")
+#for val in vals:
+#    system(f"./InvertedPendulum {val} 1")
 
 with open(file_path, newline='') as csvfile:
     reader = csv.DictReader(csvfile)
@@ -21,10 +21,12 @@ with open(file_path, newline='') as csvfile:
         system("python InvertedPendulum.py")
 
 #x_0,MSE,depth,expression_type,expression,orig_expression
-#-1.5,0.000468703,7,postfix,(((tanh(2) / 2) / 0.860789) * ((2 - acos(acos(1.000000))) ** (sech(sin(((2 * t) / 2))) / t))),2 tanh 2 / 0.860789 / 2 1.000000 acos acos - 2 x0 * 2 / sin sech x0 / ^ *
-#-1,0.00544415,7,postfix,(tanh(acos(arcsin(tanh(1.000000)))) / ((0.000000 + 1.000000) - ((4 * sech(tanh(t))) * (ln(10.000000) * (0.000000 + sech((0.000000 - t))))))),1.000000 tanh arcsin acos tanh 0.000000 1.000000 + 4 x0 tanh sech * 10.000000 ln 0.000000 0.000000 x0 - sech + * * - /
-#-0.5,0.016826,7,postfix,(t / (t + ((t - 4) * (sech((sech(4) / t)) + asin(asin(cos(1))))))),x0 x0 x0 4 - 4 sech x0 / sech 1 cos asin asin + * + /
-#0.5,0.00862833,7,postfix,(t / (arccos(tanh(cos(sqrt(4)))) * ((t + cos(arccos(1))) + (sin(asin(-(0))) * 0.000000)))),x0 4 sqrt cos tanh arccos x0 1 arccos cos + 0 ~ asin sin 0.000000 * + * /
-#1,0.000978641,7,postfix,(tanh(tanh((1.000000 + (1.000000 ** (4 + 0))))) ** (log(2) + ((4 - 4) - (arcsin(sin(1.000000)) - exp(exp((10.000000 - t))))))),1.000000 1.000000 4 0 + ^ + tanh tanh 2 log 4 4 - 1.000000 sin arcsin 10.000000 x0 - exp exp - - + ^
-#1.5,0.0503068,7,postfix,tanh(sech((tanh(t) + (4 / (t + ((1.007802 - 2) - sin(t))))))),x0 tanh 4 x0 1.007802 2 - x0 sin - + / + sech tanh
-#0,0.211272,7,postfix,((tanh((ln((0.000000 - asin(0.000000))) * 1.000000)) / ln(10.000000)) * (sin((-(t) + acos(0.000000))) / (4 - ((t ** cos((1 + 1))) * (sech(0) + asin(sin(10.000000))))))),0.000000 0.000000 asin - ln 1.000000 * tanh 10.000000 ln / x0 ~ 0.000000 acos + sin 4 x0 1 1 + cos ^ 0 sech 10.000000 sin asin + * - / *
+#-1.5,6.79952e-05,7,postfix,(ln(sech(tanh(sqrt(t)))) / (ln(sqrt(1.001952)) - sqrt(cos(acos(-(sin(4))))))),x0 sqrt tanh sech ln 1.001952 sqrt ln 4 sin ~ acos cos sqrt - /
+#-1,0.00221172,7,postfix,((0.000000 - 0) + (1 / ((sqrt((1 + 2)) - cos(2)) - ((10.000000 - (-0.444347 * log(t))) * sech(t))))),0.000000 0 - 1 1 2 + sqrt 2 cos - 10.000000 -0.444347 x0 log * - x0 sech * - / +
+#-0.5,0.00734351,7,postfix,((sin((t * (t + 0.979767))) - (tanh(1) / (10.000000 + (10.000000 * 10.000000)))) / sech((sech(sqrt(sech(t))) + cos((sin(cos(1)) - ln(1)))))),x0 x0 0.979767 + * sin 1 tanh 10.000000 10.000000 10.000000 * + / - x0 sech sqrt sech 1 cos sin 1 ln - cos + sech /
+#0,0.0407242,7,postfix,((ln(2) + (1.563600 ** (log(9.843181) / 4))) / ((0.999996 ** (t / sech(t))) + (4 + exp((exp(cos(t)) * sqrt(2)))))),2 ln 1.563600 9.843181 log 4 / ^ + 0.999996 x0 x0 sech / ^ 4 x0 cos exp 2 sqrt * exp + + /
+#0.5,0.000811432,7,postfix,(ln(10.000000) ** ((cos((4 + 0.000000)) - (t ** arcsin(-(cos(0.956603))))) / 1)),10.000000 ln 4 0.000000 + cos x0 0.956603 cos ~ arcsin ^ - 1 / ^
+#1,0.0381913,7,postfix,((acos(0.000000) / (4 * 1)) - (2 ** (sqrt((4 / 2)) - exp(exp(sin((t / 4))))))),0.000000 acos 4 1 * / 2 4 2 / sqrt x0 4 / sin exp exp - ^ -
+#1.5,0.0573828,7,postfix,-(tanh((sech((t + log(t))) - (tanh(tanh(t)) * ln(acos(sin(t))))))),x0 x0 log + sech x0 tanh tanh x0 sin acos ln * - tanh ~
+
+#

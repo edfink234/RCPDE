@@ -25,7 +25,8 @@ dt = 0.01      # Time step
 x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
-x_start, v_start = 1.0, 0.0 #IC
+t_test_values = np.linspace(1e-8, 2*T, 2000)
+x_start, v_start = -1.5, 0.0 #IC
 x_start = float(x_start)
 
 # Define the neural network for xi(t)
@@ -249,7 +250,7 @@ except KeyboardInterrupt:
     x_values, v_values, xi_values = [], [], []
     x, v = x_start, v_start # Initial conditions
     print(f"x_0, v_0 = {x}, {v}")
-    for t in t_values:
+    for t in t_test_values:
         xi_t = xi(t)
         xi_values.append(xi_t.detach().numpy())
         x, v = rk4_step(x, v, xi_t, dt)
@@ -262,9 +263,9 @@ except KeyboardInterrupt:
             writer.writerow([t_values[i], xi_values[i].item(), x_values[i].item(), v_values[i].item()])
     print("Data saved to CSV.")
     
-    plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
-    plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-    plt.plot(t_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
+    plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
+    plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
+    plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
     plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
     plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
     plt.axhline(y=-0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = -0.01
