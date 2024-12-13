@@ -72,6 +72,12 @@ else:
 def xi(t):
     return eval(xi_val)
 
+def potential(x, xi):
+    V_MT = 0.5 * Omega * Omega * x * x
+    temp = sech(A * (x - xi))
+    V_SECH = A * A * temp * temp
+    return V_MT + V_SECH
+
 # Function to compute the force (negative derivative of potential)
 def force(x, xi):
 #    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * np.exp(-(x - xi)**2 / sigma)

@@ -15,6 +15,8 @@ T = 10.0       # Final time
 dt = 0.01      # Time step
 x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
+sech = lambda x: 1/torch.cosh(x)
+torch.sech = sech
 
 class XiModel(nn.Module):
     def __init__(self):
@@ -59,9 +61,15 @@ def xi(t):
     t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
     return model(t_input)[0, 0]  # Get the output from the model
 
+def potential(x, xi):
+    V_MT = 0.5 * Omega * Omega * x * x
+    temp = torch.sech(A * (x - xi))
+    V_SECH = A * A * temp * temp
+    return V_MT + V_SECH
+
 # Function to compute the force (negative derivative of potential)
 def force(x, xi):
-    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * torch.exp(-(x - xi)**2 / sigma)
+    return -(Omega**2 * x) + (2 * A**3 * torch.sech(A * (x - xi))**2 * torch.tanh(A * (x - xi)))
 
 # RK4 step for updating state
 def rk4_step(x, v, xi_t, dt):

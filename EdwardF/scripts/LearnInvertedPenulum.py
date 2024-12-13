@@ -8,6 +8,7 @@ import os
 from os import system
 import pandas as pd
 import csv
+torch.manual_seed(42)
 
 sech = lambda x: 1/torch.cosh(x)
 torch.sech = sech
@@ -96,9 +97,14 @@ ans = input("Proceed? (y/n): ")
 if ans.lower() != 'y':
     exit()
 
+def potential(x, xi):
+    V_MT = 0.5 * Omega * Omega * x * x
+    temp = torch.sech(A * (x - xi))
+    V_SECH = A * A * temp * temp
+    return V_MT + V_SECH
+
 # Function to compute the force (negative derivative of potential)
 def force(x, xi):
-#    return -(Omega**2 * (x - xi)) - (2.0 * A * (x - xi) / sigma) * torch.exp(-(x - xi)**2 / sigma)
     return -(Omega**2 * x) + (2 * A**3 * torch.sech(A * (x - xi))**2 * torch.tanh(A * (x - xi)))
 
 # RK4 step for updating state
@@ -134,8 +140,9 @@ def xi(t):
 # Loss function for optimization
 def loss_func():
     MSE = 0.0
-    global x_start, v_start
+    global x_start, v_start, m
     x, v = x_start, v_start
+    a = force(torch.tensor(x_start), xi(0.0)) / m
     smoothness_penalty = 0.0  # Initialize smoothness penalty
     xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
     
@@ -220,11 +227,15 @@ try:
                 xi_t = xi(t)
                 xi_values.append(xi_t.detach().numpy())
                 x, v = rk4_step(x, v, xi_t, dt)
+                a = force(x, xi_t) / m
                 x_values.append(x.detach().numpy())  # Use detach()
                 v_values.append(v.detach().numpy())  # Use detach()
+                a_values.append(a.detach().numpy())
             plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
             plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
             plt.plot(t_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
+            plt.plot(t_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+
             plt.legend()
             plt.draw()
             plt.pause(1)
@@ -247,15 +258,19 @@ except KeyboardInterrupt:
     xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
     # Save data to CSV
     data_path = "../dataFiles/trajectory_data.csv"
-    x_values, v_values, xi_values = [], [], []
+    x_values, v_values, a_values, xi_values = [], [], [], []
     x, v = x_start, v_start # Initial conditions
+    a = force(torch.tensor(x_start), xi(0.0)) / m
     print(f"x_0, v_0 = {x}, {v}")
     for t in t_test_values:
         xi_t = xi(t)
         xi_values.append(xi_t.detach().numpy())
         x, v = rk4_step(x, v, xi_t, dt)
+        a = force(x, xi_t) / m
         x_values.append(x.detach().numpy())
         v_values.append(v.detach().numpy())
+        a_values.append(a.detach().numpy())
+        assert(len(a_values) == len(x_values))
     with open(data_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["t_values", "xi_values", "x_values", "v_values"])
@@ -265,6 +280,7 @@ except KeyboardInterrupt:
     
     plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
     plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
+    plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
     plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
     plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
     plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
