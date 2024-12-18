@@ -352,22 +352,11 @@ except KeyboardInterrupt:
             fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
         )
         
-        
-        
-
         # Save the animation
-        
         ani.save(f"../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=6*fps))
         system(f"open ../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
         print(f"Movie saved as '../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
         
     else:
         print("Movie creation skipped.")
-
-        
-        
-        
-        
-        
-#    Create code python that will save a movie where each frame i (0, 1, ..., N-1) should have a dot at `x = x_values[i], y = 0` and should plot the curve `x = x_range, y = potential(x_range, xi_values[i])`
         
