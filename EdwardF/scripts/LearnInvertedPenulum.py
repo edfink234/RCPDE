@@ -33,7 +33,8 @@ x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
 t_test_values = np.linspace(1e-8, T, 1000)
-x_start, v_start = 1.0, 0.0 #IC
+with open("temp.txt", "r") as f:
+    x_start, v_start = float(f.read()), 0.0 #IC
 x_start = float(x_start)
 
 # Define the neural network for xi(t)
@@ -353,7 +354,7 @@ except KeyboardInterrupt:
         )
         
         # Save the animation
-        ani.save(f"../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=6*fps))
+        ani.save(f"../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
         system(f"open ../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
         print(f"Movie saved as '../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
         
