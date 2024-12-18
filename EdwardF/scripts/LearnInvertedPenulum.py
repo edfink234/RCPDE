@@ -311,15 +311,16 @@ except KeyboardInterrupt:
         x_range = np.linspace(-5, 5, N)
         fig, ax = plt.subplots(figsize=(8, 6))
         # Initialize plot elements
-        dot, = ax.plot([], [], 'ro', markersize=8)
+        dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
         curve, = ax.plot([], [], 'b-', lw=2)
-        gold_dot, = ax.plot([], [], 'yo', markersize=8)
+        gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
 
         # Set plot limits and labels
         ax.set_xlim(-3, 3)
         ax.set_ylim(0, 3)
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
+        ax.legend()
         ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_start}")
         sech = lambda x: 1/np.cosh(x)
         
