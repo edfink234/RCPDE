@@ -8,7 +8,13 @@ import os
 from os import system
 import pandas as pd
 import csv
+import matplotlib.animation as animation
+
+
+#Setting the random seeds!!!
+np.random.seed(42)
 torch.manual_seed(42)
+
 
 sech = lambda x: 1/torch.cosh(x)
 torch.sech = sech
@@ -26,8 +32,8 @@ dt = 0.01      # Time step
 x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
-t_test_values = np.linspace(1e-8, 2*T, 2000)
-x_start, v_start = -1.5, 0.0 #IC
+t_test_values = np.linspace(1e-8, T, 1000)
+x_start, v_start = 1.0, 0.0 #IC
 x_start = float(x_start)
 
 # Define the neural network for xi(t)
@@ -293,4 +299,75 @@ except KeyboardInterrupt:
     system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_.pdf trajectory_data.svg")
     system("rm trajectory_data.svg")
     system(f"open trajectory_data_IC_{flt_to_str(x_start)}_.pdf")
+    system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+    system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.png")
+    system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.png")
+    
+    answer = input("Movie (y/n)? ")
+    
+    if answer.lower().startswith('y'):
+        N = 1000
+        x_range = np.linspace(-5, 5, N)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        # Initialize plot elements
+        dot, = ax.plot([], [], 'ro', markersize=8)
+        curve, = ax.plot([], [], 'b-', lw=2)
+        gold_dot, = ax.plot([], [], 'yo', markersize=8)
 
+        # Set plot limits and labels
+        ax.set_xlim(-3, 3)
+        ax.set_ylim(0, 3)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Potential")
+        ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_start}")
+        sech = lambda x: 1/np.cosh(x)
+        
+        def potential(x, xi):
+            V_MT = 0.5 * Omega * Omega * x * x
+            temp = sech(A * (x - xi))
+            V_SECH = A * A * temp * temp
+            return V_MT + V_SECH
+
+        # Initialization function
+        def init():
+            gold_dot.set_data([], [])
+            dot.set_data([], [])
+            curve.set_data([], [])
+            return dot, curve, gold_dot
+
+            # Update function
+        def update(i):
+            t = (i) * (T / (N - 1))  # Calculate current time
+            y_values = potential(x_range, xi_values[i])
+            dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
+            curve.set_data(x_range, y_values)
+            gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
+            ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_values[0]:.1f}, t = {t:.2f}")
+            return dot, curve, gold_dot
+
+        # Create animation
+        fps = N/T
+
+        ani = animation.FuncAnimation(
+            fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
+        )
+        
+        
+        
+
+        # Save the animation
+        
+        ani.save(f"../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=6*fps))
+        system(f"open ../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
+        print(f"Movie saved as '../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
+        
+    else:
+        print("Movie creation skipped.")
+
+        
+        
+        
+        
+        
+#    Create code python that will save a movie where each frame i (0, 1, ..., N-1) should have a dot at `x = x_values[i], y = 0` and should plot the curve `x = x_range, y = potential(x_range, xi_values[i])`
+        
