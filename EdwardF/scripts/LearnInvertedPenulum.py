@@ -24,7 +24,7 @@ def flt_to_str(flt):
 
 # Constants for the potential
 m = 1.0        # Mass
-Omega = 1.0    # Frequency of the harmonic trap
+Omega = 0.2    # Frequency of the harmonic trap
 A = 1.0        # Amplitude of the Gaussian potential
 sigma = 1.0    # Width of the Gaussian potential
 T = 10.0       # Final time
