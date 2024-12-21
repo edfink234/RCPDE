@@ -31,9 +31,7 @@ T = 10.0       # Final time
 dt = 0.01      # Time step
 x_star = 0.0   # Final position sought
 v_th = 0.01    # Velocity threshold
-x_th = 0.01    # Position threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
-delta_t = t_values[1] - t_values[0]
 t_test_values = np.linspace(1e-8, T, 1000)
 with open("temp.txt", "r") as f:
     x_start, v_start = float(f.read()), 0.0 #IC
@@ -150,14 +148,11 @@ def xi(t):
 # Loss function for optimization
 def loss_func():
     MSE = 0.0
-    global x_start, v_start, m, delta_t, x_th, v_th
+    global x_start, v_start, m
     x, v = x_start, v_start
     a = force(torch.tensor(x_start), xi(0.0)) / m
     smoothness_penalty = 0.0  # Initialize smoothness penalty
     xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
-    time_loss = 0
-    MSE = 0
-    t_less_than_T = False
     
     for t in t_values:
         xi_t = xi(t)  # Compute xi(t) at time t
@@ -165,23 +160,18 @@ def loss_func():
         
         # Perform RK4 step
         x, v = rk4_step(x, v, xi_t, dt)
-        time_loss = t
-        
-        if abs(x - x_star) < x_th and abs(v) < v_th and abs(x_star - xi(T)) < x_th and xi(0) < x_th:
-            t_less_than_T = True
-            break
-
     print("Variance of xi =", np.var([i.detach().numpy() for i in xi_values_temp]))
     print(f"x = {x:.4f}, v = {v:.4f}, x_star = {x_star:.4f}, v_th = {v_th:.4f}, xi(T) = {xi_values_temp[-1]:.4f}")
 
-    if time_loss == t_values[-1] and not t_less_than_T:
-        time_loss *= 10
-        
     # Compute the smoothness penalty
     for i in range(1, len(xi_values_temp)):
         delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
-        derivative = delta_xi / delta_t
-        smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
+        delta_t = t_values[i] - t_values[i - 1]
+        
+        # Compute the derivative
+        if delta_t > 0:  # Avoid division by zero
+            derivative = delta_xi / delta_t
+            smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the derivative
 
     assert(smoothness_penalty > 0)
     # Regular MSE calculation
@@ -197,7 +187,6 @@ def loss_func():
     diff_xi_0 = xi(0)
     MSE += diff_xi_0 ** 2
     assert(MSE > 0)
-    MSE += time_loss
 
     # Combine MSE with smoothness penalty (scale the penalty as needed)
     factor = 2.5e-7
@@ -205,7 +194,7 @@ def loss_func():
 #    > 3e-2 -> 2.5e-6
 #    > 3e-3 -> 2.5e-7
 #    > 3e-4 -> 2.5e-8
-    total_loss = MSE + factor * smoothness_penalty  # Adjust the smoothness_penalty to tune the smoothness constraint
+    total_loss = MSE + factor * smoothness_penalty  # Adjust the scale factor (0.1) to tune the smoothness constraint
     return total_loss
 
 # Training loop
@@ -366,7 +355,7 @@ except KeyboardInterrupt:
             fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
         )
         
-        # Save the animation TODO: change this directory!!!
+        # Save the animation
         ani.save(f"../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
         system(f"open ../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
         print(f"Movie saved as '../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
