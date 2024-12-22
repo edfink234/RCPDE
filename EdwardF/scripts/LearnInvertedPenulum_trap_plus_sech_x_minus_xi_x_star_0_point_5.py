@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 import csv
 import os
 from os import system
+import pandas as pd
 import csv
 import matplotlib.animation as animation
+
 
 #Setting the random seeds!!!
 np.random.seed(42)
@@ -22,17 +24,15 @@ def flt_to_str(flt):
 
 # Constants for the potential
 m = 1.0        # Mass
-Omega = 0.2    # Frequency of the harmonic trap
+Omega = 1.0    # Frequency of the harmonic trap
 A = 1.0        # Amplitude of the Gaussian potential
 sigma = 1.0    # Width of the Gaussian potential
 T = 10.0       # Final time
 dt = 0.01      # Time step
-x_star = 0.0   # Final position sought
+x_star = 0.5   # Final position sought
 v_th = 0.01    # Velocity threshold
-x_th = 0.01    # Position threshold
 t_values = np.linspace(1e-8, T, int(T / dt))
-delta_t = t_values[1] - t_values[0]
-t_test_values = np.linspace(1e-8, T, int(T / dt))
+t_test_values = np.linspace(1e-8, T, 1000)
 with open("temp.txt", "r") as f:
     x_start, v_start = float(f.read()), 0.0 #IC
 x_start = float(x_start)
@@ -62,14 +62,13 @@ class XiModel(nn.Module):
 # Instantiate the model
 model = XiModel()
 best_loss = np.inf
-best_t_value = T
 
 df = {}
 try:
     with open("../dataFiles/ICs.txt", 'r') as f:
         reader = csv.reader(f)
         for row in reader:
-            df[float(row[0])] = (float(row[1]), float(row[2]))
+            df[float(row[0])] = float(row[1])
         print(df)
 except FileNotFoundError:
     # Create the file if it doesn't exist
@@ -78,7 +77,7 @@ except FileNotFoundError:
 
 closest_x = x_start
 if x_start in df:
-    best_loss, best_t_value = df[x_start]
+    best_loss = df[x_start]
 else:
     closest_x = np.inf
     for i in df:
@@ -149,49 +148,30 @@ def xi(t):
 # Loss function for optimization
 def loss_func():
     MSE = 0.0
-    global x_start, v_start, m, delta_t, x_th, v_th
+    global x_start, v_start, m
     x, v = x_start, v_start
-#    a = force(torch.tensor(x_start), xi(0.0)) / m
+    a = force(torch.tensor(x_start), xi(0.0)) / m
     smoothness_penalty = 0.0  # Initialize smoothness penalty
     xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
-    time_loss = t_values[-1]
-    time_end = 0
-    MSE = 0
-    t_less_than_T = (xi(0) < x_th)
-    t_less_than_T_points_best = 0
     
     for t in t_values:
         xi_t = xi(t)  # Compute xi(t) at time t
         xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
-        curr_points = 0
+        
         # Perform RK4 step
         x, v = rk4_step(x, v, xi_t, dt)
-        if abs(x - x_star) < x_th:
-            curr_points += 1
-        if abs(v) < v_th:
-            curr_points += 1
-        if abs(x_star - xi(t)) < x_th:
-            curr_points += 1
-        if curr_points > t_less_than_T_points_best:
-            t_less_than_T_points_best = curr_points
-            if curr_points == 3:
-                if t_less_than_T:
-                    time_loss = t
-                break
-                
-#    print("Variance of xi =", np.var([i.detach().numpy() for i in xi_values_temp]))
+    print("Variance of xi =", np.var([i.detach().numpy() for i in xi_values_temp]))
     print(f"x = {x:.4f}, v = {v:.4f}, x_star = {x_star:.4f}, v_th = {v_th:.4f}, xi(T) = {xi_values_temp[-1]:.4f}")
 
-    t_less_than_T_points_best += t_less_than_T
-    time_end = time_loss
-    if time_loss == t_values[-1]:
-        time_loss *= (10 - 2.25*t_less_than_T_points_best)
-        
     # Compute the smoothness penalty
     for i in range(1, len(xi_values_temp)):
         delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
-        derivative = delta_xi / delta_t
-        smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
+        delta_t = t_values[i] - t_values[i - 1]
+        
+        # Compute the derivative
+        if delta_t > 0:  # Avoid division by zero
+            derivative = delta_xi / delta_t
+            smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the derivative
 
     assert(smoothness_penalty > 0)
     # Regular MSE calculation
@@ -201,13 +181,12 @@ def loss_func():
     if abs_v > v_th:
         MSE += (abs_v - v_th) ** 2
     assert(MSE > 0)
-    diff_xi_T = x_star - xi(time_end)
+    diff_xi_T = x_star - xi(T)
     MSE += (diff_xi_T ** 2)
     assert(MSE > 0)
     diff_xi_0 = xi(0)
     MSE += diff_xi_0 ** 2
     assert(MSE > 0)
-    MSE += time_loss
 
     # Combine MSE with smoothness penalty (scale the penalty as needed)
     factor = 2.5e-7
@@ -215,8 +194,8 @@ def loss_func():
 #    > 3e-2 -> 2.5e-6
 #    > 3e-3 -> 2.5e-7
 #    > 3e-4 -> 2.5e-8
-    total_loss = MSE + factor * smoothness_penalty  # Adjust the smoothness_penalty to tune the smoothness constraint
-    return total_loss, time_end
+    total_loss = MSE + factor * smoothness_penalty  # Adjust the scale factor (0.1) to tune the smoothness constraint
+    return total_loss
 
 # Training loop
 learning_rate = 0.01
@@ -229,7 +208,7 @@ epoch = 0
 try:
     while True:
         optimizer.zero_grad()  # Zero the gradients
-        loss_value, t_value = loss_func()
+        loss_value = loss_func()
         loss_value.backward()  # Compute gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()  # Update weights
@@ -238,18 +217,14 @@ try:
 
         # Check if the current loss is the best (lowest)
         if loss_value.item() < best_loss:
-            best_loss = loss_value.item()  #Update best loss
-            best_t_value = t_value #Update corresponding best time
+            best_loss = loss_value.item()  # Update best loss
             torch.save(model.state_dict(), new_model_path)  # Save the best model
-            df[x_start] = (best_loss, best_t_value)
-            if best_t_value < t_test_values[-1]:
-                print(f"New best t value = {best_t_value}")
-                t_test_values = np.linspace(1e-8, best_t_value, 1000)
+            df[x_start] = best_loss
             # Write to CSV
             with open('../dataFiles/ICs.txt', 'w', newline='') as file:
                 writer = csv.writer(file)
                 for key, value in df.items():
-                    writer.writerow([key, *value])  # Write key-value pairs
+                    writer.writerow([key, value])  # Write key-value pairs
 
             print(f"Best model saved with loss: {best_loss}")
 
@@ -381,9 +356,9 @@ except KeyboardInterrupt:
         )
         
         # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
-        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
+        ani.save(f"../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open ../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
+        print(f"Movie saved as '../movies/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
         
     else:
         print("Movie creation skipped.")
