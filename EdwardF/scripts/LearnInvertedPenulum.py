@@ -30,6 +30,10 @@ dt = 0.01      # Time step
 x_star = 0.0   # Final position sought
 v_th = 0.01    # Velocity threshold
 x_th = 0.01    # Position threshold
+
+smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness
+time_penalty_factor = 1e-5 #penalty for taking longer
+
 t_values = np.linspace(1e-8, T, int(T / dt))
 delta_t = t_values[1] - t_values[0]
 t_test_values = np.linspace(1e-8, T, int(T / dt))
@@ -79,6 +83,7 @@ except FileNotFoundError:
 closest_x = x_start
 if x_start in df:
     best_loss, best_t_value = df[x_start]
+    t_test_values = np.linspace(1e-8, best_t_value, int(best_t_value / dt))
 else:
     closest_x = np.inf
     for i in df:
@@ -116,14 +121,14 @@ def potential(x, xi):
 def force(x, xi):
     return -(Omega**2 * x) + (2 * A**3 * torch.sech(A * (x - xi))**2 * torch.tanh(A * (x - xi)))
 
+def dxdt(v):
+    return v
+
+def dvdt(x, xi):
+    return force(x, xi) / m
+
 # RK4 step for updating state
 def rk4_step(x, v, xi_t, dt):
-    def dxdt(v):
-        return v
-
-    def dvdt(x, xi):
-        return force(x, xi) / m
-
     k1_x = dxdt(v)
     k1_v = dvdt(x, xi_t)
 
@@ -146,134 +151,379 @@ def xi(t):
     t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
     return model(t_input)[0, 0]  # Get the output from the model
 
-# Loss function for optimization
+'''
+What I really need is a function that scans the entire array of time values, computes the loss-function at the time, gets the total loss, and then if that is better than the best loss achieved (in the array of time values it's scanning) then the best loss and corresponding best time are updated. 
+But of course, I want to encourage better solutions earlier on, so I'll multiply the best loss by some value that linearly increases with the time
+'''
+
 def loss_func():
-    MSE = 0.0
-    global x_start, v_start, m, delta_t, x_th, v_th
+    global x_start, v_start, m, delta_t, x_th, v_th, smoothness_penalty_factor, time_penalty_factor
     x, v = x_start, v_start
 #    a = force(torch.tensor(x_start), xi(0.0)) / m
     smoothness_penalty = 0.0  # Initialize smoothness penalty
     xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
-    time_loss = t_values[-1]
-    time_end = 0
-    MSE = 0
-    t_less_than_T = (xi(0) < x_th)
-    t_less_than_T_points_best = 0
+    best_loss = np.inf
+    best_time = np.inf
+    best_time_idx = np.inf
     
-    for t in t_values:
+    for i, t in enumerate(t_values):
         xi_t = xi(t)  # Compute xi(t) at time t
         xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
-        curr_points = 0
-        # Perform RK4 step
         x, v = rk4_step(x, v, xi_t, dt)
-        if abs(x - x_star) < x_th:
-            curr_points += 1
-        if abs(v) < v_th:
-            curr_points += 1
-        if abs(x_star - xi(t)) < x_th:
-            curr_points += 1
-        if curr_points > t_less_than_T_points_best:
-            t_less_than_T_points_best = curr_points
-            if curr_points == 3:
-                if t_less_than_T:
-                    time_loss = t
-                break
-                
-#    print("Variance of xi =", np.var([i.detach().numpy() for i in xi_values_temp]))
-    print(f"x = {x:.4f}, v = {v:.4f}, x_star = {x_star:.4f}, v_th = {v_th:.4f}, xi(T) = {xi_values_temp[-1]:.4f}")
-
-    t_less_than_T_points_best += t_less_than_T
-    time_end = time_loss
-    if time_loss == t_values[-1]:
-        time_loss *= (10 - 2.25*t_less_than_T_points_best)
         
-    # Compute the smoothness penalty
-    for i in range(1, len(xi_values_temp)):
+        x_star_x_diff = (x_star - x)
+        x_star_xi_diff = (x_star - xi(t))
+        xi_0 = xi(0)
+        
+        if i > 1:
+            MSE = (x_star_x_diff*x_star_x_diff) + (v*v) + (x_star_xi_diff*x_star_xi_diff) + (xi_0*xi_0)
+            if MSE < best_loss:
+                best_time = t
+                best_loss = MSE
+                best_time_idx = i
+                
+        
+    for i in range(1, best_time_idx+1):
         delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
         derivative = delta_xi / delta_t
         smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
-
-    assert(smoothness_penalty > 0)
-    # Regular MSE calculation
-    MSE = (x_star - x) ** 2
-    assert(MSE > 0)
-    abs_v = abs(v)
-    if abs_v > v_th:
-        MSE += (abs_v - v_th) ** 2
-    assert(MSE > 0)
-    diff_xi_T = x_star - xi(time_end)
-    MSE += (diff_xi_T ** 2)
-    assert(MSE > 0)
-    diff_xi_0 = xi(0)
-    MSE += diff_xi_0 ** 2
-    assert(MSE > 0)
-    MSE += time_loss
-
-    # Combine MSE with smoothness penalty (scale the penalty as needed)
-    factor = 2.5e-7
+    smoothness_penalty /= best_time_idx
     
-#    > 3e-2 -> 2.5e-6
-#    > 3e-3 -> 2.5e-7
-#    > 3e-4 -> 2.5e-8
-    total_loss = MSE + factor * smoothness_penalty  # Adjust the smoothness_penalty to tune the smoothness constraint
-    return total_loss, time_end
+    return (best_loss + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time), best_time
 
-# Training loop
-learning_rate = 0.01
-#optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+# Loss function for optimization
 
-plot_progress = False
-epoch = 0
+def closure():
+    optimizer.zero_grad()  # Clear previous gradients
+    loss, _ = loss_func()  # Compute the loss
+    loss.backward()  # Backpropagate
+    return loss
 
-try:
+# Define Newton's method function
+def newton_method():
+    global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
+    # Extract model parameters
+    current_params = {name: param.clone() for name, param in model.named_parameters()}
+    
+    # Compute initial loss
+    best_params = {name: param.clone() for name, param in current_params.items()}
+    
     while True:
-        optimizer.zero_grad()  # Zero the gradients
-        loss_value, t_value = loss_func()
-        loss_value.backward()  # Compute gradients
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        optimizer.step()  # Update weights
-        
-        print(f'Epoch {epoch}, Loss: {loss_value.item()}')
+        # Compute gradient and Hessian for each parameter
+        grads = {}
+        hessians = {}
 
-        # Check if the current loss is the best (lowest)
-        if loss_value.item() < best_loss:
-            best_loss = loss_value.item()  #Update best loss
-            best_t_value = t_value #Update corresponding best time
-            torch.save(model.state_dict(), new_model_path)  # Save the best model
-            df[x_start] = (best_loss, best_t_value)
-            if best_t_value < t_test_values[-1]:
+        # Compute loss and gradients
+        loss, _ = loss_func()
+        grad_tensors = torch.autograd.grad(
+            loss,
+            model.parameters(),
+            create_graph=True,
+            retain_graph=True
+        )
+
+        for (name, param), grad in zip(model.named_parameters(), grad_tensors):
+            grads[name] = grad
+            # Compute Hessian (second derivatives)
+            hessian = []
+            for g in grad.view(-1):  # Flatten gradient for Hessian computation
+                hessian.append(
+                    torch.autograd.grad(g, param, retain_graph=True)[0].view(-1)
+                )
+            hessians[name] = torch.stack(hessian).view(param.shape + param.shape)
+
+        # Compute Newton update for each parameter
+        new_params = {}
+        for name, param in current_params.items():
+            grad = grads[name].view(-1)  # Flatten gradient
+            hessian = hessians[name].view(grad.numel(), grad.numel())  # Reshape Hessian to match flattened gradient
+            
+            # Damped Hessian to ensure positive definiteness
+            hessian_damped = hessian + 1e-4 * torch.eye(hessian.size(0), device=hessian.device)
+
+            # Solve H Δx = -grad
+            try:
+                update = torch.linalg.solve(hessian_damped, -grad)  # Solve for flattened update
+            except RuntimeError as e:
+                print(f"Hessian inversion failed for parameter {name}: {e}")
+                update = -grad  # Fallback to gradient descent step
+            
+            # Reshape the update to match parameter shape
+            new_params[name] = param + learning_rate * update.view(param.shape)
+
+
+        # Update model parameters
+        with torch.no_grad():
+            for name, param in model.named_parameters():
+                param.copy_(new_params[name])
+
+        # Compute new loss
+        new_loss, new_time = loss_func()
+
+        # Check for improvement
+        if new_loss < best_loss:
+            # Update best parameters
+            best_loss = new_loss
+            best_t_value = new_time
+            best_params = {name: param.clone() for name, param in current_params.items()}
+            with torch.no_grad():
+                for name, param in model.named_parameters():
+                    param.copy_(best_params[name])
+            # Save best model
+            torch.save(model.state_dict(), new_model_path)
+            df[x_start] = (best_loss.detach().numpy(), best_t_value)
+            if best_t_value != t_test_values[-1]:
                 print(f"New best t value = {best_t_value}")
-                t_test_values = np.linspace(1e-8, best_t_value, 1000)
+                t_test_values = np.linspace(1e-8, best_t_value, best_t_value / dt)
             # Write to CSV
             with open('../dataFiles/ICs.txt', 'w', newline='') as file:
                 writer = csv.writer(file)
                 for key, value in df.items():
                     writer.writerow([key, *value])  # Write key-value pairs
-
             print(f"Best model saved with loss: {best_loss}")
+        else:
+            # Revert to previous parameters
+            with torch.no_grad():
+                for name, param in model.named_parameters():
+                    param.copy_(current_params[name])
 
-        if plot_progress and epoch % 5 == 0:
-            x_values, v_values, xi_values = [], [], []
-            x, v = x_start, v_start  # Initial conditions
-            for t in t_values:
-                xi_t = xi(t)
-                xi_values.append(xi_t.detach().numpy())
-                x, v = rk4_step(x, v, xi_t, dt)
-                a = force(x, xi_t) / m
-                x_values.append(x.detach().numpy())  # Use detach()
-                v_values.append(v.detach().numpy())  # Use detach()
-                a_values.append(a.detach().numpy())
-            plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
-            plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-            plt.plot(t_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
-            plt.plot(t_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+        # Log current loss and time
+        print(f"Curr Loss = {new_loss}, Curr Time = {new_time:.6f}")
 
-            plt.legend()
-            plt.draw()
-            plt.pause(1)
-            plt.close()
-        epoch += 1
+    # Restore best parameters to the model
+    with torch.no_grad():
+        for name, param in model.named_parameters():
+            param.copy_(best_params[name])
+
+    
+# Define brute force function
+def brute_force():
+    global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
+    # Extract model parameters
+    current_params = {name: param.clone() for name, param in model.named_parameters()}
+    initial_temp = 0.01
+    temperature = initial_temp
+    cooling_rate=1
+    
+    # Compute initial loss
+    best_params = {name: param.clone() for name, param in current_params.items()}
+
+    while True:
+        # Generate a random perturbation
+        perturbed_params = {
+            name: torch.randn_like(param) * (temperature) + param
+            for name, param in current_params.items()
+        }
+        # Update model with perturbed parameters
+        with torch.no_grad():
+            for name, param in model.named_parameters():
+                param.copy_(perturbed_params[name])
+
+        # Compute new loss
+        new_loss, new_time = loss_func()
+
+        # Compute change in loss
+        delta_loss = new_loss - best_loss
+        
+
+        # Metropolis criterion
+        if delta_loss < 0:
+            # Accept new parameters
+            current_params = perturbed_params
+            best_loss = new_loss
+            best_t_value = new_time
+            best_params = {name: param.clone() for name, param in current_params.items()}
+            with torch.no_grad():
+                for name, param in model.named_parameters():
+                    param.copy_(best_params[name])
+                            
+                            
+            torch.save(model.state_dict(), new_model_path)  # Save the best model
+            df[x_start] = (best_loss.detach().numpy(), best_t_value)
+            if best_t_value != t_test_values[-1]:
+                print(f"New best t value = {best_t_value}")
+                t_test_values = np.linspace(1e-8, best_t_value, best_t_value/dt)
+            # Write to CSV
+            with open('../dataFiles/ICs.txt', 'w', newline='') as file:
+                writer = csv.writer(file)
+                for key, value in df.items():
+                    writer.writerow([key, *value])  # Write key-value pairs
+                print(f"Best model saved with loss: {best_loss}")
+        elif torch.exp(-delta_loss / temperature) > np.random.random():
+            current_params = perturbed_params
+        else:
+            # Revert to previous parameters
+            with torch.no_grad():
+                for name, param in model.named_parameters():
+                    param.copy_(current_params[name])
+        
+        temperature *= cooling_rate
+        print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}")
+
+
+    # Restore best parameters to the model
+    with torch.no_grad():
+        for name, param in model.named_parameters():
+            param.copy_(best_params[name])
+
+# Usage Example
+# Initialize neural network
+xi_model = XiModel()
+
+# Loss function for optimization
+#def loss_func():
+#    MSE = 0.0
+#    global x_start, v_start, m, delta_t, x_th, v_th
+#    x, v = x_start, v_start
+##    a = force(torch.tensor(x_start), xi(0.0)) / m
+#    smoothness_penalty = 0.0  # Initialize smoothness penalty
+#    xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
+#    time_loss = t_values[-1]
+#    time_end = 0
+#    MSE = 0
+#    t_less_than_T = (xi(0) < x_th)
+#    t_less_than_T_points_best = 0
+#    
+#    for t in t_values:
+#        xi_t = xi(t)  # Compute xi(t) at time t
+#        xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
+#        curr_points = 0
+#        # Perform RK4 step
+#        x, v = rk4_step(x, v, xi_t, dt)
+#        if abs(x - x_star) < x_th:
+#            curr_points += 1
+#        if abs(v) < v_th:
+#            curr_points += 1
+#        if abs(x_star - xi(t)) < x_th:
+#            curr_points += 1
+#        if curr_points > t_less_than_T_points_best:
+#            t_less_than_T_points_best = curr_points
+#            if curr_points == 3:
+#                if t_less_than_T:
+#                    time_loss = t
+#                break
+#                
+##    print("Variance of xi =", np.var([i.detach().numpy() for i in xi_values_temp]))
+#    print(f"x = {x:.4f}, v = {v:.4f}, x_star = {x_star:.4f}, v_th = {v_th:.4f}, xi(T) = {xi_values_temp[-1]:.4f}")
+#
+#    t_less_than_T_points_best += t_less_than_T
+#    time_end = time_loss
+#    if time_loss == t_values[-1]:
+#        time_loss *= (10 - 2.25*t_less_than_T_points_best)
+#        
+#    # Compute the smoothness penalty
+#    for i in range(1, len(xi_values_temp)):
+#        delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
+#        derivative = delta_xi / delta_t
+#        smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
+#
+#    assert(smoothness_penalty > 0)
+#    # Regular MSE calculation
+#    MSE = (x_star - x) ** 2
+#    assert(MSE > 0)
+#    abs_v = abs(v)
+#    if abs_v > v_th:
+#        MSE += (abs_v - v_th) ** 2
+#    assert(MSE > 0)
+#    diff_xi_T = x_star - xi(time_end)
+#    MSE += (diff_xi_T ** 2)
+#    assert(MSE > 0)
+#    diff_xi_0 = xi(0)
+#    MSE += diff_xi_0 ** 2
+#    assert(MSE > 0)
+#    MSE += time_loss
+#
+#    # Combine MSE with smoothness penalty (scale the penalty as needed)
+#    factor = 2.5e-7
+#    
+##    > 3e-2 -> 2.5e-6
+##    > 3e-3 -> 2.5e-7
+##    > 3e-4 -> 2.5e-8
+#    total_loss = MSE + factor * smoothness_penalty  # Adjust the smoothness_penalty to tune the smoothness constraint
+#    return total_loss, time_end
+
+# Training loop
+learning_rate = 0.1
+Algorithm = "lbfgs"
+#optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+if Algorithm == "lbfgs":
+    optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
+elif Algorithm == "adam":
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+elif Algorithm == "sgd":
+    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+elif Algorithm == "adamax":
+    optimizer = optim.Adamax(model.parameters(), lr=learning_rate)
+elif Algorithm == "adafactor":
+    optimizer = optim.Adafactor(model.parameters(), lr=learning_rate)
+elif Algorithm == "adamw":
+    optimizer = optim.Adafactor(model.parameters(), lr=learning_rate)
+elif Algorithm == "asgd":
+    optimizer = optim.ASGD(model.parameters(), lr=learning_rate)
+elif Algorithm == "sparse adam":
+    optimizer = optim.SparseAdam(model.parameters(), lr=learning_rate)
+
+plot_progress = False
+epoch = 0
+
+try:
+    if Algorithm == "brute force":
+        # Define constants and call the simulated annealing function
+        brute_force()
+    elif Algorithm == "newton":
+        newton_method()
+    else:
+        while True:
+            optimizer.zero_grad()  # Zero the gradients
+            loss_value, t_value = loss_func()
+            loss_value.backward()  # Compute gradients
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    #        optimizer.step()  # Update weights
+            if Algorithm == "lbfgs":
+                optimizer.step(closure)
+            else:
+                optimizer.step()
+            
+            print(f'Epoch {epoch}, Loss: {loss_value.item()}')
+
+            # Check if the current loss is the best (lowest)
+            if loss_value.item() < best_loss:
+                best_loss = loss_value.item()  #Update best loss
+                best_t_value = t_value #Update corresponding best time
+                torch.save(model.state_dict(), new_model_path)  # Save the best model
+                df[x_start] = (best_loss, best_t_value)
+                if best_t_value != t_test_values[-1]:
+                    print(f"New best t value = {best_t_value}")
+                    t_test_values = np.linspace(1e-8, best_t_value, int(best_t_value/dt))
+                # Write to CSV
+                with open('../dataFiles/ICs.txt', 'w', newline='') as file:
+                    writer = csv.writer(file)
+                    for key, value in df.items():
+                        writer.writerow([key, *value])  # Write key-value pairs
+
+                print(f"Best model saved with loss: {best_loss}")
+
+            if plot_progress and epoch % 5 == 0:
+                x_values, v_values, xi_values = [], [], []
+                x, v = x_start, v_start  # Initial conditions
+                for t in t_test_values:
+                    xi_t = xi(t)
+                    xi_values.append(xi_t.detach().numpy())
+                    x, v = rk4_step(x, v, xi_t, dt)
+                    a = force(x, xi_t) / m
+                    x_values.append(x.detach().numpy())  # Use detach()
+                    v_values.append(v.detach().numpy())  # Use detach()
+                    a_values.append(a.detach().numpy())
+                plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
+                plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
+                plt.plot(t_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
+                plt.plot(t_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+
+                plt.legend()
+                plt.draw()
+                plt.pause(1)
+                plt.close()
+            epoch += 1
 
 except KeyboardInterrupt:
     print("\nTraining interrupted. Saving data...")
@@ -307,7 +557,7 @@ except KeyboardInterrupt:
     with open(data_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["t_values", "xi_values", "x_values", "v_values"])
-        for i in range(len(t_values)):
+        for i in range(len(t_test_values)):
             writer.writerow([t_values[i], xi_values[i].item(), x_values[i].item(), v_values[i].item()])
     print("Data saved to CSV.")
     
@@ -333,8 +583,8 @@ except KeyboardInterrupt:
     answer = input("Movie (y/n)? ")
     
     if answer.lower().startswith('y'):
-        N = 1000
-        x_range = np.linspace(-5, 5, N)
+        N = len(t_test_values)
+        x_range = np.linspace(-10, 10, N)
         fig, ax = plt.subplots(figsize=(8, 6))
         # Initialize plot elements
         dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
@@ -342,7 +592,7 @@ except KeyboardInterrupt:
         gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
 
         # Set plot limits and labels
-        ax.set_xlim(-3, 3)
+        ax.set_xlim(x_range[0], x_range[-1])
         ax.set_ylim(0, 3)
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
@@ -365,7 +615,7 @@ except KeyboardInterrupt:
 
             # Update function
         def update(i):
-            t = (i) * (T / (N - 1))  # Calculate current time
+            t = (i) * (best_t_value / (N - 1))  # Calculate current time
             y_values = potential(x_range, xi_values[i])
             dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
@@ -374,7 +624,7 @@ except KeyboardInterrupt:
             return dot, curve, gold_dot
 
         # Create animation
-        fps = N/T
+        fps = N/best_t_value
 
         ani = animation.FuncAnimation(
             fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
