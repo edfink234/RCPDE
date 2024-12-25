@@ -456,7 +456,7 @@ xi_model = XiModel()
 #    return total_loss, time_end
 
 # Training loop
-learning_rate = 0.00001
+learning_rate = 0.1
 Algorithm = "adam"
 fine = True #for brute force
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
