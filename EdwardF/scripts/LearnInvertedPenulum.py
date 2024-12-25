@@ -32,8 +32,9 @@ dt = 0.01      # Time step
 x_star = 0.0   # Final position sought
 v_th = 0.01    # Velocity threshold
 x_th = 0.01    # Position threshold
-to_time = {"timed":False, "time": 1800}
+to_time = {"timed":True, "time": 3600}
 criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
+automate = True
 
 smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness
 time_penalty_factor = 1e-5 #penalty for taking longer
@@ -111,9 +112,10 @@ else:
 
 print("closest_x =",closest_x)
 print("best_loss =",best_loss)
-ans = input("Proceed? (y/n): ")
-if ans.lower() != 'y':
-    exit()
+if not automate:
+    ans = input("Proceed? (y/n): ")
+    if ans.lower() != 'y':
+        exit()
 
 def potential(x, xi):
     V_MT = 0.5 * Omega * Omega * x * x
@@ -594,61 +596,61 @@ except KeyboardInterrupt:
     system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.png")
     system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.png")
     
-    answer = input("Movie (y/n)? ")
+    if not automate:
+        answer = input("Movie (y/n)? ")
+        if not answer.lower().startswith('y'):
+            print("Movie creation skipped.")
+            exit()
+        
+    N = len(t_test_values)
+    x_range = np.linspace(-10, 10, N)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    # Initialize plot elements
+    dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
+    curve, = ax.plot([], [], 'b-', lw=2)
+    gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
+
+    # Set plot limits and labels
+    ax.set_xlim(x_range[0], x_range[-1])
+    ax.set_ylim(0, 3)
+    ax.set_xlabel("x")
+    ax.set_ylabel("Potential")
+    ax.legend()
+    ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_start}")
+    sech = lambda x: 1/np.cosh(x)
     
-    if answer.lower().startswith('y'):
-        N = len(t_test_values)
-        x_range = np.linspace(-10, 10, N)
-        fig, ax = plt.subplots(figsize=(8, 6))
-        # Initialize plot elements
-        dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
-        curve, = ax.plot([], [], 'b-', lw=2)
-        gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
+    def potential(x, xi):
+        V_MT = 0.5 * Omega * Omega * x * x
+        temp = sech(A * (x - xi))
+        V_SECH = A * A * temp * temp
+        return V_MT + V_SECH
 
-        # Set plot limits and labels
-        ax.set_xlim(x_range[0], x_range[-1])
-        ax.set_ylim(0, 3)
-        ax.set_xlabel("x")
-        ax.set_ylabel("Potential")
-        ax.legend()
-        ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_start}")
-        sech = lambda x: 1/np.cosh(x)
-        
-        def potential(x, xi):
-            V_MT = 0.5 * Omega * Omega * x * x
-            temp = sech(A * (x - xi))
-            V_SECH = A * A * temp * temp
-            return V_MT + V_SECH
+    # Initialization function
+    def init():
+        gold_dot.set_data([], [])
+        dot.set_data([], [])
+        curve.set_data([], [])
+        return dot, curve, gold_dot
 
-        # Initialization function
-        def init():
-            gold_dot.set_data([], [])
-            dot.set_data([], [])
-            curve.set_data([], [])
-            return dot, curve, gold_dot
+        # Update function
+    def update(i):
+        t = (i) * (best_t_value / (N - 1))  # Calculate current time
+        y_values = potential(x_range, xi_values[i])
+        dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
+        curve.set_data(x_range, y_values)
+        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
+        ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_values[0]:.1f}, t = {t:.2f}")
+        return dot, curve, gold_dot
 
-            # Update function
-        def update(i):
-            t = (i) * (best_t_value / (N - 1))  # Calculate current time
-            y_values = potential(x_range, xi_values[i])
-            dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
-            curve.set_data(x_range, y_values)
-            gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-            ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_values[0]:.1f}, t = {t:.2f}")
-            return dot, curve, gold_dot
+    # Create animation
+    fps = N/best_t_value
 
-        # Create animation
-        fps = N/best_t_value
-
-        ani = animation.FuncAnimation(
-            fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
-        )
-        
-        # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
-        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
-        
-    else:
-        print("Movie creation skipped.")
-        
+    ani = animation.FuncAnimation(
+        fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
+    )
+    
+    # Save the animation
+    ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+    system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
+    print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
+            
