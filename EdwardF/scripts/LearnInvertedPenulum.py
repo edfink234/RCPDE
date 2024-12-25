@@ -8,6 +8,8 @@ import os
 from os import system
 import csv
 import matplotlib.animation as animation
+from random import choice
+from time import time
 
 #Setting the random seeds!!!
 np.random.seed(42)
@@ -30,6 +32,8 @@ dt = 0.01      # Time step
 x_star = 0.0   # Final position sought
 v_th = 0.01    # Velocity threshold
 x_th = 0.01    # Position threshold
+to_time = {"timed":False, "time": 1800}
+criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
 
 smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness
 time_penalty_factor = 1e-5 #penalty for taking longer
@@ -201,14 +205,14 @@ def closure():
 
 # Define Newton's method function
 def newton_method():
-    global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
+    global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values, criterion
     # Extract model parameters
     current_params = {name: param.clone() for name, param in model.named_parameters()}
     
     # Compute initial loss
     best_params = {name: param.clone() for name, param in current_params.items()}
     
-    while True:
+    while criterion():
         # Compute gradient and Hessian for each parameter
         grads = {}
         hessians = {}
@@ -295,25 +299,32 @@ def newton_method():
         for name, param in model.named_parameters():
             param.copy_(best_params[name])
 
-    
 # Define brute force function
-def brute_force():
+def brute_force(fine = False):
     global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
     # Extract model parameters
     current_params = {name: param.clone() for name, param in model.named_parameters()}
-    initial_temp = 0.01
+    initial_temp = 1
     temperature = initial_temp
     cooling_rate=1
     
     # Compute initial loss
     best_params = {name: param.clone() for name, param in current_params.items()}
 
-    while True:
+    while criterion():
         # Generate a random perturbation
-        perturbed_params = {
-            name: torch.randn_like(param) * (temperature) + param
-            for name, param in current_params.items()
-        }
+        perturbed_params = {}
+        if fine:
+            name, param = choice(tuple(current_params.items()))
+            perturbed_params = {
+                key: (torch.randn_like(param) * temperature + param if key == name else param)
+                for key, param in current_params.items()
+            }
+        else:
+            perturbed_params = {
+                name: torch.randn_like(param) * (temperature) + param
+                for name, param in current_params.items()
+            }
         # Update model with perturbed parameters
         with torch.no_grad():
             for name, param in model.named_parameters():
@@ -349,7 +360,7 @@ def brute_force():
                 for key, value in df.items():
                     writer.writerow([key, *value])  # Write key-value pairs
                 print(f"Best model saved with loss: {best_loss}")
-        elif torch.exp(-delta_loss / temperature) > np.random.random():
+        elif torch.exp(-delta_loss / temperature) > np.random.random() and not fine:
             current_params = perturbed_params
         else:
             # Revert to previous parameters
@@ -443,8 +454,9 @@ xi_model = XiModel()
 #    return total_loss, time_end
 
 # Training loop
-learning_rate = 0.1
-Algorithm = "lbfgs"
+learning_rate = 0.00001
+Algorithm = "adam"
+fine = True #for brute force
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 if Algorithm == "lbfgs":
     optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -465,15 +477,16 @@ elif Algorithm == "sparse adam":
 
 plot_progress = False
 epoch = 0
+start_time = time()
 
 try:
     if Algorithm == "brute force":
         # Define constants and call the simulated annealing function
-        brute_force()
+        brute_force(fine)
     elif Algorithm == "newton":
         newton_method()
     else:
-        while True:
+        while criterion():
             optimizer.zero_grad()  # Zero the gradients
             loss_value, t_value = loss_func()
             loss_value.backward()  # Compute gradients
@@ -565,9 +578,10 @@ except KeyboardInterrupt:
     plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
     plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
     plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
-    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
-    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
-    plt.axhline(y=-0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = -0.01
+#    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
+#    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
+#    plt.axhline(y=-0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = -0.01
+    plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
 
     plt.xlabel('t')
     plt.title(f'$x_0$ = {x_start}')
