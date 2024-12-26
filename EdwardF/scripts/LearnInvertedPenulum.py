@@ -30,11 +30,12 @@ sigma = 1.0    # Width of the Gaussian potential
 T = 10.0       # Final time
 dt = 0.01      # Time step
 x_star = 0.0   # Final position sought
-v_th = 0.01    # Velocity threshold
-x_th = 0.01    # Position threshold
-to_time = {"timed":True, "time": 3600}
+v_th = 0.01    # Velocity threshold, not used currently
+x_th = 0.01    # Position threshold, not used currently
+to_time = {"timed": False, "time": 3600}
 criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
-automate = True
+automate = False
+produceInverse = True
 
 smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness
 time_penalty_factor = 1e-5 #penalty for taking longer
@@ -88,7 +89,7 @@ except FileNotFoundError:
 closest_x = x_start
 if x_start in df:
     best_loss, best_t_value = df[x_start]
-    t_test_values = np.linspace(1e-8, best_t_value, int(best_t_value / dt))
+    t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
 else:
     closest_x = np.inf
     for i in df:
@@ -189,7 +190,7 @@ def loss_func():
                 best_time_idx = i
                 
         
-    for i in range(1, best_time_idx+1):
+    for i in range(1, int(best_time_idx)+1):
         delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
         derivative = delta_xi / delta_t
         smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
@@ -302,13 +303,13 @@ def newton_method():
             param.copy_(best_params[name])
 
 # Define brute force function
-def brute_force(fine = False):
+def brute_force(fine = False, coolingRate = 0.99, anneal = False):
     global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
     # Extract model parameters
     current_params = {name: param.clone() for name, param in model.named_parameters()}
     initial_temp = 1
     temperature = initial_temp
-    cooling_rate=1
+    cooling_rate=coolingRate
     
     # Compute initial loss
     best_params = {name: param.clone() for name, param in current_params.items()}
@@ -355,14 +356,14 @@ def brute_force(fine = False):
             df[x_start] = (best_loss.detach().numpy(), best_t_value)
             if best_t_value != t_test_values[-1]:
                 print(f"New best t value = {best_t_value}")
-                t_test_values = np.linspace(1e-8, best_t_value, best_t_value/dt)
+                t_test_values = np.linspace(1e-8, best_t_value, int(best_t_value/dt))
             # Write to CSV
             with open('../dataFiles/ICs.txt', 'w', newline='') as file:
                 writer = csv.writer(file)
                 for key, value in df.items():
                     writer.writerow([key, *value])  # Write key-value pairs
                 print(f"Best model saved with loss: {best_loss}")
-        elif torch.exp(-delta_loss / temperature) > np.random.random() and not fine:
+        elif anneal and torch.exp(-delta_loss / temperature) > np.random.random():
             current_params = perturbed_params
         else:
             # Revert to previous parameters
@@ -456,9 +457,8 @@ xi_model = XiModel()
 #    return total_loss, time_end
 
 # Training loop
-learning_rate = 0.1
-Algorithm = "adam"
-fine = True #for brute force
+learning_rate = 0.00001
+Algorithm = "adamax"
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 if Algorithm == "lbfgs":
     optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -484,7 +484,7 @@ start_time = time()
 try:
     if Algorithm == "brute force":
         # Define constants and call the simulated annealing function
-        brute_force(fine)
+        brute_force(fine = True, coolingRate = 0.99, anneal = True)
     elif Algorithm == "newton":
         newton_method()
     else:
@@ -509,7 +509,7 @@ try:
                 df[x_start] = (best_loss, best_t_value)
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
-                    t_test_values = np.linspace(1e-8, best_t_value, int(best_t_value/dt))
+                    t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
                 # Write to CSV
                 with open('../dataFiles/ICs.txt', 'w', newline='') as file:
                     writer = csv.writer(file)
@@ -595,6 +595,34 @@ except KeyboardInterrupt:
     system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
     system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.png")
     system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.png")
+    plt.close()
+    
+    if produceInverse:
+        x_values_inv = [-i for i in x_values]
+        v_values_inv = [-i for i in v_values]
+        a_values_inv = [-i for i in a_values]
+        xi_values_inv = [-i for i in xi_values]
+        plt.plot(t_test_values, x_values_inv, label='x(t) [m]', color='blue')
+        plt.plot(t_test_values, v_values_inv, label='v(t) [m/s]', color='green', linestyle=':')
+        plt.plot(t_test_values, a_values_inv, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+        plt.plot(t_test_values, xi_values_inv, label=r'$\xi(t)$', color='red', linestyle='--')
+        #    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
+        #    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
+        #    plt.axhline(y=-0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = -0.01
+        plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
+        
+        plt.xlabel('t')
+        plt.title(f'$x_0$ = {-x_start}')
+        plt.legend()
+        plt.savefig("trajectory_data.svg")
+        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_.pdf trajectory_data.svg")
+        system("rm trajectory_data.svg")
+        system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_.pdf")
+        system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_.png")
+        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_.png")
+
+        plt.close()
     
     if not automate:
         answer = input("Movie (y/n)? ")
@@ -645,12 +673,43 @@ except KeyboardInterrupt:
     # Create animation
     fps = N/best_t_value
 
-    ani = animation.FuncAnimation(
-        fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps
-    )
+    ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
     
     # Save the animation
     ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
     system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4")
     print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_.mp4'")
-            
+    plt.close()
+
+    if produceInverse:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        # Initialize plot elements
+        dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
+        curve, = ax.plot([], [], 'b-', lw=2)
+        gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
+
+        # Set plot limits and labels
+        ax.set_xlim(x_range[0], x_range[-1])
+        ax.set_ylim(0, 3)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Potential")
+        ax.legend()
+        ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {-x_start}")
+        sech = lambda x: 1/np.cosh(x)
+        def update(i):
+            t = (i) * (best_t_value / (N - 1))  # Calculate current time
+            y_values = potential(x_range, -xi_values[i])
+            dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
+            curve.set_data(x_range, y_values)
+            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
+            ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {-x_values[0]:.1f}, t = {t:.2f}")
+            return dot, curve, gold_dot
+        ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
+    
+        # Save the animation
+        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_.mp4")
+        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_.mp4'")
+
+
+    plt.close()
