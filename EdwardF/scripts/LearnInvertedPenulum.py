@@ -10,6 +10,7 @@ import csv
 import matplotlib.animation as animation
 from random import choice
 from time import time
+from scipy.optimize import fsolve
 
 #Setting the random seeds!!!
 np.random.seed(42)
@@ -36,9 +37,12 @@ to_time = {"timed": False, "time": 3600}
 criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
 automate = False
 produceInverse = True
+saveLibTorch = True
 
-smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness
-time_penalty_factor = 1e-5 #penalty for taking longer
+smoothness_penalty_factor = 1e-3 # penalty for lack of smoothness of xi
+time_penalty_factor = 1e-3 #penalty for taking longer
+velocity_penalty = 1e-3 #penalty for max(abs(v))
+xi_penalty = 1e-3 #penalty for max(abs(xi))
 
 t_values = np.linspace(1e-8, T, int(T / dt))
 delta_t = t_values[1] - t_values[0]
@@ -71,6 +75,7 @@ class XiModel(nn.Module):
 
 # Instantiate the model
 model = XiModel()
+example = torch.tensor([[0.5]], dtype=torch.float32)
 best_loss = np.inf
 best_t_value = T
 
@@ -104,8 +109,9 @@ print(new_model_path)
 if closest_x == x_start:
     assert(model_path == new_model_path)
 if os.path.exists(model_path) and load_model:
-    model.load_state_dict(torch.load(model_path, weights_only=True))
+    model.load_state_dict(torch.load(model_path))#, weights_only=True))
     print("Model loaded from file.")
+    print(f"Example input of {example} yields: {model(example)[0, 0]}")
 elif os.path.exists(model_path) and not load_model:
     print("Model exists but not loaded.")
 else:
@@ -164,11 +170,12 @@ But of course, I want to encourage better solutions earlier on, so I'll multiply
 '''
 
 def loss_func():
-    global x_start, v_start, m, delta_t, x_th, v_th, smoothness_penalty_factor, time_penalty_factor
+    global x_start, v_start, m, delta_t, x_th, v_th, smoothness_penalty_factor, time_penalty_factor, velocity_penalty
     x, v = x_start, v_start
 #    a = force(torch.tensor(x_start), xi(0.0)) / m
     smoothness_penalty = 0.0  # Initialize smoothness penalty
     xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
+    v_values_temp = [] # Temporary storage for v values to calculate max velocity
     best_loss = np.inf
     best_time = np.inf
     best_time_idx = np.inf
@@ -177,6 +184,7 @@ def loss_func():
         xi_t = xi(t)  # Compute xi(t) at time t
         xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
         x, v = rk4_step(x, v, xi_t, dt)
+        v_values_temp.append(abs(v))
         
         x_star_x_diff = (x_star - x)
         x_star_xi_diff = (x_star - xi(t))
@@ -189,14 +197,23 @@ def loss_func():
                 best_loss = MSE
                 best_time_idx = i
                 
-        
+    v_best = v_values_temp[0]
+    xi_best = abs(xi_values_temp[0])
     for i in range(1, int(best_time_idx)+1):
         delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
         derivative = delta_xi / delta_t
         smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
+        if v_values_temp[i] > v_best:
+            v_best = v_values_temp[i]
+        abs_xi_temp_i = abs(xi_values_temp[i])
+        if abs_xi_temp_i > xi_best:
+            xi_best = abs_xi_temp_i
+            
     smoothness_penalty /= best_time_idx
     
-    return (best_loss + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time), best_time
+#    print(f"best_loss = {best_loss:.2f}, smoothness_penalty = {smoothness_penalty:.2f}, best_time = {best_time:.2f}, v_best = {v_best:.2f}, abs_xi_temp_i = {abs_xi_temp_i:.2f}")
+#    exit()
+    return (best_loss + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*abs_xi_temp_i), best_time
 
 # Loss function for optimization
 
@@ -303,11 +320,10 @@ def newton_method():
             param.copy_(best_params[name])
 
 # Define brute force function
-def brute_force(fine = False, coolingRate = 0.99, anneal = False):
+def brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 1):
     global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
     # Extract model parameters
     current_params = {name: param.clone() for name, param in model.named_parameters()}
-    initial_temp = 1
     temperature = initial_temp
     cooling_rate=coolingRate
     
@@ -379,10 +395,6 @@ def brute_force(fine = False, coolingRate = 0.99, anneal = False):
     with torch.no_grad():
         for name, param in model.named_parameters():
             param.copy_(best_params[name])
-
-# Usage Example
-# Initialize neural network
-xi_model = XiModel()
 
 # Loss function for optimization
 #def loss_func():
@@ -457,8 +469,8 @@ xi_model = XiModel()
 #    return total_loss, time_end
 
 # Training loop
-learning_rate = 0.00001
-Algorithm = "adamax"
+learning_rate = 0.1
+Algorithm = "lbfgs"
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 if Algorithm == "lbfgs":
     optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -484,28 +496,23 @@ start_time = time()
 try:
     if Algorithm == "brute force":
         # Define constants and call the simulated annealing function
-        brute_force(fine = True, coolingRate = 0.99, anneal = True)
+        brute_force(fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1)
     elif Algorithm == "newton":
         newton_method()
     else:
         while criterion():
             optimizer.zero_grad()  # Zero the gradients
             loss_value, t_value = loss_func()
-            loss_value.backward()  # Compute gradients
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-    #        optimizer.step()  # Update weights
-            if Algorithm == "lbfgs":
-                optimizer.step(closure)
-            else:
-                optimizer.step()
             
-            print(f'Epoch {epoch}, Loss: {loss_value.item()}')
-
             # Check if the current loss is the best (lowest)
             if loss_value.item() < best_loss:
                 best_loss = loss_value.item()  #Update best loss
                 best_t_value = t_value #Update corresponding best time
                 torch.save(model.state_dict(), new_model_path)  # Save the best model
+                if saveLibTorch:
+                    traced_script_module = torch.jit.trace(model, example)
+                    traced_script_module.save("traced_resnet_model.pt")
+                    print("libtorch version saved")
                 df[x_start] = (best_loss, best_t_value)
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
@@ -517,6 +524,16 @@ try:
                         writer.writerow([key, *value])  # Write key-value pairs
 
                 print(f"Best model saved with loss: {best_loss}")
+
+            loss_value.backward()  # Compute gradients
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    #        optimizer.step()  # Update weights
+            if Algorithm == "lbfgs":
+                optimizer.step(closure)
+            else:
+                optimizer.step()
+            
+            print(f'Epoch {epoch}, Loss: {loss_value.item()}')
 
             if plot_progress and epoch % 5 == 0:
                 x_values, v_values, xi_values = [], [], []
@@ -552,7 +569,7 @@ except KeyboardInterrupt:
     
     model = XiModel()
     print("New model path loaded =",new_model_path)
-    model.load_state_dict(torch.load(new_model_path, weights_only=True))
+    model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
     xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
     # Save data to CSV
     data_path = "../dataFiles/trajectory_data.csv"
@@ -636,7 +653,7 @@ except KeyboardInterrupt:
     # Initialize plot elements
     dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
     curve, = ax.plot([], [], 'b-', lw=2)
-    gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
+#    gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
 
     # Set plot limits and labels
     ax.set_xlim(x_range[0], x_range[-1])
@@ -655,10 +672,10 @@ except KeyboardInterrupt:
 
     # Initialization function
     def init():
-        gold_dot.set_data([], [])
+#        gold_dot.set_data([], [])
         dot.set_data([], [])
         curve.set_data([], [])
-        return dot, curve, gold_dot
+        return dot, curve#, gold_dot
 
         # Update function
     def update(i):
@@ -666,9 +683,9 @@ except KeyboardInterrupt:
         y_values = potential(x_range, xi_values[i])
         dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
         curve.set_data(x_range, y_values)
-        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-        ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_values[0]:.1f}, t = {t:.2f}")
-        return dot, curve, gold_dot
+#        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
+        ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {x_values[0]:.1f}, $x^*$ = 0, t = {t:.2f}")
+        return dot, curve#, gold_dot
 
     # Create animation
     fps = N/best_t_value
@@ -686,7 +703,7 @@ except KeyboardInterrupt:
         # Initialize plot elements
         dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
         curve, = ax.plot([], [], 'b-', lw=2)
-        gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
+#        gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
 
         # Set plot limits and labels
         ax.set_xlim(x_range[0], x_range[-1])
@@ -701,9 +718,9 @@ except KeyboardInterrupt:
             y_values = potential(x_range, -xi_values[i])
             dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
             curve.set_data(x_range, y_values)
-            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
-            ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {-x_values[0]:.1f}, t = {t:.2f}")
-            return dot, curve, gold_dot
+#            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
+            ax.set_title(f"Particle Movement and Potential Curve for $x_0$ = {-x_values[0]:.1f}, $x^*$ = 0, t = {t:.2f}")
+            return dot, curve#, gold_dot
         ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
     
         # Save the animation

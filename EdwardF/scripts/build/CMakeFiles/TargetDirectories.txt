@@ -1,0 +1,3 @@
+/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/build/CMakeFiles/LibTorchExample.dir
+/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/build/CMakeFiles/edit_cache.dir
+/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/build/CMakeFiles/rebuild_cache.dir
