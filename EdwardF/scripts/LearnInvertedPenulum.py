@@ -38,6 +38,7 @@ criterion = lambda: True if not to_time["timed"] else time() - start_time < to_t
 automate = False
 produceInverse = True
 saveLibTorch = True
+useLibTorch = True
 
 smoothness_penalty_factor = 1e-3 # penalty for lack of smoothness of xi
 time_penalty_factor = 1e-3 #penalty for taking longer
@@ -109,20 +110,17 @@ print(new_model_path)
 if closest_x == x_start:
     assert(model_path == new_model_path)
 if os.path.exists(model_path) and load_model:
-    model.load_state_dict(torch.load(model_path))#, weights_only=True))
+    if useLibTorch:
+        model = torch.jit.load(f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_.pt")
+        new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_.pt"
+    else:
+        model.load_state_dict(torch.load(model_path))#, weights_only=True))
     print("Model loaded from file.")
     print(f"Example input of {example} yields: {model(example)[0, 0]}")
 elif os.path.exists(model_path) and not load_model:
     print("Model exists but not loaded.")
 else:
     print("No saved model found.")
-
-print("closest_x =",closest_x)
-print("best_loss =",best_loss)
-if not automate:
-    ans = input("Proceed? (y/n): ")
-    if ans.lower() != 'y':
-        exit()
 
 def potential(x, xi):
     V_MT = 0.5 * Omega * Omega * x * x
@@ -186,6 +184,10 @@ def loss_func():
         x, v = rk4_step(x, v, xi_t, dt)
         v_values_temp.append(abs(v))
         
+#        print(f"i = {i}, x = {x}, v = {v}")
+#        print(f"t = {t}, xi(t) = {xi_values_temp[-1]}\n")
+        
+        
         x_star_x_diff = (x_star - x)
         x_star_xi_diff = (x_star - xi(t))
         xi_0 = xi(0)
@@ -202,7 +204,7 @@ def loss_func():
     for i in range(1, int(best_time_idx)+1):
         delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
         derivative = delta_xi / delta_t
-        smoothness_penalty += torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
+        smoothness_penalty += derivative*derivative#torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
         if v_values_temp[i] > v_best:
             v_best = v_values_temp[i]
         abs_xi_temp_i = abs(xi_values_temp[i])
@@ -225,7 +227,7 @@ def closure():
 
 # Define Newton's method function
 def newton_method():
-    global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values, criterion
+    global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values, criterion, saveLibTorch
     # Extract model parameters
     current_params = {name: param.clone() for name, param in model.named_parameters()}
     
@@ -294,7 +296,11 @@ def newton_method():
                 for name, param in model.named_parameters():
                     param.copy_(best_params[name])
             # Save best model
-            torch.save(model.state_dict(), new_model_path)
+            torch.save(model.state_dict(), new_model_path if new_model_path.endswith(".pth") else new_model_path+"h")  # Save the best model
+            if saveLibTorch:
+                traced_script_module = torch.jit.trace(model, example)
+                traced_script_module.save(new_model_path.replace(".pth",".pt"))
+                print("libtorch version saved")
             df[x_start] = (best_loss.detach().numpy(), best_t_value)
             if best_t_value != t_test_values[-1]:
                 print(f"New best t value = {best_t_value}")
@@ -366,9 +372,12 @@ def brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp =
             with torch.no_grad():
                 for name, param in model.named_parameters():
                     param.copy_(best_params[name])
-                            
-                            
-            torch.save(model.state_dict(), new_model_path)  # Save the best model
+       
+            torch.save(model.state_dict(), new_model_path if new_model_path.endswith(".pth") else new_model_path+"h")  # Save the best model
+            if saveLibTorch:
+                traced_script_module = torch.jit.trace(model, example)
+                traced_script_module.save(new_model_path.replace(".pth",".pt"))
+                print("libtorch version saved")
             df[x_start] = (best_loss.detach().numpy(), best_t_value)
             if best_t_value != t_test_values[-1]:
                 print(f"New best t value = {best_t_value}")
@@ -468,9 +477,19 @@ def brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp =
 #    total_loss = MSE + factor * smoothness_penalty  # Adjust the smoothness_penalty to tune the smoothness constraint
 #    return total_loss, time_end
 
+print("closest_x =",closest_x)
+print("best_loss =",best_loss)
+print("Current loss and time =", loss_func())
+#model = torch.jit.load("../NeuralNetworkData/xi_model_IC_2_point_225840410642715_.pt")
+#print("Current loss and time =", loss_func())
+if not automate:
+    ans = input("Proceed? (y/n): ")
+    if ans.lower() != 'y':
+        exit()
+
 # Training loop
-learning_rate = 0.1
-Algorithm = "lbfgs"
+learning_rate = 0.00025
+Algorithm = "adamax"
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 if Algorithm == "lbfgs":
     optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -508,10 +527,10 @@ try:
             if loss_value.item() < best_loss:
                 best_loss = loss_value.item()  #Update best loss
                 best_t_value = t_value #Update corresponding best time
-                torch.save(model.state_dict(), new_model_path)  # Save the best model
+                torch.save(model.state_dict(), new_model_path if new_model_path.endswith(".pth") else new_model_path+"h")  # Save the best model
                 if saveLibTorch:
                     traced_script_module = torch.jit.trace(model, example)
-                    traced_script_module.save("traced_resnet_model.pt")
+                    traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     print("libtorch version saved")
                 df[x_start] = (best_loss, best_t_value)
                 if best_t_value != t_test_values[-1]:
@@ -569,7 +588,10 @@ except KeyboardInterrupt:
     
     model = XiModel()
     print("New model path loaded =",new_model_path)
-    model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
+    if useLibTorch:
+        model = torch.jit.load(new_model_path)
+    else:
+        model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
     xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
     # Save data to CSV
     data_path = "../dataFiles/trajectory_data.csv"

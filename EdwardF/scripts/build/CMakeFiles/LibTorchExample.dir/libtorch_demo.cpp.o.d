@@ -975,6 +975,7 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__filesystem/path_iterator.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__filesystem/recursive_directory_iterator.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__filesystem/u8path.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/sstream \
   /usr/local/libtorch/include/torch/script.h \
   /usr/local/libtorch/include/torch/csrc/api/include/torch/types.h \
   /usr/local/libtorch/include/ATen/ATen.h \
@@ -994,7 +995,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: \
   /usr/local/libtorch/include/c10/util/StringUtil.h \
   /usr/local/libtorch/include/c10/util/string_utils.h \
   /usr/local/libtorch/include/c10/util/string_view.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/sstream \
   /usr/local/libtorch/include/ATen/CPUGeneratorImpl.h \
   /usr/local/libtorch/include/ATen/core/Generator.h \
   /usr/local/libtorch/include/c10/util/intrusive_ptr.h \
