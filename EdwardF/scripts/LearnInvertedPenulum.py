@@ -195,6 +195,10 @@ def loss_func():
         if i > 1:
             MSE = (x_star_x_diff*x_star_x_diff) + (v*v) + (x_star_xi_diff*x_star_xi_diff) + (xi_0*xi_0)
             if MSE < best_loss:
+#                print(f"x_star_x_diff*x_star_x_diff = {x_star_x_diff*x_star_x_diff}")
+#                print(f"v*v = {v*v}")
+#                print(f"x_star_xi_diff*x_star_xi_diff = {x_star_xi_diff*x_star_xi_diff}")
+#                print(f"xi_0*xi_0 = {xi_0*xi_0}")
                 best_time = t
                 best_loss = MSE
                 best_time_idx = i
@@ -213,9 +217,9 @@ def loss_func():
             
     smoothness_penalty /= best_time_idx
     
-#    print(f"best_loss = {best_loss:.2f}, smoothness_penalty = {smoothness_penalty:.2f}, best_time = {best_time:.2f}, v_best = {v_best:.2f}, abs_xi_temp_i = {abs_xi_temp_i:.2f}")
+#    print(f"best_loss = {best_loss}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
 #    exit()
-    return (best_loss + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*abs_xi_temp_i), best_time
+    return (best_loss + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
 # Loss function for optimization
 
@@ -488,8 +492,8 @@ if not automate:
         exit()
 
 # Training loop
-learning_rate = 0.00025
-Algorithm = "adamax"
+learning_rate = 0.0001
+Algorithm = "adam"
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 if Algorithm == "lbfgs":
     optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)

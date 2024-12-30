@@ -8,8 +8,48 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <random>
 #include <torch/script.h> // One-stop header.
 #include <torch/torch.h>
+
+// Constants for the potential
+constexpr double m = 1.0;           // Mass
+constexpr double Omega = 0.2;       // Frequency of the harmonic trap
+constexpr double A = 1.0;           // Amplitude of the Gaussian potential
+constexpr double sigma = 1.0;       // Width of the Gaussian potential
+constexpr double T = 10.0;          // Final time
+constexpr double dt = 0.01;         // Time step
+constexpr double x_star = 0.0;      // Final position sought
+constexpr double v_th = 0.01;       // Velocity threshold, not used currently
+constexpr double x_th = 0.01;       // Position threshold, not used currently
+
+constexpr bool load_model = true;
+constexpr bool automate = false;
+constexpr bool produceInverse = true;
+constexpr bool saveLibTorch = true;
+
+// Path to the weights file
+std::string weight_file = "../../NeuralNetworkData/xi_model_IC_2_point_225840410642715_.pt";
+
+std::unordered_map<std::string, int> to_time = {{"timed", 0}, {"time", 3600}};
+auto start_time = std::time(nullptr);
+
+// Penalty factors
+constexpr double smoothness_penalty_factor = 1e-3;
+constexpr double time_penalty_factor = 1e-3;
+constexpr double velocity_penalty = 1e-3;
+constexpr double xi_penalty = 1e-3;
+double x_start_val = 0.0;
+constexpr double v_start_val = 0.0; // Initial velocity
+
+auto x_start = torch::tensor({{x_start_val}}, torch::dtype(torch::kFloat32));
+auto v_start = torch::tensor({{v_start_val}}, torch::dtype(torch::kFloat32));
+
+constexpr double learning_rate = 1; //learning rate
+torch::jit::script::Module myModule; //the model for xi(t)
+// Generate t_values and delta_t
+auto t_values = torch::linspace(1e-8, T, static_cast<int>(T / dt));
+auto delta_t = t_values[1].item<double>() - t_values[0].item<double>();
 
 // Helper function to replace '.' with "_point_" in a string representation of a double
 std::string flt_to_str(double flt)
@@ -28,46 +68,10 @@ namespace torch
     }
 }
 
-// Constants for the potential
-constexpr double m = 1.0;           // Mass
-constexpr double Omega = 0.2;       // Frequency of the harmonic trap
-constexpr double A = 1.0;           // Amplitude of the Gaussian potential
-constexpr double sigma = 1.0;       // Width of the Gaussian potential
-constexpr double T = 10.0;          // Final time
-constexpr double dt = 0.01;         // Time step
-constexpr double x_star = 0.0;      // Final position sought
-constexpr double v_th = 0.01;       // Velocity threshold, not used currently
-constexpr double x_th = 0.01;       // Position threshold, not used currently
-
-constexpr bool load_model = true;
-constexpr bool automate = false;
-constexpr bool produceInverse = true;
-constexpr bool saveLibTorch = true;
-
-std::unordered_map<std::string, int> to_time = {{"timed", 0}, {"time", 3600}};
-auto start_time = std::time(nullptr);
-
 bool criterion()
 {
     return !to_time["timed"] || (std::time(nullptr) - start_time < to_time["time"]);
 }
-
-// Penalty factors
-constexpr double smoothness_penalty_factor = 1e-3;
-constexpr double time_penalty_factor = 1e-3;
-constexpr double velocity_penalty = 1e-3;
-constexpr double xi_penalty = 1e-3;
-
-double x_start_val = 0.0;
-double v_start_val = 0.0; // Initial velocity
-
-auto x_start = torch::tensor({{x_start_val}}, torch::dtype(torch::kFloat32));
-auto v_start = torch::tensor({{v_start_val}}, torch::dtype(torch::kFloat32));
-
-torch::jit::script::Module myModule; //the model for xi(t)
-// Generate t_values and delta_t
-auto t_values = torch::linspace(1e-8, T, static_cast<int>(T / dt));
-auto delta_t = t_values[1].item<double>() - t_values[0].item<double>();
 
 // Compute the force (negative derivative of potential)
 torch::Tensor force(const torch::Tensor& x, const torch::Tensor& xi)
@@ -94,28 +98,35 @@ torch::Tensor dvdt(const torch::Tensor& x, const torch::Tensor& xi)
 // RK4 step for updating state
 std::pair<torch::Tensor, torch::Tensor> rk4_step(const torch::Tensor& x, const torch::Tensor& v, const torch::Tensor& xi_t, double dt)
 {
+    // Ensure all inputs are tensors that require gradients
+    auto x_grad = x.requires_grad() ? x : x.requires_grad_(true);
+    auto v_grad = v.requires_grad() ? v : v.requires_grad_(true);
+    auto xi_grad = xi_t.requires_grad() ? xi_t : xi_t.requires_grad_(true);
+
     // Calculate k1
-    auto k1_x = dxdt(v);
-    auto k1_v = dvdt(x, xi_t);
+    auto k1_x = dxdt(v_grad);
+    auto k1_v = dvdt(x_grad, xi_grad);
 
     // Calculate k2
-    auto k2_x = dxdt(v + 0.5 * dt * k1_v);
-    auto k2_v = dvdt(x + 0.5 * dt * k1_x, xi_t);
+    auto k2_x = dxdt(v_grad + 0.5 * dt * k1_v);
+    auto k2_v = dvdt(x_grad + 0.5 * dt * k1_x, xi_grad);
 
     // Calculate k3
-    auto k3_x = dxdt(v + 0.5 * dt * k2_v);
-    auto k3_v = dvdt(x + 0.5 * dt * k2_x, xi_t);
+    auto k3_x = dxdt(v_grad + 0.5 * dt * k2_v);
+    auto k3_v = dvdt(x_grad + 0.5 * dt * k2_x, xi_grad);
 
     // Calculate k4
-    auto k4_x = dxdt(v + dt * k3_v);
-    auto k4_v = dvdt(x + dt * k3_x, xi_t);
+    auto k4_x = dxdt(v_grad + dt * k3_v);
+    auto k4_v = dvdt(x_grad + dt * k3_x, xi_grad);
 
     // Update x and v using RK4 formula
-    auto x_new = x + (dt / 6.0) * (k1_x + 2.0 * k2_x + 2.0 * k3_x + k4_x);
-    auto v_new = v + (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
+    auto x_new = x_grad + (dt / 6.0) * (k1_x + 2.0 * k2_x + 2.0 * k3_x + k4_x);
+    auto v_new = v_grad + (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
 
+    // Return updated state
     return std::make_pair(x_new, v_new);
 }
+
 
 // Function to compute xi(t) using the model
 torch::Tensor xi(double t)
@@ -162,20 +173,28 @@ std::pair<torch::Tensor, double> loss_func()
         auto step_result = rk4_step(x, v, xi_t, dt);
         x = step_result.first;
         v = step_result.second;
-        std::cout << "i = " << i << ", x = " << x.item<double>() << ", v = "
-        << v.item<double>() << "\nt = " << t << ", xi(t) = " << xi_values_temp.back() << "\n\n";
+//        std::cout << "i = " << i << ", x = " << x.item<double>() << ", v = " << v.item<double>() << "\nt = " << t << ", xi(t) = " << xi_values_temp.back() << "\n\n";
         v_values_temp.push_back(std::abs(v.item<double>()));
 
         // Compute loss terms
         auto x_star_x_diff = (x_star - x);
         auto x_star_xi_diff = (x_star - xi(t));
         auto xi_0 = xi(0);
+//        double x_star_x_diff = (x_star - x.item<double>());
+//        double x_star_xi_diff = (x_star - xi(t).item<double>());
+//        double xi_0 = xi(0).item<double>();
+//        double v_val = v.item<double>();
         if (i > 1)
         {
-            auto MSE = torch::pow(x_star_x_diff, 2) + torch::pow(v, 2) +
-                       torch::pow(x_star_xi_diff, 2) + torch::pow(xi_0, 2);
+            auto MSE = x_star_x_diff*x_star_x_diff + v*v + x_star_xi_diff*x_star_xi_diff + xi_0*xi_0;
+//            double MSE = x_star_x_diff*x_star_x_diff + v_val*v_val + x_star_xi_diff*x_star_xi_diff + xi_0*xi_0;
             if (MSE.item<double>() < best_loss)
             {
+//                std::cout << "x_star_x_diff*x_star_x_diff = " << x_star_x_diff*x_star_x_diff << '\n';
+//                std::cout << "v*v = " << v*v << '\n';
+//                std::cout << "x_star_xi_diff*x_star_xi_diff = " << x_star_xi_diff*x_star_xi_diff << '\n';
+//                std::cout << "xi_0*xi_0 = " << xi_0*xi_0 << '\n';
+
                 best_loss = MSE.item<double>();
                 best_time = t;
                 best_time_idx = i;
@@ -202,7 +221,7 @@ std::pair<torch::Tensor, double> loss_func()
     }
 
     smoothness_penalty /= static_cast<double>(best_time_idx);
-
+//    std::cout << "best_loss = " << best_loss << ", smoothness_penalty = " << smoothness_penalty << "\nbest_time = " << best_time << ", v_best = " << v_best << "\nxi_best = " << xi_best << '\n';
     // Compute final loss
     auto loss = best_loss +
                 smoothness_penalty_factor * smoothness_penalty +
@@ -210,9 +229,19 @@ std::pair<torch::Tensor, double> loss_func()
                 velocity_penalty * v_best +
                 xi_penalty * xi_best;
 
-    return std::make_pair(torch::tensor(loss), best_time);
+    return std::make_pair(torch::tensor(loss).requires_grad_(true), best_time);
 }
 
+// Convert module parameters to a vector of Tensors
+std::vector<torch::Tensor> get_parameters(const torch::jit::script::Module& myModule)
+{
+    std::vector<torch::Tensor> params;
+    for (const auto& p : myModule.parameters())
+    {
+        params.push_back(p);
+    }
+    return params;
+}
 
 int main()
 {
@@ -245,9 +274,6 @@ int main()
     std::cout << "Initial conditions loaded:\n";
     std::cout << "x_start = " << x_start << '\n';
     std::cout << "v_start = " << v_start << '\n';
-
-    // Path to the weights file
-    std::string weight_file = "../../NeuralNetworkData/xi_model_IC_2_point_225840410642715_.pt";
 
     // Check if the file exists
     if (!std::filesystem::exists(weight_file))
@@ -379,6 +405,70 @@ int main()
         }
     }
     
+    // Convert the parameters from the module
+    std::vector<torch::Tensor> parameters = get_parameters(myModule);
+    // Declare the Adam optimizer
+    torch::optim::Adam optimizer(parameters, torch::optim::AdamOptions(learning_rate)); 
+    
+//    std::cout << "t_test_values[-1].item<double>() = " << t_test_values[-1].item<double>() << '\n';
+    
+//    int num_params = 0, num_param = 0, random_param;
+//    for (const auto& param: myModule.parameters())
+//    {
+//        num_params++;
+//    }
+//    std::cout << "num_params = " << num_params << '\n';
+//    // Create a random device to obtain a seed for the random number engine
+//    std::random_device rd;
+//
+//    // Create a Mersenne Twister engine with the seed
+//    std::mt19937 gen(rd());
+//
+//    // Create a uniform integer distribution between 0 and num_params
+//    std::uniform_int_distribution<> dis(0, num_params);
+    
+    long epoch = 0;
+    while (criterion())
+    {
+        optimizer.zero_grad(); // Zero the gradients 
+        // Compute the loss and time value
+        auto [loss_value, t_value] = loss_func();
+//        std::cout << myModule.parameters() << '\n';
+        // Check if the current loss is the best (lowest)
+        if (loss_value.item<double>() < best_loss)
+        {
+            best_loss = loss_value.item<double>();  // Update best loss
+            best_t_value = t_value;  // Update corresponding best time
+
+            // Save the model state
+            myModule.save(weight_file);
+            std::cout << "LibTorch version saved" << '\n';
+
+            // Adjust `t_test_values` if `best_t_value` changed
+            if (best_t_value != t_test_values[-1].item<double>())
+            {
+                std::cout << "New best t value = " << best_t_value << '\n';
+                // Calculate the absolute differences
+                auto differences = torch::abs(t_values - best_t_value);
+
+                // Find the index of the minimum difference
+                int64_t closest_index = differences.argmin().item<int64_t>();
+
+                // Use the index to extract the desired slice
+                t_test_values = t_values.index({torch::arange(0, closest_index + 1, torch::kInt64)});
+            }
+
+            std::cout << "Best model saved with loss: " << best_loss << '\n';
+        }
+        // Backpropagation
+        loss_value.backward(); 
+        torch::nn::utils::clip_grad_norm_(parameters, 1.0); // Clip gradients to avoid explosion
+        optimizer.step(); // Update weights 
+
+        std::cout << "Epoch " << epoch++ << ", Loss: " << loss_value.item<double>() << std::endl;
+
+    }
+
     return 0;
 }
 
@@ -388,3 +478,4 @@ int main()
  cmake --build . --config Release
  ./LibTorchExample
  */
+

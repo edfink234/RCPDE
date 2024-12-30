@@ -588,10 +588,43 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/transform_exclusive_scan.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/transform_inclusive_scan.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/transform_reduce.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/bernoulli_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/binomial_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/cauchy_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/chi_squared_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/clamp_to_integral.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/default_random_engine.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/discard_block_engine.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/discrete_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/exponential_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/extreme_value_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/fisher_f_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/gamma_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/generate_canonical.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/geometric_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/independent_bits_engine.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/is_seed_sequence.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/is_valid.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/knuth_b.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/linear_congruential_engine.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/log2.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/lognormal_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/mersenne_twister_engine.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/negative_binomial_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/normal_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/piecewise_constant_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/piecewise_linear_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/poisson_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/random_device.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/ranlux.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/seed_seq.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/shuffle_order_engine.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/student_t_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/subtract_with_carry_engine.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/uniform_int_distribution.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/uniform_random_bit_generator.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/uniform_real_distribution.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/weibull_distribution.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__ranges/access.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__ranges/concepts.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__ranges/container_compatible_range.h \
@@ -859,6 +892,7 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/ostream \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/print \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/queue \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/random \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/ratio \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/set \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/shared_mutex \
@@ -5925,8 +5959,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/data/detail/queue.h:
 
-/usr/local/libtorch/include/torch/csrc/api/include/torch/data/datasets/tensor.h:
-
 /usr/local/libtorch/include/torch/csrc/api/include/torch/data/datasets/stateful.h:
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/data/datasets/mnist.h:
@@ -6437,8 +6469,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/sspaddmm_native.h:
 
-/usr/local/libtorch/include/ATen/ops/squeeze_native.h:
-
 /usr/local/libtorch/include/ATen/ops/xlogy_native.h:
 
 /usr/local/libtorch/include/ATen/ops/square_native.h:
@@ -6525,8 +6555,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/special_ndtr_native.h:
 
-/usr/local/libtorch/include/ATen/ops/special_ndtr.h:
-
 /usr/local/libtorch/include/ATen/ops/subtract_native.h:
 
 /usr/local/libtorch/include/ATen/ops/special_multigammaln_native.h:
@@ -6558,8 +6586,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/special_log_ndtr.h:
 
 /usr/local/libtorch/include/ATen/ops/special_log1p_native.h:
-
-/usr/local/libtorch/include/ATen/ops/special_log1p.h:
 
 /usr/local/libtorch/include/ATen/ops/special_legendre_polynomial_p_ops.h:
 
@@ -6602,8 +6628,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/special_expm1_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/special_expm1.h:
-
-/usr/local/libtorch/include/ATen/ops/special_expit_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/special_expit.h:
 
@@ -7027,8 +7051,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/reflection_pad3d_backward_meta.h:
 
-/usr/local/libtorch/include/ATen/ops/reflection_pad3d_backward.h:
-
 /usr/local/libtorch/include/ATen/ops/upsample_bilinear2d_backward_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/reflection_pad2d_native.h:
@@ -7130,8 +7152,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/quantize_per_tensor_native.h:
 
 /usr/local/libtorch/include/ATen/ops/quantize_per_tensor_dynamic_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/quantize_per_channel_native.h:
 
 /usr/local/libtorch/include/ATen/ops/quantize_per_channel.h:
 
@@ -8715,6 +8735,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/fix.h:
 
+/usr/local/libtorch/include/ATen/ops/fill_diagonal_native.h:
+
+/usr/local/libtorch/include/ATen/ops/fill_diagonal.h:
+
 /usr/local/libtorch/include/ATen/ops/fill_native.h:
 
 /usr/local/libtorch/include/ATen/ops/fill.h:
@@ -8727,21 +8751,39 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/fft_rfftn_native.h:
 
+/usr/local/libtorch/include/ATen/ops/fft_rfftn.h:
+
 /usr/local/libtorch/include/ATen/ops/fft_rfftfreq_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_nested_sum_backward.h:
+/usr/local/libtorch/include/ATen/ops/fft_rfft2_native.h:
 
-/usr/local/libtorch/include/ATen/ops/fft_rfftfreq_native.h:
+/usr/local/libtorch/include/ATen/ops/fft_rfft2.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_rsqrt_ops.h:
+/usr/local/libtorch/include/ATen/ops/fft_rfft.h:
 
-/usr/local/libtorch/include/ATen/ops/fft_rfft_native.h:
+/usr/local/libtorch/include/ATen/ops/range_native.h:
+
+/usr/local/libtorch/include/ATen/ops/linalg_lu_solve_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_irfftn_native.h:
+
+/usr/local/libtorch/include/torch/csrc/api/include/torch/nn/options/transformer.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_irfft_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_irfft.h:
 
 /usr/local/libtorch/include/ATen/ops/upsample_linear1d_backward_native.h:
 
 /usr/local/libtorch/include/ATen/ops/fft_ihfftn_ops.h:
 
+/usr/local/libtorch/include/ATen/ops/fft_ihfftn_native.h:
+
 /usr/local/libtorch/include/ATen/ops/fft_ihfftn.h:
+
+/usr/local/libtorch/include/torch/csrc/autograd/variable_info.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_ihfft_native.h:
 
 /usr/local/libtorch/include/torch/csrc/jit/api/method.h:
 
@@ -8752,16 +8794,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_spdiags_native.h:
 
 /usr/local/libtorch/include/ATen/ops/fft_ihfft2.h:
-
-/usr/local/libtorch/include/ATen/ops/cartesian_prod.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_upper_bound.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_polymorphic.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_pow_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_ihfft.h:
 
 /usr/local/libtorch/include/ATen/core/boxing/BoxedKernel.h:
 
@@ -8830,8 +8862,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/convert_to_integral.h:
 
 /usr/local/libtorch/include/ATen/ops/fbgemm_pack_gemm_matrix_fp16_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_rfft.h:
 
 /usr/local/libtorch/include/ATen/ops/fbgemm_pack_gemm_matrix_fp16.h:
 
@@ -9125,9 +9155,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/cumprod_meta.h:
 
-/usr/local/libtorch/include/ATen/ops/_fake_quantize_learnable_per_channel_affine_backward_ops.h:
-
 /usr/local/libtorch/include/ATen/ops/bitwise_xor_meta.h:
+
+/usr/local/libtorch/include/ATen/ops/_fake_quantize_learnable_per_channel_affine_backward_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_coo_tensor_with_dims.h:
 
@@ -9357,6 +9387,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/col_indices_native.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/generate_canonical.h:
+
 /usr/local/libtorch/include/ATen/ops/col_indices.h:
 
 /usr/local/libtorch/include/ATen/ops/special_exp2.h:
@@ -9388,8 +9420,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/acos_native.h:
 
 /usr/local/libtorch/include/ATen/ops/clamp_meta.h:
-
-/usr/local/libtorch/include/ATen/ops/clamp_max_native.h:
 
 /usr/local/libtorch/include/ATen/core/boxing/KernelFunction_impl.h:
 
@@ -9441,9 +9471,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/chalf.h:
 
-/usr/local/libtorch/include/ATen/ops/_trilinear_ops.h:
-
 /usr/local/libtorch/include/ATen/ops/fft_rfft2_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_trilinear_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/chain_matmul_ops.h:
 
@@ -9598,10 +9628,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_reshape_alias_native.h:
 
 /usr/local/libtorch/include/ATen/ops/bitwise_and_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_log2_native.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_rfftfreq.h:
 
 /usr/local/libtorch/include/ATen/ops/bitwise_and_native.h:
 
@@ -9840,8 +9866,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/arcsin.h:
 
 /usr/local/libtorch/include/ATen/ops/arccos.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_rfftn.h:
 
 /usr/local/libtorch/include/ATen/ops/to_mkldnn_ops.h:
 
@@ -10383,10 +10407,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_upsample_nearest_exact1d.h:
 
-/usr/local/libtorch/include/ATen/ops/item_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_upsample_bilinear2d_aa_backward_native.h:
-
 /usr/local/libtorch/include/ATen/ops/msort_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/erfinv.h:
@@ -10396,8 +10416,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_set_intersection.h:
 
 /usr/local/libtorch/include/ATen/ops/_upsample_bilinear2d_aa.h:
-
-/usr/local/libtorch/include/ATen/ops/_upsample_bicubic2d_aa_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_upsample_bicubic2d_aa_meta.h:
 
@@ -10456,18 +10474,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_unsafe_index_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_unique_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/size_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/linalg_diagonal_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/avg_pool2d.h:
-
-/usr/local/libtorch/include/ATen/ops/_validate_sparse_coo_tensor_args_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/special_ndtri_meta.h:
-
-/usr/local/libtorch/include/ATen/ops/_unique_native.h:
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/data/datasets/base.h:
 
@@ -10628,10 +10634,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/gelu_backward_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_thnn_differentiable_lstm_cell_backward_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_assignable.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_ihfft_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/unique_dim_ops.h:
 
@@ -10819,10 +10821,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_values.h:
-
-/usr/local/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward.h:
-
 /usr/local/libtorch/include/ATen/ops/_sparse_mm_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_mask_projection.h:
@@ -10846,8 +10844,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_sparse_csr_prod_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_csc_tensor_unsafe.h:
-
-/usr/local/libtorch/include/ATen/ops/_sparse_coo_tensor_with_dims_and_tensors_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_standard_gamma_native.h:
 
@@ -11165,10 +11161,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_prelu_kernel_backward_native.h:
 
-/usr/local/libtorch/include/ATen/ops/cosine_embedding_loss_native.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_rfft_ops.h:
-
 /usr/local/libtorch/include/ATen/ops/grid_sampler_3d_backward_native.h:
 
 /usr/local/libtorch/include/ATen/ops/crow_indices.h:
@@ -11243,8 +11235,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_pack_padded_sequence_backward.h:
 
-/usr/local/libtorch/include/ATen/ops/_pack_padded_sequence.h:
-
 /usr/local/libtorch/include/ATen/ops/_nnz_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/stack_native.h:
@@ -11287,9 +11277,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_nested_view_from_jagged_copy_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sqrt_native.h:
-
 /usr/local/libtorch/include/ATen/ops/_jagged_to_padded_dense_forward_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sqrt_native.h:
 
 /usr/local/libtorch/include/ATen/ops/asinh_native.h:
 
@@ -11328,8 +11318,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/copy_backward.h:
 
 /usr/local/libtorch/include/ATen/ops/_nested_tensor_storage_offsets_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/fill_diagonal_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_nested_tensor_storage_offsets_native.h:
 
@@ -11433,6 +11421,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/batch_norm_backward_reduce.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/seed_seq.h:
+
 /usr/local/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_native.h:
 
 /usr/local/libtorch/include/ATen/ops/flatten_dense_tensors.h:
@@ -11444,16 +11434,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/squeeze_copy_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_nested_from_padded_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/replace.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/minmax.h:
-
-/usr/local/libtorch/include/ATen/ops/argsort.h:
-
-/usr/local/libtorch/include/c10/util/hash.h:
-
-/usr/local/libtorch/include/ATen/ops/_nested_from_padded_and_nested_example_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_nested_from_padded_and_nested_example_native.h:
 
@@ -11789,12 +11769,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_is_any_true.h:
 
-/usr/local/libtorch/include/ATen/ops/clamp_max_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__atomic/cxx_atomic_impl.h:
-
-/usr/local/libtorch/include/ATen/ops/_is_all_true_ops.h:
-
 /usr/local/libtorch/include/ATen/ops/binary_cross_entropy_backward_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_is_all_true.h:
@@ -11983,6 +11957,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_functional_sym_constrain_range_ops.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/bernoulli_distribution.h:
+
 /usr/local/libtorch/include/ATen/ops/_functional_sym_constrain_range_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_in_port_t.h:
@@ -12033,11 +12009,7 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_foreach_zero_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_conj_copy_native.h:
-
-/usr/local/libtorch/include/ATen/ops/minimum_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_zero_native.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_zero.h:
 
 /usr/local/libtorch/include/ATen/ops/max_pool2d_with_indices_backward_meta.h:
 
@@ -12045,23 +12017,13 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_foreach_tanh_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_to_sparse_csc_ops.h:
+/usr/local/libtorch/include/ATen/ops/_nested_get_min_seqlen_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/gather_meta.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_tanh_native.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_adjacent_find.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_tan_native.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/aligned_union.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_count.h:
-
-/usr/local/libtorch/include/ATen/ops/unflatten_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_tanh.h:
-
-/usr/local/libtorch/include/ATen/ops/to_dense_native.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_tan.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_sub_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/transform_inclusive_scan.h:
 
@@ -12071,35 +12033,55 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_foreach_sub.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sin.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__stop_token/atomic_unique_lock.h:
 
-/usr/local/libtorch/include/ATen/ops/special_hermite_polynomial_h_meta.h:
+/usr/local/libtorch/include/ATen/ops/convolution_backward_ops.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/fill_n.h:
+/usr/local/libtorch/include/c10/util/quint8.h:
 
-/usr/local/libtorch/include/ATen/ops/cummaxmin_backward_ops.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_fd_zero.h:
 
-/usr/local/libtorch/include/ATen/ops/affine_grid_generator_native.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_sqrt_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/lu_solve_ops.h:
+/usr/local/libtorch/include/torch/csrc/utils/torch_dispatch_mode.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/machine/endian.h:
+/usr/local/libtorch/include/ATen/ops/clip_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sign.h:
+/usr/local/libtorch/include/ATen/ops/_cummin_helper.h:
 
-/usr/local/libtorch/include/ATen/ops/_weight_int4pack_mm_for_cpu_native.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_sqrt.h:
 
-/usr/local/libtorch/include/ATen/ops/special_expit_native.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_sinh_ops.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/pstl_transform_reduce.h:
+/usr/local/libtorch/include/ATen/ops/upsample_nearest3d.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sin_native.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__atomic/atomic_init.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sin_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_foreach_asin_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/binomial_native.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_sin_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sigmoid.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_sin.h:
+
+/usr/local/libtorch/include/ATen/ops/special_softmax.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sign_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/formatter_tuple.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sigmoid_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_rfft_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_rsqrt_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/arctan2_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/t_copy_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_rsqrt_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/limits.h:
 
@@ -12109,6 +12091,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_foreach_round_ops.h:
 
+/usr/local/libtorch/include/ATen/ops/_saturate_weight_to_fp16_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_round_native.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/uniform_random_bit_generator.h:
 
 /usr/local/libtorch/include/ATen/core/boxing/impl/boxing.h:
@@ -12116,6 +12102,16 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_foreach_round.h:
 
 /usr/local/libtorch/include/ATen/ops/_foreach_reciprocal.h:
+
+/usr/local/libtorch/include/ATen/ops/cartesian_prod.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_upper_bound.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_polymorphic.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_ihfft.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_pow_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_foreach_clamp_min.h:
 
@@ -12135,21 +12131,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_foreach_minimum_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_cudnn_rnn.h:
+/usr/local/libtorch/include/ATen/ops/fft_rfftfreq_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_embedding_bag_per_sample_weights_backward.h:
-
-/usr/local/libtorch/include/ATen/ops/_make_per_tensor_quantized_tensor_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_choose_qparams_per_tensor_native.h:
-
-/usr/local/libtorch/include/ATen/ops/argwhere_native.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_minimum.h:
-
-/usr/local/libtorch/include/ATen/ops/special_softmax.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sign_native.h:
+/usr/local/libtorch/include/ATen/ops/_nested_sum_backward.h:
 
 /usr/local/libtorch/include/c10/util/env.h:
 
@@ -12337,6 +12321,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_foreach_atan.h:
 
+/usr/local/libtorch/include/ATen/ops/binomial_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sigmoid.h:
+
 /usr/local/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_copy.h:
 
 /usr/local/libtorch/include/ATen/ops/_lstm_mps_native.h:
@@ -12387,14 +12375,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_fft_r2c_ops.h:
 
-/usr/local/libtorch/include/ATen/LinalgBackend.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/rank.h:
-
-/usr/local/libtorch/include/ATen/ops/_fft_r2c_native.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_rfft2_native.h:
-
 /usr/local/libtorch/include/ATen/ops/_thnn_fused_lstm_cell_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/bitset:
@@ -12435,6 +12415,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_fake_quantize_learnable_per_channel_affine_backward_native.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/independent_bits_engine.h:
+
 /usr/local/libtorch/include/ATen/ops/_euclidean_dist.h:
 
 /usr/local/libtorch/include/ATen/ops/maximum_native.h:
@@ -12442,8 +12424,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/max_element.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_backends/cpu_backends/for_each.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sub_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_empty_affine_quantized_ops.h:
 
@@ -12533,6 +12513,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_dim_arange_native.h:
 
+/usr/local/libtorch/include/ATen/LinalgBackend.h:
+
+/usr/local/libtorch/include/ATen/ops/_fft_r2c_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/rank.h:
+
 /usr/local/libtorch/include/ATen/ops/_dimI_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/linalg_vander.h:
@@ -12554,14 +12540,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_cslt_compress_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_cummin_helper_ops.h:
-
-/usr/local/libtorch/include/torch/csrc/utils/torch_dispatch_mode.h:
-
-/usr/local/libtorch/include/ATen/ops/clip_native.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sqrt.h:
-
-/usr/local/libtorch/include/ATen/ops/_cummin_helper.h:
 
 /usr/local/libtorch/include/torch/csrc/jit/frontend/script_type_parser.h:
 
@@ -12595,16 +12573,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_cufft_get_plan_cache_size_ops.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__stop_token/atomic_unique_lock.h:
-
-/usr/local/libtorch/include/ATen/ops/convolution_backward_ops.h:
-
-/usr/local/libtorch/include/c10/util/quint8.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_fd_zero.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sqrt_ops.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_u_int8_t.h:
 
 /usr/local/libtorch/include/ATen/ops/_cufft_get_plan_cache_size.h:
@@ -12621,6 +12589,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_cufft_clear_plan_cache_ops.h:
 
+/usr/local/libtorch/include/ATen/ops/_foreach_tan_ops.h:
+
 /usr/local/libtorch/include/ATen/ops/sym_storage_offset_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_shuffle.h:
@@ -12628,8 +12598,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/is_set_to.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/strip_signature.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_tan_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_cudnn_rnn_native.h:
 
@@ -12847,6 +12815,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_to_sparse_bsc.h:
 
+/usr/local/libtorch/include/ATen/ops/fft_rfftfreq.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_log2_native.h:
+
 /usr/local/libtorch/include/ATen/ops/_fill_mem_eff_dropout_mask_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/format_fwd.h:
@@ -12860,6 +12832,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/avg_pool2d_backward.h:
 
 /usr/local/libtorch/include/ATen/ops/_conj_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/minimum_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_zero_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_conj_copy_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_time_t.h:
 
@@ -12967,6 +12945,18 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_embedding_bag_backward_native.h:
 
+/usr/local/libtorch/include/ATen/ops/argwhere_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_minimum.h:
+
+/usr/local/libtorch/include/ATen/ops/_cudnn_rnn.h:
+
+/usr/local/libtorch/include/ATen/ops/_embedding_bag_per_sample_weights_backward.h:
+
+/usr/local/libtorch/include/ATen/ops/_make_per_tensor_quantized_tensor_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_choose_qparams_per_tensor_native.h:
+
 /usr/local/libtorch/include/ATen/ops/_choose_qparams_per_tensor.h:
 
 /usr/local/libtorch/include/ATen/ops/conv1d_ops.h:
@@ -13028,18 +13018,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/coalesce.h:
 
 /usr/local/libtorch/include/ATen/ops/_cast_Half_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/isin.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/stdio.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/_time.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_stable_sort.h:
-
-/usr/local/libtorch/include/ATen/ops/polygamma_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sign_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/upsample_bicubic2d_backward_native.h:
 
@@ -13139,14 +13117,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_batch_norm_impl_index_backward_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_mul_native.h:
-
-/usr/local/libtorch/include/ATen/ops/resize_as_sparse_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/q_zero_point.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sinh_native.h:
-
 /usr/local/libtorch/include/ATen/ops/_nested_compute_contiguous_strides_offsets_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_batch_norm_impl_index_backward.h:
@@ -13219,7 +13189,13 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_assert_async_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_amp_foreach_non_finite_check_and_unscale_ops.h:
+/usr/local/libtorch/include/ATen/ops/resize_as_sparse_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/q_zero_point.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sinh_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_mul_native.h:
 
 /usr/local/libtorch/include/ATen/ops/min.h:
 
@@ -13375,6 +13351,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/tril.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/discard_block_engine.h:
+
 /usr/local/libtorch/include/ATen/ops/batch_norm_elemt_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_pad_circular_ops.h:
@@ -13453,6 +13431,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/unordered_map:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/student_t_distribution.h:
+
 /usr/local/libtorch/include/ATen/ops/_cudnn_ctc_loss_ops.h:
 
 /usr/local/libtorch/include/ATen/core/Dimname.h:
@@ -13495,6 +13475,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/empty_permuted_native.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/normal_distribution.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__functional/weak_result_type.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/min_element.h:
@@ -13529,6 +13511,14 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ScalarOps.h:
 
+/usr/local/libtorch/include/ATen/ops/size_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/linalg_diagonal_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_validate_sparse_coo_tensor_args_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/avg_pool2d.h:
+
 /usr/local/libtorch/include/ATen/ops/alpha_dropout.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_sparse_matmul_ops.h:
@@ -13557,6 +13547,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/adaptive_avg_pool3d_backward.h:
 
+/usr/local/libtorch/include/ATen/ops/argsort.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/replace.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/minmax.h:
+
 /usr/local/libtorch/include/ATen/ops/hsplit_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_efficient_attention_backward.h:
@@ -13579,10 +13575,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention_backward.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__filesystem/directory_options.h:
-
-/usr/local/libtorch/include/ATen/NamedTensor.h:
-
 /usr/local/libtorch/include/ATen/TensorIndexing.h:
 
 /usr/local/libtorch/include/ATen/ops/feature_alpha_dropout.h:
@@ -13600,10 +13592,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/einsum_ops.h:
 
 /usr/local/libtorch/include/ATen/DeviceAccelerator.h:
-
-/usr/local/libtorch/include/ATen/ops/digamma_meta.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_irfft2_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/cmp.h:
 
@@ -13651,9 +13639,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/torch/csrc/dynamo/compiled_autograd.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/format_functions.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__thread/this_thread.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/format_functions.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/__stddef_offsetof.h:
 
@@ -13692,18 +13680,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_batch_norm_no_update_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/__stdarg_va_arg.h:
-
-/usr/local/libtorch/include/ATen/ops/group_norm_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_move_constructible.h:
-
-/usr/local/libtorch/include/ATen/ops/sym_numel_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/conv2d.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_move.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sinh.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_fill.h:
 
@@ -13921,6 +13897,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__math/hyperbolic_functions.h:
 
+/usr/local/libtorch/include/ATen/ops/quantize_per_channel_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/random:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_int8_t.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_int64_t.h:
@@ -14043,6 +14023,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/resource.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/weibull_distribution.h:
+
 /usr/local/libtorch/include/ATen/ops/clamp_min_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/upper_bound.h:
@@ -14149,6 +14131,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/cummaxmin_backward_native.h:
 
+/usr/local/libtorch/include/ATen/ops/special_hermite_polynomial_h_meta.h:
+
+/usr/local/libtorch/include/ATen/ops/cummaxmin_backward_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/fill_n.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/libkern/arm/_OSByteOrder.h:
 
 /usr/local/libtorch/include/ATen/ops/embedding_renorm_native.h:
@@ -14162,6 +14150,14 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/cummax_ops.h:
 
 /usr/local/libtorch/include/ATen/detail/AcceleratorHooksInterface.h:
+
+/usr/local/libtorch/include/ATen/ops/isin.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_stable_sort.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/stdio.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/_time.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/errno.h:
 
@@ -14287,6 +14283,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_cudnn_rnn_backward_native.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/exponential_distribution.h:
+
 /usr/local/libtorch/include/ATen/ops/special_multigammaln.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/cctype:
@@ -14301,9 +14299,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/cuda.h:
 
-/usr/local/libtorch/include/ATen/ops/_fused_adagrad_ops.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/in_place.h:
+
+/usr/local/libtorch/include/ATen/ops/_fused_adagrad_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/iterator:
 
@@ -14391,19 +14389,15 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/rad2deg.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_reference.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/allocator_traits.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_reference.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/atomic:
 
 /usr/local/libtorch/include/ATen/ops/convolution.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/cstdarg:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_int32_t.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/concepts:
 
 /usr/local/libtorch/include/ATen/core/LegacyTypeDispatch.h:
 
@@ -14467,9 +14461,21 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/swap.h:
 
+/usr/local/libtorch/include/ATen/ops/record_stream_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/is_floating_point.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/priority_tag.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_rfft_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/cosine_embedding_loss_native.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/width_estimation_table.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/piecewise_construct.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/no_destroy.h:
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/xpu.h:
 
@@ -14482,6 +14488,20 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/cartesian_prod_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/integer_sequence.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/lower_bound.h:
+
+/usr/local/libtorch/include/ATen/ops/chalf_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/mm_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/adjoint_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/randperm_native.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_irfft_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/stdlib.h:
 
 /usr/local/libtorch/include/ATen/ops/_nested_tensor_size.h:
 
@@ -14499,51 +14519,9 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/empty.h:
 
-/usr/local/libtorch/include/ATen/ops/quantize_per_channel_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/_types/_wctype_t.h:
-
-/usr/local/libtorch/include/ATen/MethodOperators.h:
-
-/usr/local/libtorch/include/ATen/ops/add_meta.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_iterator_concept.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__functional/default_searcher.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/auto_cast.h:
-
 /usr/local/libtorch/include/ATen/ops/fbgemm_pack_quantized_matrix_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/as_lvalue.h:
-
-/usr/local/libtorch/include/ATen/ops/histogramdd_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/replace_if.h:
-
-/usr/local/libtorch/include/ATen/ops/arange_native.h:
-
-/usr/local/libtorch/include/ATen/ops/batch_norm_backward_elemt_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/fractional_max_pool2d.h:
-
-/usr/local/libtorch/include/ATen/ops/_cudnn_ctc_loss_native.h:
-
-/usr/local/libtorch/include/ATen/ops/_nested_tensor_size_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/pad_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_adaptive_avg_pool2d_backward_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_specialization.h:
-
-/usr/local/libtorch/include/ATen/ops/ceil_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/buffer.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/ios:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/as_const.h:
 
 /usr/local/libtorch/include/ATen/ops/adaptive_avg_pool3d.h:
 
@@ -14555,13 +14533,35 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/unwrap_ref.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/move.h:
+
+/usr/local/libtorch/include/ATen/ops/atan2_meta.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/underlying_type.h:
+
 /usr/local/libtorch/include/ATen/ops/_cummax_helper_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/range_native.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/result_of.h:
 
-/usr/local/libtorch/include/ATen/ops/linalg_lu_solve_ops.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_volatile.h:
 
-/usr/local/libtorch/include/ATen/ops/fft_irfftn_native.h:
+/usr/local/libtorch/include/ATen/ThreadLocalState.h:
+
+/usr/local/libtorch/include/ATen/ops/addcdiv_meta.h:
+
+/usr/local/libtorch/include/torch/csrc/api/include/torch/nn/options/padding.h:
+
+/usr/local/libtorch/include/torch/csrc/api/include/torch/nn/init.h:
+
+/usr/local/libtorch/include/ATen/ops/lshift_native.h:
+
+/usr/local/libtorch/include/ATen/ops/batch_norm_gather_stats_with_counts_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_fused_sgd.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_pointer.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_extent.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_log_softmax.h:
 
@@ -14603,10 +14603,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/nat.h:
 
-/usr/local/libtorch/include/torch/csrc/autograd/variable_info.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_ihfft_native.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/count.h:
 
 /usr/local/libtorch/include/ATen/ops/fbgemm_linear_fp16_weight.h:
@@ -14623,7 +14619,11 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_uid_t.h:
 
-/usr/local/libtorch/include/ATen/ops/fft_ihfftn_native.h:
+/usr/local/libtorch/include/ATen/ops/fft_irfft2_native.h:
+
+/usr/local/libtorch/include/ATen/ops/digamma_meta.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/mersenne_twister_engine.h:
 
 /usr/local/libtorch/include/ATen/ops/arccosh.h:
 
@@ -14689,10 +14689,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_reference_wrapper.h:
 
-/usr/local/libtorch/include/ATen/ops/_nested_get_min_seqlen_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_tanh_native.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/set_symmetric_difference.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_primary_template.h:
@@ -14721,6 +14717,18 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_merge.h:
 
+/usr/local/libtorch/include/ATen/ops/sym_numel_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/conv2d.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_move.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sinh.h:
+
+/usr/local/libtorch/include/ATen/ops/group_norm_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_move_constructible.h:
+
 /usr/local/libtorch/include/ATen/ops/_assert_async.h:
 
 /usr/local/libtorch/include/ATen/ops/nll_loss_forward_native.h:
@@ -14745,19 +14753,15 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_convertible.h:
 
-/usr/local/libtorch/include/ATen/ops/broadcast_tensors.h:
-
-/usr/local/libtorch/include/ATen/ops/avg_pool3d_meta.h:
-
-/usr/local/libtorch/include/ATen/ops/_linalg_slogdet_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_constructible.h:
-
 /usr/local/libtorch/include/ATen/ops/argmax.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/uniform_int_distribution.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward_native.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_ihfft_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_assignable.h:
 
 /usr/local/libtorch/include/ATen/ops/select_copy.h:
 
@@ -14779,10 +14783,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_execution_policy.h:
 
-/usr/local/libtorch/include/ATen/ops/_cast_Half.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_equality_comparable.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/set_intersection.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_mm.h:
@@ -14797,17 +14797,11 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_convertible.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_pointer.h:
-
 /usr/local/libtorch/include/ATen/ops/arctan.h:
 
 /usr/local/libtorch/include/ATen/ops/_cholesky_solve_helper_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_constant_evaluated.h:
-
-/usr/local/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_irfft2_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_version_native.h:
 
@@ -14844,20 +14838,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/std_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_add_relu_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/lower_bound.h:
-
-/usr/local/libtorch/include/ATen/ops/chalf_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/mm_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/adjoint_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/randperm_native.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_irfft_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/stdlib.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_find_end.h:
 
@@ -14903,6 +14883,14 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/core/IListRef_inl.h:
 
+/usr/local/libtorch/include/ATen/ops/gather_meta.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_count.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_adjacent_find.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/aligned_union.h:
+
 /usr/local/libtorch/include/ATen/ops/_sparse_semi_structured_mm.h:
 
 /usr/local/libtorch/include/ATen/ops/q_per_channel_scales.h:
@@ -14921,41 +14909,13 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/add_pointer.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/format_arg_store.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_transform.h:
-
-/usr/local/libtorch/include/ATen/ops/_fake_quantize_learnable_per_tensor_affine_backward_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/reflection_pad3d_native.h:
-
-/usr/local/libtorch/include/ATen/ops/_upsample_nearest_exact2d_meta.h:
-
-/usr/local/libtorch/include/ATen/ops/subtract_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/Availability.h:
-
-/usr/local/libtorch/include/ATen/ops/_weight_norm_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_neg_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/log2.h:
-
-/usr/local/libtorch/include/ATen/ops/asinh.h:
-
-/usr/local/libtorch/include/ATen/ops/sparse_resize_and_clear_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/add_cv.h:
-
 /usr/local/libtorch/include/ATen/ops/frobenius_norm.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__tuple/tuple_element.h:
 
-/usr/local/libtorch/include/torch/csrc/autograd/forward_grad.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__chrono/hh_mm_ss.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_ucontext.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__stop_token/intrusive_shared_ptr.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/gamma_distribution.h:
 
 /usr/local/libtorch/include/ATen/ops/special_i1e.h:
 
@@ -14988,18 +14948,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__iterator/iter_swap.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__thread/thread.h:
-
-/usr/local/libtorch/include/ATen/ops/fake_quantize_per_channel_affine_native.h:
-
-/usr/local/libtorch/include/ATen/ops/col2im_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_max.h:
-
-/usr/local/libtorch/include/ATen/ops/upsample_linear1d_backward_meta.h:
-
-/usr/local/libtorch/include/ATen/ops/isin_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/auto_ptr.h:
 
 /usr/local/libtorch/include/ATen/ops/histc_ops.h:
 
@@ -15039,8 +14987,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/types.h:
 
-/usr/local/libtorch/include/ATen/ops/fft_rfft2.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/conditional.h:
 
 /usr/local/libtorch/include/ATen/ops/avg_pool2d_ops.h:
@@ -15069,8 +15015,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/adjacent_find.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_backends/cpu_backends/stable_sort.h:
-
 /usr/local/libtorch/include/ATen/ops/conv_transpose2d_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_ops.h:
@@ -15097,6 +15041,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__stop_token/stop_callback.h:
 
+/usr/local/libtorch/include/ATen/ops/ceil_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_specialization.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__stop_token/intrusive_shared_ptr.h:
+
 /usr/local/libtorch/include/ATen/ops/_chunk_cat_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_backends/cpu_backend.h:
@@ -15121,38 +15071,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__ranges/dangling.h:
 
-/usr/local/libtorch/include/ATen/ops/special_bessel_j1_meta.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__math/traits.h:
-
-/usr/local/libtorch/include/ATen/ops/log10.h:
-
-/usr/local/libtorch/include/ATen/ops/is_leaf.h:
-
-/usr/local/libtorch/include/ATen/ops/index_select_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_base_of.h:
-
-/usr/local/libtorch/include/ATen/ops/asin.h:
-
-/usr/local/libtorch/include/ATen/ParallelOpenMP.h:
-
-/usr/local/libtorch/include/c10/core/impl/InlineDeviceGuard.h:
-
-/usr/local/libtorch/include/ATen/ops/reflection_pad1d_backward_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/expm1.h:
-
-/usr/local/libtorch/include/ATen/ops/new_zeros.h:
-
-/usr/local/libtorch/include/ATen/ops/_fw_primal_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_set_difference.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_sort_heap.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__ranges/concepts.h:
-
 /usr/local/libtorch/include/ATen/ops/embedding_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_scaled_dot_product_fused_attention_overrideable_native.h:
@@ -15169,17 +15087,173 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__filesystem/directory_options.h:
+
+/usr/local/libtorch/include/ATen/NamedTensor.h:
+
+/usr/local/libtorch/include/ATen/ops/fake_quantize_per_channel_affine_native.h:
+
+/usr/local/libtorch/include/ATen/ops/col2im_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_max.h:
+
+/usr/local/libtorch/include/ATen/ops/upsample_linear1d_backward_meta.h:
+
+/usr/local/libtorch/include/ATen/ops/isin_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/auto_ptr.h:
+
+/usr/local/libtorch/include/ATen/ops/_sparse_coo_tensor_with_dims_and_tensors_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/discrete_distribution.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_int32_t.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/concepts:
+
+/usr/local/libtorch/include/ATen/ops/squeeze_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/ranlux.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__fwd/array.h:
+
+/usr/local/libtorch/include/c10/core/impl/InlineDeviceGuard.h:
+
+/usr/local/libtorch/include/ATen/ops/reflection_pad1d_backward_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/expm1.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/poisson_distribution.h:
+
+/usr/local/libtorch/include/torch/csrc/autograd/forward_grad.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/_types/_ucontext.h:
+
+/usr/local/libtorch/include/ATen/ops/_fused_adam_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_add_batch_dim_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_amp_update_scale_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/piecewise_linear_distribution.h:
+
+/usr/local/libtorch/include/ATen/ops/_cast_Half.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_equality_comparable.h:
+
+/usr/local/libtorch/include/ATen/ops/_amp_foreach_non_finite_check_and_unscale_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_values.h:
+
+/usr/local/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/piecewise_constant_distribution.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_all_extents.h:
 
 /usr/local/libtorch/include/ATen/ops/special_exp2_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_convolution_double_backward_native.h:
 
-/usr/local/libtorch/include/ATen/ops/upsample_nearest3d.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/geometric_distribution.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__atomic/atomic_init.h:
+/usr/local/libtorch/include/ATen/ops/clamp_max_native.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sin_ops.h:
+/usr/local/libtorch/include/ATen/ops/broadcast_tensors.h:
+
+/usr/local/libtorch/include/ATen/ops/avg_pool3d_meta.h:
+
+/usr/local/libtorch/include/ATen/ops/_linalg_slogdet_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_nothrow_constructible.h:
+
+/usr/local/libtorch/include/ATen/ops/special_log1p.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/fisher_f_distribution.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_frac_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/partial_sum.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/extreme_value_distribution.h:
+
+/usr/local/libtorch/include/ATen/ops/special_ndtri_meta.h:
+
+/usr/local/libtorch/include/ATen/ops/_unique_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/chi_squared_distribution.h:
+
+/usr/local/libtorch/include/ATen/ops/special_bessel_j1_meta.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__math/traits.h:
+
+/usr/local/libtorch/include/ATen/ops/log10.h:
+
+/usr/local/libtorch/include/ATen/ops/is_leaf.h:
+
+/usr/local/libtorch/include/ATen/ops/index_select_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_base_of.h:
+
+/usr/local/libtorch/include/ATen/ops/asin.h:
+
+/usr/local/libtorch/include/ATen/ParallelOpenMP.h:
+
+/usr/local/libtorch/include/ATen/ops/new_zeros.h:
+
+/usr/local/libtorch/include/ATen/ops/_fw_primal_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_set_difference.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_sort_heap.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__ranges/concepts.h:
+
+/usr/local/libtorch/include/ATen/ops/to_dense_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_tan.h:
+
+/usr/local/libtorch/include/ATen/ops/special_ndtr.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/default_random_engine.h:
+
+/usr/local/libtorch/include/ATen/ops/_pack_padded_sequence.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/clamp_to_integral.h:
+
+/usr/local/libtorch/include/ATen/ops/clamp_max_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__atomic/cxx_atomic_impl.h:
+
+/usr/local/libtorch/include/ATen/ops/_is_all_true_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/binomial_distribution.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/format_arg_store.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_transform.h:
+
+/usr/local/libtorch/include/ATen/ops/_fake_quantize_learnable_per_tensor_affine_backward_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/reflection_pad3d_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_upsample_nearest_exact2d_meta.h:
+
+/usr/local/libtorch/include/ATen/ops/subtract_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/Availability.h:
+
+/usr/local/libtorch/include/ATen/ops/_weight_norm_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_neg_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/log2.h:
+
+/usr/local/libtorch/include/ATen/ops/asinh.h:
+
+/usr/local/libtorch/include/ATen/ops/sparse_resize_and_clear_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/add_cv.h:
 
 /usr/local/libtorch/include/ATen/ops/sparse_csc_tensor_native.h:
 
@@ -15289,6 +15363,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/maximum.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/linear_congruential_engine.h:
+
 /usr/local/libtorch/include/ATen/ops/_foreach_erfc_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__mutex/tag_types.h:
@@ -15395,8 +15471,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/pair.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_zero.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/allocate_at_least.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/__stddef_ptrdiff_t.h:
@@ -15410,6 +15484,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__math/min_max.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_mask_projection_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/random_device.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/addressof.h:
 
@@ -15449,6 +15525,14 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/empty_quantized_native.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/regular.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__bit/blsr.h:
+
+/usr/local/libtorch/include/ATen/ops/special_expit_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/uniform_real_distribution.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/assume_aligned.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/arm/signal.h:
@@ -15480,6 +15564,14 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/linalg_lstsq_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__locale_dir/locale_base_api/bsd_locale_defaults.h:
+
+/usr/local/libtorch/include/ATen/ops/histogramdd_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/replace_if.h:
+
+/usr/local/libtorch/include/ATen/ops/batch_norm_backward_elemt_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/arange_native.h:
 
 /usr/local/libtorch/include/ATen/ops/clip.h:
 
@@ -15603,8 +15695,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__fwd/string.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_extent.h:
-
 /usr/local/libtorch/include/ATen/ops/meshgrid.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/is_pod.h:
@@ -15658,12 +15748,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/binary_cross_entropy_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/ctype.h:
-
-/usr/local/libtorch/include/ATen/ops/atan2_meta.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/underlying_type.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/move.h:
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/data/dataloader_options.h:
 
@@ -15779,6 +15863,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__compare/compare_weak_order_fallback.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/auto_cast.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__functional/default_searcher.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/formatter_output.h:
 
 /usr/local/libtorch/include/ATen/ops/_nested_view_from_jagged_ops.h:
@@ -15810,10 +15898,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/quantized_lstm_cell.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_copy_if.h:
-
-/usr/local/libtorch/include/ATen/ops/addcdiv_meta.h:
-
-/usr/local/libtorch/include/ATen/ThreadLocalState.h:
 
 /usr/local/libtorch/include/ATen/ops/rnn_tanh_cell_native.h:
 
@@ -15873,16 +15957,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__std_mbstate_t.h:
 
-/usr/local/libtorch/include/ATen/ops/relu6.h:
-
-/usr/local/libtorch/include/ATen/ops/_sobol_engine_initialize_state_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__fwd/istream.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__iterator/ostreambuf_iterator.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/type_list.h:
-
 /usr/local/libtorch/include/ATen/ops/lift_fresh_copy.h:
 
 /usr/local/libtorch/include/ATen/ops/heaviside.h:
@@ -15927,6 +16001,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/swappable.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/exception:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/cauchy_distribution.h:
+
 /usr/local/libtorch/include/ATen/ops/t_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/reflection_pad3d_backward_ops.h:
@@ -15947,7 +16025,11 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_gather_sparse_backward_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_sinh_ops.h:
+/usr/local/libtorch/include/ATen/ops/fractional_max_pool2d.h:
+
+/usr/local/libtorch/include/ATen/ops/_nested_tensor_size_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_cudnn_ctc_loss_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/equality_comparable.h:
 
@@ -15964,6 +16046,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/copyable.h:
 
 /usr/local/libtorch/include/ATen/ops/_cslt_sparse_mm_search.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/knuth_b.h:
 
 /usr/local/libtorch/include/torch/csrc/profiler/stubs/base.h:
 
@@ -16004,8 +16088,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/copysign_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/allocator.h:
-
-/usr/local/libtorch/include/ATen/ops/_amp_update_scale_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/xlocale/_time.h:
 
@@ -16095,7 +16177,17 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_convolution_mode_native.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__chrono/hh_mm_ss.h:
+/usr/local/libtorch/include/ATen/ops/affine_grid_generator_native.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sign.h:
+
+/usr/local/libtorch/include/ATen/ops/lu_solve_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/machine/endian.h:
+
+/usr/local/libtorch/include/ATen/ops/fft_irfft2_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__atomic/memory_order.h:
 
@@ -16133,12 +16225,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/constant_pad_nd_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/all_native.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/move_backward.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_trunc.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/pthread.h:
 
 /usr/local/libtorch/include/torch/csrc/api/include/torch/nn/modules/container/parameterdict.h:
@@ -16150,6 +16236,16 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/fmin_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/__xlocale.h:
+
+/usr/local/libtorch/include/ATen/ops/pad_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_adaptive_avg_pool2d_backward_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/buffer.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/ios:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/as_const.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_backends/cpu_backends/fill.h:
 
@@ -16168,6 +16264,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__charconv/to_chars_floating_point.h:
 
 /usr/local/libtorch/include/ATen/ops/addmm_meta.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/is_seed_sequence.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/uses_allocator_construction.h:
 
@@ -16201,10 +16299,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__bit/popcount.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/regular.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__bit/blsr.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/next_permutation.h:
 
 /usr/local/libtorch/include/ATen/ops/matrix_power_native.h:
@@ -16227,12 +16321,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/concepts.h:
 
-/usr/local/libtorch/include/ATen/ops/special_scaled_modified_bessel_k0_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_nnpack_spatial_convolution_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/exception_guard.h:
-
 /usr/local/libtorch/include/ATen/ops/arccosh_ops.h:
 
 /usr/local/libtorch/include/torch/csrc/jit/frontend/strtod.h:
@@ -16244,6 +16332,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__atomic/aliases.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/cerrno:
+
+/usr/local/libtorch/include/ATen/ops/quantize_per_channel_ops.h:
+
+/usr/local/libtorch/include/ATen/MethodOperators.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/_types/_wctype_t.h:
 
 /usr/local/libtorch/include/ATen/ops/linalg_inv_native.h:
 
@@ -16289,10 +16383,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_flash_attention_forward_ops.h:
 
-/usr/local/libtorch/include/torch/csrc/api/include/torch/nn/options/transformer.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_irfft_ops.h:
-
 /usr/local/libtorch/include/ATen/ops/logaddexp_meta.h:
 
 /usr/local/libtorch/include/ATen/ops/_standard_gamma_grad.h:
@@ -16307,23 +16397,7 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/fill.h:
 
-/usr/local/libtorch/include/torch/csrc/api/include/torch/nn/options/padding.h:
-
-/usr/local/libtorch/include/torch/csrc/api/include/torch/nn/init.h:
-
-/usr/local/libtorch/include/ATen/ops/lshift_native.h:
-
-/usr/local/libtorch/include/ATen/ops/batch_norm_gather_stats_with_counts_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_fused_sgd.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_search_n.h:
-
-/usr/local/libtorch/include/ATen/ops/arctan2_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/t_copy_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_rsqrt_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/set:
 
@@ -16359,6 +16433,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/sort_heap.h:
 
+/usr/local/libtorch/include/ATen/ops/add_meta.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_iterator_concept.h:
+
 /usr/local/libtorch/include/ATen/ops/linalg_vector_norm_meta.h:
 
 /usr/local/libtorch/include/ATen/ops/_foobar_native.h:
@@ -16375,8 +16453,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_find_first_of.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_tan_native.h:
-
 /usr/local/libtorch/include/torch/csrc/autograd/autograd_not_implemented_fallback.h:
 
 /usr/local/libtorch/include/ATen/ops/native_batch_norm_backward_ops.h:
@@ -16384,6 +16460,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/stable_partition.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/parser_std_format_spec.h:
+
+/usr/local/libtorch/include/ATen/ops/_weight_int4pack_mm_for_cpu_native.h:
+
+/usr/local/libtorch/include/ATen/ops/special_expit_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/pstl_transform_reduce.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__iterator/istreambuf_iterator.h:
 
@@ -16394,14 +16476,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_convolution_double_backward.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_generate_n.h:
-
-/usr/local/libtorch/include/ATen/ops/record_stream_ops.h:
-
-/usr/local/libtorch/include/ATen/ops/is_floating_point.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/priority_tag.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__fwd/array.h:
 
 /usr/local/libtorch/include/ATen/ops/cudnn_convolution_native.h:
 
@@ -16442,10 +16516,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/cudnn_is_acceptable_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_remove_batch_dim.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_sigmoid_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__format/formatter_tuple.h:
 
 /usr/local/libtorch/include/ATen/ops/_foreach_norm_ops.h:
 
@@ -16587,6 +16657,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/predicate.h:
 
+/usr/local/libtorch/include/ATen/ops/_upsample_bicubic2d_aa_ops.h:
+
 /usr/local/libtorch/include/ATen/ops/linalg_solve_ex_native.h:
 
 /usr/local/libtorch/include/ATen/ops/_aminmax.h:
@@ -16640,6 +16712,20 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/upsample_nearest2d_backward_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__compare/compare_three_way_result.h:
+
+/usr/local/libtorch/include/ATen/ops/reflection_pad3d_backward.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/subtract_with_carry_engine.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/type_list.h:
+
+/usr/local/libtorch/include/ATen/ops/relu6.h:
+
+/usr/local/libtorch/include/ATen/ops/_sobol_engine_initialize_state_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__fwd/istream.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__iterator/ostreambuf_iterator.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/__stdarg_header_macro.h:
 
@@ -16747,6 +16833,10 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/ops/_flash_attention_backward_ops.h:
 
+/usr/local/libtorch/include/ATen/ops/polygamma_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_sign_ops.h:
+
 /usr/local/libtorch/include/ATen/ops/geqrf_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/__wctype.h:
@@ -16763,13 +16853,11 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_backends/cpu_backends/merge.h:
 
-/usr/local/libtorch/include/ATen/ops/_fused_adam_ops.h:
+/usr/local/libtorch/include/ATen/ops/special_scaled_modified_bessel_k0_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_add_batch_dim_ops.h:
+/usr/local/libtorch/include/ATen/ops/_nnpack_spatial_convolution_ops.h:
 
-/usr/local/libtorch/include/ATen/ops/_saturate_weight_to_fp16_native.h:
-
-/usr/local/libtorch/include/ATen/ops/_foreach_round_native.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/exception_guard.h:
 
 /usr/local/libtorch/include/ATen/ops/trapezoid.h:
 
@@ -16786,10 +16874,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_validate_sparse_bsr_tensor_args_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_sparse_broadcast_to_ops.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__numeric/partial_sum.h:
-
-/usr/local/libtorch/include/ATen/ops/fill_diagonal.h:
 
 /usr/local/libtorch/include/ATen/ops/_cudnn_rnn_backward.h:
 
@@ -16843,6 +16927,8 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__concepts/destructible.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/ranges_uninitialized_algorithms.h:
+
 /usr/local/libtorch/include/c10/core/impl/HermeticPyObjectTLS.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__math/roots.h:
@@ -16861,7 +16947,15 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/core/blob.h:
 
+/usr/local/libtorch/include/ATen/ops/_to_sparse_csc_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/unflatten_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_foreach_tanh.h:
+
 /usr/local/libtorch/include/ATen/ops/_foreach_floor.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_backends/cpu_backends/stable_sort.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/pstl_sort.h:
 
@@ -16917,8 +17011,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/partition_copy.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__utility/no_destroy.h:
-
 /usr/local/libtorch/include/ATen/ops/fake_quantize_per_channel_affine_cachemask_native.h:
 
 /usr/local/libtorch/include/ATen/ops/alias.h:
@@ -16969,11 +17061,13 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/temporary_buffer.h:
 
-/usr/local/libtorch/include/ATen/ops/_foreach_frac_native.h:
-
 /usr/local/libtorch/include/ATen/ops/_histogramdd_from_bin_cts_native.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__filesystem/perms.h:
+
+/usr/local/libtorch/include/torch/csrc/api/include/torch/data/datasets/tensor.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/lognormal_distribution.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/list:
 
@@ -16981,9 +17075,13 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /usr/local/libtorch/include/ATen/core/class_type.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/make_heap.h:
+/usr/local/libtorch/include/ATen/ops/all_native.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__memory/ranges_uninitialized_algorithms.h:
+/usr/local/libtorch/include/ATen/ops/_foreach_trunc.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/move_backward.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/make_heap.h:
 
 /usr/local/libtorch/include/ATen/ops/sparse_sampled_addmm.h:
 
@@ -17079,10 +17177,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/ranges_equal.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/result_of.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__type_traits/remove_volatile.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/copy.h:
 
 /usr/local/libtorch/include/ATen/ops/cudnn_convolution_add_relu_ops.h:
@@ -17111,6 +17205,14 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/arm/endian.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/comp_ref_type.h:
+
+/usr/local/libtorch/include/ATen/ops/item_ops.h:
+
+/usr/local/libtorch/include/ATen/ops/_upsample_bilinear2d_aa_backward_native.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/negative_binomial_distribution.h:
+
 /usr/local/libtorch/include/ATen/ops/cudnn_batch_norm_backward_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_upsample_bicubic2d_aa_native.h:
@@ -17126,10 +17228,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/fake_quantize_per_channel_affine_cachemask_backward_ops.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__iterator/data.h:
-
-/usr/local/libtorch/include/ATen/ops/fft_irfft.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/exception:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/assert.h:
 
@@ -17156,8 +17254,6 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/hstack_ops.h:
 
 /usr/local/libtorch/include/ATen/ops/_sample_dirichlet.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/comp_ref_type.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/_string.h:
 
@@ -17204,6 +17300,12 @@ CMakeFiles/LibTorchExample.dir/libtorch_demo.cpp.o: /Users/edwardfinkelstein/RCP
 /usr/local/libtorch/include/ATen/ops/_softmax_backward_data_meta.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/sys/appleapiopts.h:
+
+/usr/local/libtorch/include/c10/util/hash.h:
+
+/usr/local/libtorch/include/ATen/ops/_nested_from_padded_and_nested_example_ops.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__random/shuffle_order_engine.h:
 
 /usr/local/libtorch/include/ATen/ops/igamma_native.h:
 
