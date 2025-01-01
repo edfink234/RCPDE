@@ -1,4 +1,4 @@
-from sympy import symbols, Function, Eq, dsolve, Symbol, latex, sin, cos, Derivative, series, simplify
+from sympy import symbols, Function, Eq, dsolve, Symbol, latex, sin, cos, Derivative, series, simplify, pi, diff
 
 def ODE_IVP():
     r'''
@@ -53,7 +53,7 @@ def ODE_IVP_LAGRANGIAN_FORMULATION():
     r'''
     Attempts to solve the ODE:
     
-        \ddot{\theta} + \frac{g}{l} \sin (\theta) =  \frac{ A \omega}{l} \left( \cos (\theta) \omega \cos(\omega t) \right)
+        \ddot{\theta} + \frac{g}{l} \sin (\theta) =  \frac{ A \omega^2}{l} \left( \cos (\theta) \cos(\omega t) \right)
         
     '''
     # Define symbols and functions
@@ -94,8 +94,54 @@ def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR():
         print(e)
     print(latex(solution))
 
+def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI():
+    r'''
+    Solves the ODE:
+        \ddot{\theta} + \frac{g}{l}(\pi - \theta) =  -\frac{ A \omega^2}{l}\cos(\omega t)
+    '''
+    # Define variables and functions
+    t, l, g, A, omega, theta_0, theta_dot_0 = symbols('t l g A omega, theta_0, theta_dot_0', positive=True)
+    theta = Function('theta')(t)
+
+    # Define the ODE
+    ode = Eq(
+        Derivative(theta, t, t) + (g / l) * (pi - theta) + ((A * omega * omega) / l) * cos(omega * t),
+        0
+    )
+    # Attempt to solve the ODE symbolically
+    solution = None
+    try:
+        solution = dsolve(ode, theta)#, ics={theta.subs(t,0): theta_0, diff(theta, t).subs(t,0): theta_dot_0})
+    except Exception as e:
+        print(e)
+    print(latex(solution))
+
+def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI():
+    r'''
+    Attempts to solve the ODE:
+        \ddot{\theta} + \frac{g}{l}\left((\pi - \theta) + \dfrac{(\theta - \pi)^3}{6}\right) =  \frac{ A \omega^2}{l}\left(-1 + \dfrac{(x-\pi)^2}{2}\right)\cos(\omega t)
+    '''
+    # Define variables and functions
+    t, l, g, A, omega = symbols('t l g A omega', positive=True)
+    theta = Function('theta')(t)
+
+    # Define the ODE
+    ode = Eq(
+        Derivative(theta, t, t) + (g / l) * ((pi - theta) + (((theta - pi)**3) / 6) ) - ((A * omega * omega) / l) * (-1 + ((theta - pi)**2) / 2) * cos(omega * t),
+        0
+    )
+    # Attempt to solve the ODE symbolically
+    solution = None
+    try:
+        solution = simplify(dsolve(ode, theta))
+    except Exception as e:
+        print(e)
+    print(latex(solution))
+
 
 #ODE_IVP()
 #ODE_IVP_PLUS_SOLITON()
 #ODE_IVP_LAGRANGIAN_FORMULATION()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR()
+ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI()
+#ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI()

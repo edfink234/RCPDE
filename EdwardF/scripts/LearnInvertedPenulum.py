@@ -492,8 +492,8 @@ if not automate:
         exit()
 
 # Training loop
-learning_rate = 0.0001
-Algorithm = "adam"
+learning_rate = 0.0000125
+Algorithm = "adamax"
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 if Algorithm == "lbfgs":
     optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)

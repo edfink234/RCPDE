@@ -49,7 +49,7 @@ auto x_start = torch::tensor({0.0});
 auto v_start = torch::tensor({0.0});
 
 // Learning rate
-constexpr double learning_rate = 0.0001; // Scalar remains unchanged as it does not require gradient tracking
+constexpr double learning_rate = 0.00005; // Scalar remains unchanged as it does not require gradient tracking
 
 // Neural network model for xi(t)
 torch::jit::script::Module myModule;
@@ -397,9 +397,14 @@ int main()
     
     // Convert the parameters from the module
     std::vector<torch::Tensor> parameters = get_parameters(myModule);
-    // Declare the Adam optimizer
+//     Declare the Adam optimizer
     torch::optim::Adam optimizer(parameters, torch::optim::AdamOptions(learning_rate));
-    
+//     Declare the RMSprop optimizer
+//    torch::optim::RMSprop optimizer(parameters, torch::optim::RMSpropOptions(learning_rate));
+//     Declare the Adagrad optimizer
+//    torch::optim::Adagrad optimizer(parameters, torch::optim::AdagradOptions(learning_rate));
+//     Declare the SGD optimizer
+//    torch::optim::SGD optimizer(parameters, torch::optim::SGDOptions(learning_rate));
     long epoch = 0;
     while (criterion())
     {
