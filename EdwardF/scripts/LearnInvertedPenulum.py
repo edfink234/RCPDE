@@ -23,7 +23,9 @@ torch.sech = sech
 def flt_to_str(flt):
     return str(flt).replace(".","_point_")
 
+#NOTE: Roberto has periodic boundary conditions in his PDE.
 # Constants for the potential
+#TODO: Make small jumps in learning new parameters: set a step-size to reach the new parameter setting based on the closest one, so probably this will just be creating a new run-script that will runn successive cases (and save the corresponding models) and just change the `while True` to `while loss > threshold` (probably threshold 1e-5.
 m = 1.0        # Mass
 Omega = 0.2    # Frequency of the harmonic trap
 A = 1.0        # Amplitude of the Gaussian potential
@@ -34,7 +36,20 @@ x_star = 0.0   # Final position sought
 v_th = 0.01    # Velocity threshold, not used currently
 x_th = 0.01    # Position threshold, not used currently
 to_time = {"timed": False, "time": 3600}
-criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
+to_loss = {"loss thresholded": True, "threshold": 1e-1}
+raiseBaseException = True
+def criterion():
+    global to_time, to_loss, best_loss
+    if not to_time["timed"] and to_loss["loss thresholded"]:
+        return best_loss >= to_loss['threshold']
+    elif to_time["timed"] and not to_loss["loss thresholded"]:
+        return time() - start_time < to_time["time"]
+    elif to_time["timed"] and to_loss["loss thresholded"]:
+        return (time() - start_time < to_time["time"]) or (best_loss >= to_loss['threshold'])
+    else:
+        return True
+        
+#criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
 automate = False
 produceInverse = True
 saveLibTorch = True
@@ -122,6 +137,7 @@ elif os.path.exists(model_path) and not load_model:
 else:
     print("No saved model found.")
 
+#TODO: Change the amplitude to B, width and amplitude should be separate.
 def potential(x, xi):
     V_MT = 0.5 * Omega * Omega * x * x
     temp = torch.sech(A * (x - xi))
@@ -174,7 +190,7 @@ def loss_func():
     smoothness_penalty = 0.0  # Initialize smoothness penalty
     xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
     v_values_temp = [] # Temporary storage for v values to calculate max velocity
-    best_loss = np.inf
+    best_loss_ = np.inf
     best_time = np.inf
     best_time_idx = np.inf
     
@@ -194,13 +210,13 @@ def loss_func():
         
         if i > 1:
             MSE = (x_star_x_diff*x_star_x_diff) + (v*v) + (x_star_xi_diff*x_star_xi_diff) + (xi_0*xi_0)
-            if MSE < best_loss:
+            if MSE < best_loss_:
 #                print(f"x_star_x_diff*x_star_x_diff = {x_star_x_diff*x_star_x_diff}")
 #                print(f"v*v = {v*v}")
 #                print(f"x_star_xi_diff*x_star_xi_diff = {x_star_xi_diff*x_star_xi_diff}")
 #                print(f"xi_0*xi_0 = {xi_0*xi_0}")
                 best_time = t
-                best_loss = MSE
+                best_loss_ = MSE
                 best_time_idx = i
                 
     v_best = v_values_temp[0]
@@ -217,9 +233,9 @@ def loss_func():
             
     smoothness_penalty /= best_time_idx
     
-#    print(f"best_loss = {best_loss}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
+#    print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
 #    exit()
-    return (best_loss + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
+    return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
 # Loss function for optimization
 
@@ -520,8 +536,12 @@ try:
     if Algorithm == "brute force":
         # Define constants and call the simulated annealing function
         brute_force(fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1)
+        if raiseBaseException:
+            raise(KeyboardInterrupt)
     elif Algorithm == "newton":
         newton_method()
+        if raiseBaseException:
+            raise(KeyboardInterrupt)
     else:
         while criterion():
             optimizer.zero_grad()  # Zero the gradients
@@ -579,6 +599,8 @@ try:
                 plt.pause(1)
                 plt.close()
             epoch += 1
+        if raiseBaseException:
+            raise(KeyboardInterrupt)
 
 except KeyboardInterrupt:
     print("\nTraining interrupted. Saving data...")
