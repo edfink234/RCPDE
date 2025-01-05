@@ -141,7 +141,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         print(f"Root finding failed: {mesg}")
         exit()
 
-    x_start = float(x_start)
+    x_start = round(float(x_start), 4)
 
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
@@ -186,7 +186,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     if len(parameters):
         print(parameters)
         best_loss, best_t_value = parameters['best_loss'].item(), parameters['best_time'].item()
-        t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+        try:
+            t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+        except:
+            t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
         closest_row_idx = parameters.index[0]
     else:
         #Extract the row with the closest 'x_0', 'A', 'b', 'm', 'Omega' to (x_start, A, b, m, Omega) based on euclidean distance
@@ -199,7 +202,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         # Find the index of the row with the minimum distance
         closest_row_idx = temp_df['distance'].idxmin()
         parameters = temp_df.iloc[closest_row_idx]
-        closest_x, closest_A, closest_b, closest_m, closest_Omega = parameters['x_0'], round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
+        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
 
     # Load or instantiate the model
     model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_.pth"
@@ -632,7 +635,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                     df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss, 'best_time': best_t_value})
                     if best_t_value != t_test_values[-1]:
                         print(f"New best t value = {best_t_value}")
+                    try:
                         t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+                    except:
+                        t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                     # Write to CSV
                     df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
                     print(f"Best model saved with loss: {best_loss}")
@@ -849,29 +855,29 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         plt.close()
 
 
-for A in np.arange(1.9, 2.1, 0.1):
-    master_func(A=A)
-#    start = time()
-#    result = master_func(A=A)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for m in np.arange(1.1, 2.1, 0.1):
-    master_func(m=m)
+#for A in np.arange(1.1, 2.1, 0.1):
+#    master_func(A=round(A,2))
+##    start = time()
+##    result = master_func(A=A)
+##    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+##    with open("result_times.txt", "a") as f:
+##        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+#for m in np.arange(1.1, 2.1, 0.1):
+#    master_func(m=round(m,2))
 #    start = time()
 #    result = master_func(m=m)
 #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
 #    with open("result_times.txt", "a") as f:
 #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for b in np.arange(1.1, 2.1, 0.1):
-    master_func(b=b)
+for b in np.arange(1.2, 2.1, 0.1):
+    master_func(b=round(b,2))
 #    start = time()
 #    result = master_func(b=b)
 #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
 #    with open("result_times.txt", "a") as f:
 #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
 for Omega in np.arange(0.3, 1.3, 0.1):
-    master_func(Omega=Omega)
+    master_func(Omega=round(Omega,2))
 #    start = time()
 #    result = master_func(Omega=Omega)
 #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
@@ -882,5 +888,5 @@ for Omega in np.arange(0.3, 1.3, 0.1):
 
 
 #../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
-#../movies/trajectory_trap_plus_sech_squared/
+../movies/trajectory_trap_plus_sech_squared/
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
