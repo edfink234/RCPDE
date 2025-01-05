@@ -12,6 +12,8 @@ import matplotlib.animation as animation
 from random import choice
 from time import time
 from scipy.optimize import fsolve
+from warnings import filterwarnings
+filterwarnings('ignore')
 
 def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     #Setting the random seeds!!!
@@ -75,7 +77,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.3e2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -388,7 +390,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
                     t_test_values = np.linspace(1e-8, best_t_value, best_t_value / dt)
@@ -462,7 +464,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
                     t_test_values = np.linspace(1e-8, best_t_value, best_t_value / dt)
@@ -571,7 +573,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
             exit()
 
     # Training loop
-    learning_rate = 0.0005
+    global learning_rate
+    learning_rate = 0.000125
     Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
@@ -607,6 +610,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                 raise(KeyboardInterrupt)
         else:
             while criterion():
+                if epoch >= 1000:
+                    return best_loss
                 optimizer.zero_grad()  # Zero the gradients
                 loss_value, t_value = loss_func()
                 
@@ -792,7 +797,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
             dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-            ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A}, $b$ = {b}, $m$ = {m}, $\Omega$ = {Omega}, t = {t:.2f}")
+            ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
             return dot, curve#, gold_dot
 
         # Create animation
@@ -827,7 +832,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                 dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
                 curve.set_data(x_range, y_values)
     #            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
-                ax.set_title(f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A}, $b$ = {b}, $m$ = {m}, $\Omega$ = {Omega}, t = {t:.2f}")
+                ax.set_title(f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
                 return dot, curve#, gold_dot
             ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
         
@@ -836,8 +841,41 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
             system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4")
             print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4'")
 
-
         plt.close()
 
-for A in np.arange(1.3, 2.1, 0.1):
+
+for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=A)
+#    start = time()
+#    result = master_func(A=A)
+#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+#    with open("result_times.txt", "a") as f:
+#        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+for m in np.arange(1.1, 2.1, 0.1):
+    master_func(m=m)
+#    start = time()
+#    result = master_func(m=m)
+#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+#    with open("result_times.txt", "a") as f:
+#        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+for b in np.arange(1.1, 2.1, 0.1):
+    master_func(b=b)
+#    start = time()
+#    result = master_func(b=b)
+#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+#    with open("result_times.txt", "a") as f:
+#        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+for Omega in np.arange(0.3, 1.3, 0.1):
+    master_func(Omega=Omega)
+#    start = time()
+#    result = master_func(Omega=Omega)
+#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+#    with open("result_times.txt", "a") as f:
+#        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    
+
+
+
+#../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
+#../movies/trajectory_trap_plus_sech_squared/
+#/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
