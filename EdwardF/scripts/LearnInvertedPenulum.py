@@ -183,8 +183,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     closest_row_idx = -1
     closest_x, closest_A, closest_b, closest_m, closest_Omega = x_start, A, b, m, Omega
 
-
     if len(parameters):
+        print(parameters)
         best_loss, best_t_value = parameters['best_loss'].item(), parameters['best_time'].item()
         t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
         closest_row_idx = parameters.index[0]
@@ -199,16 +199,21 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         # Find the index of the row with the minimum distance
         closest_row_idx = temp_df['distance'].idxmin()
         parameters = temp_df.iloc[closest_row_idx]
-        closest_x, closest_A, closest_b, closest_m, closest_Omega = parameters['x_0'], parameters['A'], parameters['b'], parameters['m'], parameters['Omega']
+        closest_x, closest_A, closest_b, closest_m, closest_Omega = parameters['x_0'], round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
 
     # Load or instantiate the model
-    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(closest_A)}_{flt_to_str(closest_b)}_{flt_to_str(closest_m)}_{flt_to_str(closest_Omega)}_.pth"
-    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pth"
+    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_.pth"
+    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pth"
     print(model_path)
     print(new_model_path)
     if closest_x == x_start and closest_A == A and closest_b == b and closest_m == m and closest_Omega == Omega:
         print("exact match found")
         assert(model_path == new_model_path)
+    else:
+        print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
+        print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
+        print("problem!")
+        exit()
     if os.path.exists(model_path) and load_model:
         if useLibTorch:
             model = torch.jit.load(model_path.replace(".pth", ".pt"))
@@ -395,7 +400,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                     print(f"New best t value = {best_t_value}")
                     t_test_values = np.linspace(1e-8, best_t_value, best_t_value / dt)
                 # Write to CSV
-                df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
+#                df.to_csv('../dataFiles/ICs.txt', header=None, index=False) #TODO: uncomment
                 print(f"Best model saved with loss: {best_loss}")
             else:
                 # Revert to previous parameters
@@ -718,12 +723,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
         plt.savefig("trajectory_data.svg")
-        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf trajectory_data.svg")
+        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
         system("rm trajectory_data.svg")
-        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf")
-        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.png")
-        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.png")
+        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
+        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
+        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
         plt.close()
         
         if produceInverse:
@@ -744,12 +749,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
             plt.title(f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             plt.legend()
             plt.savefig("trajectory_data.svg")
-            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf trajectory_data.svg")
+            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
             system("rm trajectory_data.svg")
-            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf")
-            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.png")
-            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.png")
+            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
+            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
+            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
 
             plt.close()
         
@@ -806,9 +811,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
         
         # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4")
-        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4'")
+        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4")
+        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
         plt.close()
 
         if produceInverse:
@@ -837,14 +842,14 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
             ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
         
             # Save the animation
-            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4")
-            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(A)}_{flt_to_str(b)}_{flt_to_str(m)}_{flt_to_str(Omega)}_.mp4'")
+            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4")
+            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
 
         plt.close()
 
 
-for A in np.arange(1.1, 2.1, 0.1):
+for A in np.arange(1.9, 2.1, 0.1):
     master_func(A=A)
 #    start = time()
 #    result = master_func(A=A)
