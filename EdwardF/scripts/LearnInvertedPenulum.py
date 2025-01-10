@@ -15,11 +15,10 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
+def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
-    load_model = True
 
     sech = lambda x: 1/torch.cosh(x)
     torch.sech = sech
@@ -76,7 +75,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.1e-2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -121,11 +120,14 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     time_penalty_factor = 1e-3 #penalty for taking longer
     velocity_penalty = 1e-3 #penalty for max(abs(v))
     xi_penalty = 1e-3 #penalty for max(abs(xi))
-
+    x_star_x_diff_mse_penalty = 1 #penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func
+    v_mse_penalty = 1 #penalty for (v*v) term in MSE in loss_func
+    x_star_xi_diff_mse_penalty = 1 #penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
+    
     t_values = np.linspace(1e-8, T, int(T / dt))
     delta_t = t_values[1] - t_values[0]
+    global t_test_values
     t_test_values = np.linspace(1e-8, T, int(T / dt))
-
 
     # Initial guess for the root (you might need to adjust this)
     x0 = 1.0
@@ -167,9 +169,11 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     # Instantiate the model
     model = XiModel()
     example = torch.tensor([[0.5]], dtype=torch.float32)
+    global best_loss
     best_loss = np.inf
+    global best_t_value
     best_t_value = T
-
+    global df
     df = None
     try:
         df = pd.read_csv("../dataFiles/ICs.txt", names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
@@ -226,6 +230,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         print(f"Example input of {example} yields: {model(example)[0, 0]}")
     elif os.path.exists(model_path) and not load_model:
         print("Model exists but not loaded.")
+        if useLibTorch:
+            new_model_path = new_model_path.replace(".pth", ".pt")
     else:
         print("No saved model found.")
 
@@ -271,7 +277,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         best_time_idx = np.inf
         
         for i, t in enumerate(t_values):
-            xi_t = xi(t)  # Compute xi(t) at time t
+            xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]  # Compute xi(t) at time t, assuming it is 0 at t ~ 0
             xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
             x, v = rk4_step(x, v, xi_t, dt)
             v_values_temp.append(abs(v))
@@ -281,10 +287,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                         
             x_star_x_diff = (x_star - x)
             x_star_xi_diff = (x_star - xi(t))
-            xi_0 = xi(0)
+#            xi_0 = xi(0)
             
             if i > 1:
-                MSE = (x_star_x_diff*x_star_x_diff) + (v*v) + (x_star_xi_diff*x_star_xi_diff) + (xi_0*xi_0)
+                MSE = x_star_x_diff_mse_penalty * (x_star_x_diff*x_star_x_diff) + v_mse_penalty * (v*v) + x_star_xi_diff_mse_penalty * (x_star_xi_diff*x_star_xi_diff)# + (xi_0*xi_0)
                 if MSE < best_loss_:
     #                print(f"x_star_x_diff*x_star_x_diff = {x_star_x_diff*x_star_x_diff}")
     #                print(f"v*v = {v*v}")
@@ -322,6 +328,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
 
     # Define Newton's method function
     def newton_method():
+        global best_loss, df, t_test_values, best_t_value
 #        global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values, criterion, saveLibTorch
         # Extract model parameters
         current_params = {name: param.clone() for name, param in model.named_parameters()}
@@ -399,9 +406,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                 df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
-                    t_test_values = np.linspace(1e-8, best_t_value, best_t_value / dt)
+                try:
+                    t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+                except:
+                    t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
-#                df.to_csv('../dataFiles/ICs.txt', header=None, index=False) #TODO: uncomment
+                df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
                 print(f"Best model saved with loss: {best_loss}")
             else:
                 # Revert to previous parameters
@@ -419,6 +429,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
 
     # Define brute force function
     def brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 1):
+        global best_loss, df, t_test_values, best_t_value
 #        global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
         # Extract model parameters
         current_params = {name: param.clone() for name, param in model.named_parameters()}
@@ -473,7 +484,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                 df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
-                    t_test_values = np.linspace(1e-8, best_t_value, best_t_value / dt)
+                try:
+                    t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+                except:
+                    t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
                 df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
                 print(f"Best model saved with loss: {best_loss}")
@@ -508,8 +522,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
 
     # Training loop
     global learning_rate
-    learning_rate = 0.000125
-    Algorithm = "adamax"
+    learning_rate = 0.1
+    Algorithm = "lbfgs"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -535,7 +549,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1)
+            brute_force(fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -582,8 +596,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                 if plot_progress and epoch % 5 == 0:
                     x_values, v_values, xi_values = [], [], []
                     x, v = x_start, v_start  # Initial conditions
-                    for t in t_test_values:
-                        xi_t = xi(t)
+                    for i, t in enumerate(t_test_values):
+                        xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
                         xi_values.append(xi_t.detach().numpy())
                         x, v = rk4_step(x, v, xi_t, dt)
                         a = force(x, xi_t) / m
@@ -615,7 +629,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         
         model = XiModel()
         print("New model path loaded =",new_model_path)
-        if useLibTorch:
+        if useLibTorch and os.path.exists(new_model_path):
             model = torch.jit.load(new_model_path)
         else:
             model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
@@ -626,8 +640,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         x, v = x_start, v_start # Initial conditions
         a = force(torch.tensor(x_start), xi(0.0)) / m
         print(f"x_0, v_0 = {x}, {v}")
-        for t in t_test_values:
-            xi_t = xi(t)
+        for i, t in enumerate(t_test_values):
+            xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
             xi_values.append(xi_t.detach().numpy())
             x, v = rk4_step(x, v, xi_t, dt)
             a = force(x, xi_t) / m
@@ -661,6 +675,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
         system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
         system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
+        print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png saved")
         plt.close()
         
         if produceInverse:
@@ -697,7 +712,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
                 exit()
             
         N = len(t_test_values)
-        x_range = np.linspace(-10, 10, N)
+        x_range = np.linspace(-10, 10, 1000)
         fig, ax = plt.subplots(figsize=(8, 6))
         # Initialize plot elements
         dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
@@ -744,6 +759,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
 
         # Create animation
         fps = N/best_t_value
+#        print(xi_values, type(xi_values))
+        print(f"Omega = {Omega}, b = {b}, A = {A}, xi_0 = {xi_values[0]}")
 
         ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
         
@@ -786,15 +803,15 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0):
         plt.close()
 
 
-master_func(m=1.3)
+master_func(A=1.5, load_model = True)
 exit()
 for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=round(A,2))
-##    start = time()
-##    result = master_func(A=A)
-##    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-##    with open("result_times.txt", "a") as f:
-##        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+#    start = time()
+#    result = master_func(A=A)
+#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+#    with open("result_times.txt", "a") as f:
+#        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
 for m in np.arange(1.1, 2.1, 0.1):
     master_func(m=round(m,2))
 #    start = time()
@@ -823,3 +840,6 @@ for Omega in np.arange(0.3, 1.3, 0.1):
 #../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
 #../movies/trajectory_trap_plus_sech_squared/
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
+
+
+#TODO: test A=1.5 randomly initialized
