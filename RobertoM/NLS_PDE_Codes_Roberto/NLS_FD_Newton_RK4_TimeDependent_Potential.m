@@ -20,19 +20,6 @@ u=u0; t=0; allt=t; isave=1;isaveCM = 1;alltCM = t;% store solution and time
 isavemass = 1;
 idisp = 1;
 
-%Initializing the potential parameter vector
-%A0 [0,1]
-%B0 [0,0.5]
-%C0 [0,10]
-%[nu,gamma,omega] [0,50]
-%[phi1,phi2] [0,pi]
-
-%Stable Set1:[1,0.5,3,0,10,30,pi,pi/2];
-%Stable Set2:[1,0.5,3,0,50,30,pi,pi/2]
-
-% Constant Omega_p (omega) and increasing C0 lowers the primary response 
-% frequency. Ideal low C0 and High omega
-%A0=1;nu=0;B0=0.5;gamma=50;phi1=0;C0=3;omega=30;phi2=pi/2; %RM
 A0=1;nu=0;B0=0.0;gamma=0;phi1=0;C0=2;omega=5;phi2=pi/2; %RCG
 params = [A0,B0,C0,nu,gamma,omega,phi1,phi2]';
 
@@ -59,18 +46,9 @@ stopsave=round(maxstep/nsave);
 stopsaveCM = round(maxstep/nsaveCM);
 if(dt>sqrt(2)*dx^2/2);error('Probably need a smaller dt!'); end
 
-% figure(1); clf; 
 t0 = 0;
 t=t0;
 V = TDPotential(x,t,params);
-
-% plot(x,abs(u),x,V,'-')
-% axis([L R -1.1*A 1.1*A]); 
-% xlabel('$x$')
-% ylabel('$|u(x,t)|$')
-% title(['$t=',num2str(t),'$']);
-% legend('$|u|$','$V$'); drawnow;
-% fprintf('Press any key to continue...\n');
 
 fprintf('Let us do Newton iterations...\n');
 rng('default');          % reset random generator
@@ -87,24 +65,9 @@ Maxu=max(abs(u));
 Maxmaxu = max(max(abs(alluCM)));
 allu=u;alluCM = u;
 
- density = u.*conj(u);
- xmax = sum(x.*density)*dx/(sum(density)*dx);
- xpeak_vals = xmax;
-
-% figure(2);
-% % %plot(x,abs(u),x,real(u),'-',x,imag(u),'-',x,V,'-')
-% plot(x,abs(u),'k-',x,V,'-')
-% % % hold on 
-% % % plot([-0.05,-0.05],[-1.1*Maxu,1.1*Maxu],'k--')
-% % % plot([0.05,0.05],[-1.1*Maxu,1.1*Maxu],'k--')
-% % hold off
-% axis([L R -0.1*Maxu 1.1*Maxu]); 
-% xlabel('$x$')
-% ylabel('$|u(x,t)|$')
-% title(['$t=',num2str(t),'$']);
-% legend('$|u|$','$V$'); drawnow;
-% Q(idisp) = getframe;
-% fprintf('Press any key to continue...\n');
+density = u.*conj(u);
+xmax = sum(x.*density)*dx/(sum(density)*dx);
+xpeak_vals = xmax;
 
 flag = 0;%Break condition
 for k=1:maxstep                     % main (time) loop
