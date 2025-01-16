@@ -450,9 +450,9 @@ def create_convergence_movie():
     system(f"open {movie_path}")
 
 
-
-#Plot1()
-#Plot2()
-Plot3()
-#Plot4()
-#create_convergence_movie()
+if __name__ == '__main__':
+    #Plot1()
+    #Plot2()
+    Plot3()
+    #Plot4()
+    #create_convergence_movie()

@@ -139,9 +139,56 @@ def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI():
     print(latex(solution))
 
 
+def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI_VERTICAL():
+    r'''
+    Solves the ODE:
+        \ddot{\theta} + \frac{g}{l} (\pi - \theta) = -\frac{A \omega^2}{l} \left( (\pi - \theta) \cos(\omega t) \right)
+    '''
+    # Define variables and functions
+    t, l, g, A, omega, theta_0, theta_dot_0 = symbols('t l g A omega, theta_0, theta_dot_0', positive=True)
+    theta = Function('theta')(t)
+
+    # Define the ODE
+    ode = Eq(
+        Derivative(theta, t, t) + (g / l) * (pi - theta) + ((A * omega * omega) / l) * (pi - theta) * cos(omega * t),
+        0
+    )
+    # Attempt to solve the ODE symbolically
+    solution = None
+    try:
+        solution = dsolve(ode, theta)#, ics={theta.subs(t,0): theta_0, diff(theta, t).subs(t,0): theta_dot_0})
+    except Exception as e:
+        print(e)
+    print(latex(solution))
+
+def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL():
+    r'''
+    Attempts to solve the ODE:
+        \ddot{\theta} + \frac{g}{l} \left((\pi - \theta) + \dfrac{(\theta - \pi)^3}{6}\right) = -\frac{A \omega^2}{l} \left( \left((\pi - \theta) + \dfrac{(\theta - \pi)^3}{6}\right) \cos(\omega t) \right)
+    '''
+    # Define variables and functions
+    t, l, g, A, omega = symbols('t l g A omega', positive=True)
+    theta = Function('theta')(t)
+
+    # Define the ODE
+    ode = Eq(
+        Derivative(theta, t, t) + (g / l) * ((pi - theta) + (((theta - pi)**3) / 6) ) + ((A * omega * omega) / l) * ((pi - theta) + (((theta - pi)**3) / 6) ) * cos(omega * t),
+        0
+    )
+    # Attempt to solve the ODE symbolically
+    solution = None
+    try:
+        solution = simplify(dsolve(ode, theta))
+    except Exception as e:
+        print(e)
+    print(latex(solution))
+
+
 #ODE_IVP()
 #ODE_IVP_PLUS_SOLITON()
 #ODE_IVP_LAGRANGIAN_FORMULATION()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR()
-ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI()
+#ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI_VERTICAL()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI()
+ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL()
+
