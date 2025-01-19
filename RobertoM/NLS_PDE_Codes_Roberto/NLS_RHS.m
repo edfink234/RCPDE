@@ -25,3 +25,4 @@ function RHS = NLS_RHS(u,N,dx,g,V)
   RHS = 1i*((0.5/dx^2)*(up-2*u+um) - (g*u.*conj(u)+V).*u);
 
 return;
+

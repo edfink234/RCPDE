@@ -575,10 +575,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                     df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss, 'best_time': best_t_value})
                     if best_t_value != t_test_values[-1]:
                         print(f"New best t value = {best_t_value}")
-                    try:
-                        t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
-                    except:
-                        t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+                        try:
+                            t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+                        except:
+                            t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                     # Write to CSV
                     df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
                     print(f"Best model saved with loss: {best_loss}")
@@ -594,7 +594,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                 print(f'Epoch {epoch}, Loss: {loss_value.item()}')
 
                 if plot_progress and epoch % 5 == 0:
-                    x_values, v_values, xi_values = [], [], []
+                    x_values, v_values, xi_values, a_values = [], [], [], []
                     x, v = x_start, v_start  # Initial conditions
                     for i, t in enumerate(t_test_values):
                         xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
@@ -670,12 +670,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         plt.legend()
         plt.savefig("trajectory_data.svg")
         system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
-        system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ")
         system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
         system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
         system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
         system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
         print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png saved")
+        system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ")
         plt.close()
         
         if produceInverse:

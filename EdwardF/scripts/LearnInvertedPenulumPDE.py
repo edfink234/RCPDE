@@ -12,16 +12,24 @@ import matplotlib.animation as animation
 from random import choice
 from time import time
 from scipy.optimize import fsolve
+from scipy.interpolate import interp1d
 from torch import diag
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
+def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = ""):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
 
-    sech = lambda x: 1/torch.cosh(x)
+    def sech(x):
+        if isinstance(x, torch.Tensor):
+            return 1 / torch.cosh(x)
+        elif isinstance(x, (float, np.float64, int)):
+            return 1 / np.cosh(x)
+        else:
+            raise TypeError(f"Unsupported input type: {type(x)}")
+
     torch.sech = sech
 
     def flt_to_str(flt):
@@ -69,9 +77,11 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 #    Omega = 0.2    # Frequency of the harmonic trap
 #    A = 1.2        # Amplitude of the potential
 #    b = 1.0        # Width of the potential
-    sigma = 1.0    # Width of the (Gaussian) potential, not used currently
-    T = 10.0       # Final time
+    sigma = 1.0     # Width of the (Gaussian) potential, not used currently
+    T = 10.0        # Final time
     dt = 0.001      # Time step
+    num_steps = int(T / dt)
+    
     x_star = 0.0   # Final position sought
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
@@ -113,22 +123,22 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 
     #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
     automate = True
-    produceInverse = False
+    produceInverse = True
     saveLibTorch = True
     useLibTorch = True
 
-    smoothness_penalty_factor = 1e-3 # penalty for lack of smoothness of xi
-    time_penalty_factor = 1e-3 #penalty for taking longer
-    velocity_penalty = 1e-3 #penalty for max(abs(v))
-    xi_penalty = 1e-3 #penalty for max(abs(xi))
+    smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness of xi
+    time_penalty_factor = 1e-5 #penalty for taking longer
+    velocity_penalty = 1e-5 #penalty for max(abs(v))
+    xi_penalty = 1e-5 #penalty for max(abs(xi))
     x_star_x_diff_mse_penalty = 1 #penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func
     v_mse_penalty = 1 #penalty for (v*v) term in MSE in loss_func
     x_star_xi_diff_mse_penalty = 1 #penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
     
-    t_values = np.linspace(1e-8, T, int(T / dt))
+    t_values = np.linspace(1e-8, T, num_steps)
     delta_t = t_values[1] - t_values[0]
     global t_test_values
-    t_test_values = np.linspace(1e-8, T, int(T / dt))
+    t_test_values = np.linspace(1e-8, T, num_steps)
 
     # Initial guess for the root (you might need to adjust this)
     x0 = 1.0
@@ -158,17 +168,17 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     
     tol = 1e-3
     g = -1;                         # g = 1 is defocusing and g =-1 is focusing
-    N = 401;                        # number of mesh points
+    N = 400;                        # number of mesh points
     L = -10; R = 10;                # Left and right bounds of interval
-    x = torch.linspace(L,R,N);    # discrete space
-    x = x[:-1];                   # adjust for periodic BCs
-    N = N-1;
-    dx = x[1]-x[0];               # mesh size
+    x = torch.linspace(L, R, N);    # discrete space
+    dx = x[1]-x[0];                 # mesh size
+    point_5_over_dx_squared = (0.5 / dx**2)
+    one_over_six = 1.0/6.0
     print(np.sqrt(2)*dx*dx*0.5)
     assert(dt<np.sqrt(2)*dx*dx*0.5)
 
     A_sol = 2; c = 0; x0 = x_start;                     # Amplitude, vel. & position
-    u0 = A_sol*sech(A_sol*(x-x0))*torch.exp(1j*c*x);    # initial condition (IC)
+    u0 = A_sol*sech(A_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
     V = potential(x, 0)
     U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
     print(U.shape, u0.shape, V.shape)
@@ -252,12 +262,18 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     numerator = torch.sum(x * density.real) * dx
     denominator = torch.sum(density.real) * dx
     xmax = numerator / denominator
+    
+    plot_steady_state = False
+    
+    # Create a spline interpolator
+    interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
 
-    print(f"xmax: {xmax}")
+    # Perform the displacement
+    u_displaced = interpolator(x - x_start)
+
+    # Replace NaN values with 0
+    u = np.nan_to_num(u_displaced)
     
-    x_start = xmax
-    
-    plot_steady_state = True
     if plot_steady_state:
         # Plot real part
 #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
@@ -267,9 +283,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         plt.plot(x.numpy(), u_before.imag.numpy(), label="$u_{\mathrm{imag}}(x,0)$ before Newton", color='orange', linestyle='--')
         # Plot real part
 #        plt.plot(x.numpy(), Ur.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ after Newton + $V$", color='blue')
-        plt.plot(x.numpy(), Ur.numpy(), label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
+        plt.plot(x.numpy(), u.real, label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
         # Plot imaginary part
-        plt.plot(x.numpy(), Ui.numpy(), label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
+        plt.plot(x.numpy(), u.imag, label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
         
         # Plot Potential
         plt.plot(x.numpy(), V.numpy(), label="Potential $V(x)$", color='green', linestyle='--')
@@ -350,13 +366,13 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
 
     # Load or instantiate the model
-    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_pde_.pth"
+    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_pde_.pth" if not base_model else base_model
     new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pth"
-    print(model_path)
-    print(new_model_path)
+    print(f"model_path = {model_path}")
+    print(f"new_model_path = {new_model_path}")
     if closest_x == x_start and closest_A == A and closest_b == b and closest_m == m and closest_Omega == Omega:
         print("exact match found")
-        assert(model_path == new_model_path)
+        assert(model_path == new_model_path or base_model)
     else:
         print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
         print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
@@ -377,8 +393,19 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     else:
         print("No saved model found.")
     
-    exit()
-    
+    u = torch.tensor(u, dtype=torch.cfloat, requires_grad=True)
+    density = u * torch.conj(u)  # Equivalent to |u|^2
+
+    # Calculate xmax (center of mass)
+    numerator = torch.sum(x * density.real) * dx
+    denominator = torch.sum(density.real) * dx
+    xmax = numerator / denominator
+    print(f"xmax = {xmax}")
+
+    # Assuming u is a PyTorch tensor
+    u_start = u.clone().detach().requires_grad_(True)
+    print(f"len(u_start) = {len(u_start)}")
+
     def dxdt(v):
         return v
 
@@ -399,10 +426,58 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         k4_x = dxdt(v + dt * k3_v)
         k4_v = dvdt(x + dt * k3_x, xi_t)
 
-        x_new = x + (dt / 6.0) * (k1_x + 2.0 * k2_x + 2.0 * k3_x + k4_x)
-        v_new = v + (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v)
+        x_new = x + (dt * one_over_six) * (k1_x + 2.0 * k2_x + 2.0 * k3_x + k4_x)
+        v_new = v + (dt * one_over_six) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v)
 
         return x_new, v_new
+    
+    def NLS_RHS(u, N, g, V):
+        """
+        Compute the RHS of the NLS equation with periodic boundary conditions.
+
+        Parameters:
+            u (torch.Tensor): Solution array (complex tensor).
+            N (int): Number of grid points.
+            g (float): Nonlinearity coefficient.
+            V (torch.Tensor): Potential array.
+
+        Returns:
+            torch.Tensor: Right-hand side of the NLS equation.
+        """
+        # Apply periodic boundary conditions
+        up = torch.cat((u[-1:], u[:-1]))  # u(N) and u(1:N-1)
+        um = torch.cat((u[1:], u[:1]))    # u(2:N) and u(1)
+
+        # Compute the RHS
+        RHS = 1j * (point_5_over_dx_squared * (up - 2 * u + um) - (g * u * torch.conj(u) + V) * u)
+
+        return RHS
+    
+    def ODE_RK4(u, N, g, V, dt):
+        """
+        Perform one step of the Runge-Kutta 4th order (RK4) method for the NLS equation.
+
+        Parameters:
+            u (torch.Tensor): Current solution (complex tensor).
+            N (int): Number of grid points.
+            g (float): Nonlinearity coefficient.
+            V (torch.Tensor): Potential array.
+            dt (float): Time step.
+
+        Returns:
+            torch.Tensor: Updated solution after one RK4 step.
+        """
+        
+        # Compute RK4 coefficients
+        k1 = dt * NLS_RHS(u, N, g, V)
+        k2 = dt * NLS_RHS(u + 0.5 * k1, N, g, V)
+        k3 = dt * NLS_RHS(u + 0.5 * k2, N, g, V)
+        k4 = dt * NLS_RHS(u + k3, N, g, V)
+        
+        # Update the solution
+        RK4 = u + (k1 + 2 * k2 + 2 * k3 + k4) * one_over_six
+        
+        return RK4
 
     # Define the xi function using the neural network
     def xi(t):
@@ -410,46 +485,52 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         return model(t_input)[0, 0]  # Get the output from the model
 
     def loss_func():
-#        global x_start, v_start, m, delta_t, x_th, v_th, smoothness_penalty_factor, time_penalty_factor, velocity_penalty
-        x, v = x_start, v_start
-    #    a = force(torch.tensor(x_start), xi(0.0)) / m
         smoothness_penalty = 0.0  # Initialize smoothness penalty
-        xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
-        v_values_temp = [] # Temporary storage for v values to calculate max velocity
+        xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
+        v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
         best_loss_ = np.inf
         best_time = np.inf
         best_time_idx = np.inf
+        x_values = [x_start]
+        u = u_start.clone()
         
-        for i, t in enumerate(t_values):
-            xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]  # Compute xi(t) at time t, assuming it is 0 at t ~ 0
+        for i in range(1, len(t_values)):
+            xi_t = xi(t_values[i])
             xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
-            x, v = rk4_step(x, v, xi_t, dt)
+            V = potential(x = x_values[-1], xi = xi_t)
+            u = ODE_RK4(u, N, g, V, dt)
+            
+            # Compute the density (modulus squared of u)
+            density = u * torch.conj(u)  # Equivalent to |u|^2
+
+            # Calculate xmax (center of mass)
+            numerator = torch.sum(x * density.real)
+            denominator = torch.sum(density.real)
+            x_values.append(numerator / denominator)
+        
+        v = (x_values[2] - x_values[0]) / (2 * dt)
+        v_values_temp.append(abs(v))
+        
+        for i in range(2, len(x_values)):
+            v = (x_values[i + 1] - x_values[i - 1]) / (2 * dt) if i < len(x_values) - 1 else ((x_values[-1] - x_values[-2]) / dt)
             v_values_temp.append(abs(v))
             
-    #        print(f"i = {i}, x = {x}, v = {v}")
-    #        print(f"t = {t}, xi(t) = {xi_values_temp[-1]}\n")
-                        
-            x_star_x_diff = (x_star - x)
-            x_star_xi_diff = (x_star - xi(t))
-#            xi_0 = xi(0)
+            x_star_x_diff = (x_star - x_values[i])
+            x_star_xi_diff = (x_star - xi_values_temp[i])
             
-            if i > 1:
-                MSE = x_star_x_diff_mse_penalty * (x_star_x_diff*x_star_x_diff) + v_mse_penalty * (v*v) + x_star_xi_diff_mse_penalty * (x_star_xi_diff*x_star_xi_diff)# + (xi_0*xi_0)
-                if MSE < best_loss_:
-    #                print(f"x_star_x_diff*x_star_x_diff = {x_star_x_diff*x_star_x_diff}")
-    #                print(f"v*v = {v*v}")
-    #                print(f"x_star_xi_diff*x_star_xi_diff = {x_star_xi_diff*x_star_xi_diff}")
-    #                print(f"xi_0*xi_0 = {xi_0*xi_0}")
-                    best_time = t
-                    best_loss_ = MSE
-                    best_time_idx = i
+            MSE = x_star_x_diff_mse_penalty * (x_star_x_diff*x_star_x_diff) + v_mse_penalty * (v*v) + x_star_xi_diff_mse_penalty * (x_star_xi_diff*x_star_xi_diff)
+        
+            if MSE < best_loss_:
+                best_time = t_values[i]
+                best_loss_ = MSE
+                best_time_idx = i
                     
         v_best = v_values_temp[0]
         xi_best = abs(xi_values_temp[0])
         for i in range(1, int(best_time_idx)+1):
             delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
             derivative = delta_xi / delta_t
-            smoothness_penalty += derivative*derivative#torch.sum(derivative ** 2)  # Penalty based on the square of the "derivative"
+            smoothness_penalty += derivative*derivative # Penalty based on the square of the "derivative"
             if v_values_temp[i] > v_best:
                 v_best = v_values_temp[i]
             abs_xi_temp_i = abs(xi_values_temp[i])
@@ -463,7 +544,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
     # Loss function for optimization
-
     def closure():
         optimizer.zero_grad()  # Clear previous gradients
         loss, _ = loss_func()  # Compute the loss
@@ -655,10 +735,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 
     print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
     print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
-    print("best_loss =",best_loss)
+    print("best_loss =", best_loss)
     print("Current loss and time =", loss_func())
-    #model = torch.jit.load("../NeuralNetworkData/xi_model_IC_2_point_225840410642715_pde_.pt")
-    #print("Current loss and time =", loss_func())
+
     if not automate:
         ans = input("Proceed? (y/n): ")
         if ans.lower() != 'y':
@@ -667,7 +746,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     # Training loop
     global learning_rate
     learning_rate = 0.1
-    Algorithm = "lbfgs"
+    Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -693,7 +772,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1)
+            brute_force(fine = False, coolingRate = 1, anneal = False, initial_temp = 10)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -719,10 +798,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                     df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss, 'best_time': best_t_value})
                     if best_t_value != t_test_values[-1]:
                         print(f"New best t value = {best_t_value}")
-                    try:
-                        t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
-                    except:
-                        t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+                        try:
+                            t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+                        except:
+                            t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                     # Write to CSV
                     df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
                     print(f"Best model saved with loss: {best_loss}")
@@ -738,20 +817,39 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                 print(f'Epoch {epoch}, Loss: {loss_value.item()}')
 
                 if plot_progress and epoch % 5 == 0:
-                    x_values, v_values, xi_values = [], [], []
-                    x, v = x_start, v_start  # Initial conditions
-                    for i, t in enumerate(t_test_values):
-                        xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
+                    x_values, v_values, xi_values, a_values = [x_start], [v_start], [0.0], [0.0]
+                    u = u_start.clone()
+                    for i in range(1, len(t_test_values)):
+                        xi_t = xi(t_values[i])
                         xi_values.append(xi_t.detach().numpy())
-                        x, v = rk4_step(x, v, xi_t, dt)
-                        a = force(x, xi_t) / m
-                        x_values.append(x.detach().numpy())  # Use detach()
-                        v_values.append(v.detach().numpy())  # Use detach()
-                        a_values.append(a.detach().numpy())
-                    plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
-                    plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-                    plt.plot(t_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
-                    plt.plot(t_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+                        V = potential(x = x_values[-1], xi = xi_values[-1])
+                        u = ODE_RK4(u, N, g, V, dt)
+                        
+                        # Compute the density (modulus squared of u)
+                        density = u * torch.conj(u)  # Equivalent to |u|^2
+
+                        # Calculate xmax (center of mass)
+                        numerator = torch.sum(x * density.real)
+                        denominator = torch.sum(density.real)
+                        x_values.append((numerator / denominator).detach().numpy())
+            
+                    v = (x_values[2] - x_values[0]) / (2 * dt)
+                    v_values.append(v)
+                    for i in range(2, len(x_values)):
+                        v = (x_values[i + 1] - x_values[i - 1]) / (2 * dt) if i < len(x_values) - 1 else ((x_values[-1] - x_values[-2]) / dt)
+                        v_values.append(v)
+                    
+                    a = (v_values[2] - v_values[0]) / (2 * dt)
+                    a_values.append(a)
+                    for i in range(2, len(v_values)):
+                        v = (v_values[i + 1] - v_values[i - 1]) / (2 * dt) if i < len(v_values) - 1 else ((v_values[-1] - v_values[-2]) / dt)
+                        a_values.append(v)
+                    
+                                            
+                    plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
+                    plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
+                    plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
+                    plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
 
                     plt.legend()
                     plt.draw()
@@ -772,32 +870,46 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
             exit()
         
         model = XiModel()
-        print("New model path loaded =",new_model_path)
+        print("New model path loaded =", new_model_path)
         if useLibTorch and os.path.exists(new_model_path):
             model = torch.jit.load(new_model_path)
         else:
             model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
         xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
         # Save data to CSV
-        data_path = "../dataFiles/trajectory_data.csv"
-        x_values, v_values, a_values, xi_values = [], [], [], []
-        x, v = x_start, v_start # Initial conditions
-        a = force(torch.tensor(x_start), xi(0.0)) / m
-        print(f"x_0, v_0 = {x}, {v}")
-        for i, t in enumerate(t_test_values):
-            xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
+        data_path = "../dataFiles/trajectory_data_pde.csv"
+        x_values, v_values, xi_values, a_values, u_values = [x_start], [v_start], [0.0], [0.0], [u_start.clone()]
+        for i in range(1, len(t_test_values)):
+            xi_t = xi(t_values[i])
             xi_values.append(xi_t.detach().numpy())
-            x, v = rk4_step(x, v, xi_t, dt)
-            a = force(x, xi_t) / m
-            x_values.append(x.detach().numpy())
-            v_values.append(v.detach().numpy())
-            a_values.append(a.detach().numpy())
-            assert(len(a_values) == len(x_values))
+            V = potential(x = x_values[-1], xi = xi_values[-1])
+            u_values.append(ODE_RK4(u_values[-1], N, g, V, dt))
+            
+            # Compute the density (modulus squared of u)
+            density = u_values[-1] * torch.conj(u_values[-1])  # Equivalent to |u|^2
+
+            # Calculate xmax (center of mass)
+            numerator = torch.sum(x * density.real)
+            denominator = torch.sum(density.real)
+            x_values.append((numerator / denominator).detach().numpy())
+
+        v = (x_values[2] - x_values[0]) / (2 * dt)
+        v_values.append(v)
+        for i in range(2, len(x_values)):
+            v = (x_values[i + 1] - x_values[i - 1]) / (2 * dt) if i < len(x_values) - 1 else ((x_values[-1] - x_values[-2]) / dt)
+            v_values.append(v)
+        
+        a = (v_values[2] - v_values[0]) / (2 * dt)
+        a_values.append(a)
+        for i in range(2, len(v_values)):
+            v = (v_values[i + 1] - v_values[i - 1]) / (2 * dt) if i < len(v_values) - 1 else ((v_values[-1] - v_values[-2]) / dt)
+            a_values.append(v)
+
         with open(data_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["t_values", "xi_values", "x_values", "v_values"])
             for i in range(len(t_test_values)):
-                writer.writerow([t_values[i], xi_values[i].item(), x_values[i].item(), v_values[i].item()])
+                writer.writerow([t_values[i], xi_values[i], x_values[i], v_values[i]])
         print("Data saved to CSV.")
         
         plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
@@ -812,14 +924,14 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         plt.xlabel('t')
         plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
-        plt.savefig("trajectory_data.svg")
-        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
-        system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ")
-        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
-        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
-        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
-        print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png saved")
+        plt.savefig("trajectory_data_pde.svg")
+        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf trajectory_data_pde.svg")
+        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
+        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+        print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png saved")
+        system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ")
         plt.close()
         
         if produceInverse:
@@ -839,13 +951,13 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
             plt.xlabel('t')
             plt.title(f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             plt.legend()
-            plt.savefig("trajectory_data.svg")
-            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
-            system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
-            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
-            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
-            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
+            plt.savefig("trajectory_data_pde.svg")
+            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf trajectory_data_pde.svg")
+            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
+            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+            system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
 
             plt.close()
         
@@ -856,16 +968,16 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                 exit()
             
         N = len(t_test_values)
-        x_range = np.linspace(-10, 10, 1000)
+        x_range = np.linspace(-10, 10, len(u_start))
         fig, ax = plt.subplots(figsize=(8, 6))
         # Initialize plot elements
-        dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
+        dot, = ax.plot([], [], 'r', lw=1, label = "Soliton")
+        center, = ax.plot([], [], 'o', color='orange', markersize=8, label="Center of Mass")
         curve, = ax.plot([], [], 'b-', lw=2)
     #    gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
-
         # Set plot limits and labels
         ax.set_xlim(x_range[0], x_range[-1])
-        ax.set_ylim(0, 3)
+        ax.set_ylim(0, 5)
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
         ax.legend()
@@ -888,42 +1000,46 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         def init():
     #        gold_dot.set_data([], [])
             dot.set_data([], [])
+            center.set_data([], [])
             curve.set_data([], [])
-            return dot, curve#, gold_dot
+            return dot, curve, center#, gold_dot
 
             # Update function
         def update(i):
             t = (i) * (best_t_value / (N - 1))  # Calculate current time
             y_values = potential(x_range, xi_values[i])
-            dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
+            density = (u_values[i] * torch.conj(u_values[i])).detach().numpy()
+            dot.set_data(x, density + y_values)
+            center.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
             ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
-            return dot, curve#, gold_dot
+            return dot, curve, center#, gold_dot
 
         # Create animation
         fps = N/best_t_value
 #        print(xi_values, type(xi_values))
         print(f"Omega = {Omega}, b = {b}, A = {A}, xi_0 = {xi_values[0]}")
 
-        ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
+        ani = animation.FuncAnimation(fig, update, frames=range(0, N, 10), init_func=init, blit=True, interval = 1000/fps)
         
         # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4")
-        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
+        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
+        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
         plt.close()
 
         if produceInverse:
             fig, ax = plt.subplots(figsize=(8, 6))
             # Initialize plot elements
-            dot, = ax.plot([], [], 'ro', markersize=8, label = "Particle")
+            dot, = ax.plot([], [], 'r', lw=1, label = "Soliton")
+            center, = ax.plot([], [], 'o', color='orange', markersize=8, label="Center of Mass")
             curve, = ax.plot([], [], 'b-', lw=2)
     #        gold_dot, = ax.plot([], [], 'yo', markersize=8, label = "$x^*$")
 
             # Set plot limits and labels
             ax.set_xlim(x_range[0], x_range[-1])
-            ax.set_ylim(0, 3)
+            ax.set_ylim(0, 5)
             ax.set_xlabel("x")
             ax.set_ylabel("Potential")
             ax.legend()
@@ -932,22 +1048,24 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
             def update(i):
                 t = (i) * (best_t_value / (N - 1))  # Calculate current time
                 y_values = potential(x_range, -xi_values[i])
-                dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
+                density = (u_values[i] * torch.conj(u_values[i])).detach().numpy()[::-1]
+                dot.set_data(x, density + y_values)
+                center.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
                 curve.set_data(x_range, y_values)
-    #            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
-                ax.set_title(f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
-                return dot, curve#, gold_dot
-            ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
+        #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
+                ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+                return dot, curve, center#, gold_dot
+            ani = animation.FuncAnimation(fig, update, frames=range(0, N, 10), init_func=init, blit=True, interval = 1000/fps)
         
             # Save the animation
-            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4")
-            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
+            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
+            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
 
         plt.close()
 
 
-master_func(load_model = True)
+master_func(load_model = True, base_model = "xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_1_0_point_2_.pth")
 exit()
 for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=round(A,2))
