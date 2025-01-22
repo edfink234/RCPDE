@@ -75,7 +75,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.1e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -218,8 +218,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
     else:
         print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
         print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
-        print("problem!")
-        exit()
+#        print("problem!")
+#        exit()
     if os.path.exists(model_path) and load_model:
         if useLibTorch:
             model = torch.jit.load(model_path.replace(".pth", ".pt"))
@@ -522,8 +522,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 
     # Training loop
     global learning_rate
-    learning_rate = 0.1
-    Algorithm = "lbfgs"
+    learning_rate = 0.000125
+    Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -558,8 +558,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                 raise(KeyboardInterrupt)
         else:
             while criterion():
-                if epoch >= 1000:
-                    return best_loss
+#                if epoch >= 1000:
+#                    return best_loss
                 optimizer.zero_grad()  # Zero the gradients
                 loss_value, t_value = loss_func()
                 
@@ -803,8 +803,16 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         plt.close()
 
 
+#for A in np.arange(1.4099, 1.4899, 0.01):
+#    start = time()
+#    result = master_func(A=round(A,4))
+#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+#    with open("result_times.txt", "a") as f:
+#        f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+
 master_func(A=1.5, load_model = True)
 exit()
+
 for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=round(A,2))
 #    start = time()

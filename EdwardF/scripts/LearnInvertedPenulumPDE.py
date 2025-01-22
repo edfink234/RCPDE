@@ -110,6 +110,11 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         temp = torch.sech(b * (x - xi))
         V_SECH = A * temp * temp
         return V_MT + V_SECH
+    
+    def sech_potential(x, xi):
+        temp = torch.sech(b * (x - xi))
+        return A*temp*temp
+#        return torch.zeros_like(x)
 
     # Function to compute the force (negative derivative of potential)
     def force(x, xi):
@@ -166,7 +171,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             xmax = sum(x.*density)*dx/(sum(density)*dx);%Finding the CM
     '''
     
-    tol = 1e-3
+    tol = 1e-4
     g = -1;                         # g = 1 is defocusing and g =-1 is focusing
     N = 400;                        # number of mesh points
     L = -10; R = 10;                # Left and right bounds of interval
@@ -182,7 +187,13 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     V = potential(x, 0)
     U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
     print(U.shape, u0.shape, V.shape)
-    w_sol = A*A*0.5 #temporal freq
+    w_sol = A_sol*A_sol*0.5 #temporal freq
+#    A_sol = 2; c = 0;
+#    w_sol = A*A*0.5 #temporal freq
+#    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
+#    V = potential(x, 0)
+#    U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
+#    print(U.shape, u0.shape, V.shape)
     
     err = np.inf
     
@@ -214,6 +225,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     u_before = u.detach().clone()
 
     # Main loop: checking Newton tolerance
+    num_iter = 0
     while err > tol:
         # Split real and imaginary parts
         Ur = U[indR]
@@ -238,12 +250,17 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         # Newton correction
         DU = torch.linalg.solve(J, -F)  # Solve J * DU = -F
         U1 = U + DU  # Update solution
+        print(f"DU.max() = {DU.max()}")
 
         # Update error and solution
         err = torch.norm(F).numpy().item()
-        print(err)
+        print(f"err = {err}")
+#        print(f"Condition number of J: {torch.linalg.cond(J)}")
         U = U1
-
+        num_iter += 1
+        if num_iter > 20:
+            break
+            
     u = U[indR]+1j*U[indI];      # wrapping into a complex vector
     Maxu=max(abs(u));
     idx=np.where(np.isclose(abs(u), Maxu))
@@ -263,7 +280,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     denominator = torch.sum(density.real) * dx
     xmax = numerator / denominator
     
-    plot_steady_state = False
+    plot_steady_state = True
     
     # Create a spline interpolator
     interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
@@ -300,6 +317,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         plt.savefig("newton_steady_state.svg")
         system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
         system(f"open newton_steady_state.pdf")
+    
                 
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
@@ -745,7 +763,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     # Training loop
     global learning_rate
-    learning_rate = 0.1
+    learning_rate = 0.001
     Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
@@ -781,8 +799,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 raise(KeyboardInterrupt)
         else:
             while criterion():
-                if epoch >= 1000:
-                    return best_loss
+#                if epoch >= 1000:
+#                    return best_loss
                 optimizer.zero_grad()  # Zero the gradients
                 loss_value, t_value = loss_func()
                 
@@ -1050,7 +1068,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 y_values = potential(x_range, -xi_values[i])
                 density = (u_values[i] * torch.conj(u_values[i])).detach().numpy()[::-1]
                 dot.set_data(x, density + y_values)
-                center.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
+                center.set_data([-x_values[i]], [potential(x_values[i], -xi_values[i])])
                 curve.set_data(x_range, y_values)
         #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
                 ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
@@ -1065,7 +1083,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         plt.close()
 
 
-master_func(load_model = True, base_model = "xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_1_0_point_2_.pth")
+master_func(load_model = True, base_model = "")#xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_1_0_point_2_.pth")
 exit()
 for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=round(A,2))
