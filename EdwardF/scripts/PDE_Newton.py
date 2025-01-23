@@ -26,11 +26,11 @@ b = 1
 A = 1
 Omega = 0.2
 dt = 0.001      # Time step
-tol = 1e-10
+tol = 1e-4
 g = -1;                         # g = 1 is defocusing and g =-1 is focusing
 N = 400;                        # number of mesh points
 L = -10; R = 10;                # Left and right bounds of interval
-x = torch.linspace(L, R, N)[1:];    # discrete space
+x = torch.linspace(L, R, N);    # discrete space
 dx = x[1]-x[0];                 # mesh size
 point_5_over_dx_squared = (0.5 / dx**2)
 one_over_six = 1.0/6.0
@@ -46,19 +46,51 @@ print(U.shape, u0.shape, V.shape)
 
 err = np.inf
 
+# Initialize indices and values for sparse matrix
+indices = []
+values = []
+
+# Main diagonal
+for i in range(N):
+    indices.append([i, i])
+    values.append(-2)
+
+# Off-diagonals
+for i in range(N - 1):
+    indices.append([i, i + 1])  # Upper diagonal
+    values.append(1)
+    indices.append([i + 1, i])  # Lower diagonal
+    values.append(1)
+
+# Periodic boundary conditions
+indices.append([0, N - 1])  # Top-right corner
+values.append(1)
+indices.append([N - 1, 0])  # Bottom-left corner
+values.append(1)
+
+# Convert indices and values to tensors
+indices = torch.tensor(indices, dtype=torch.long).T  # Transpose to match sparse format
+values = torch.tensor(values, dtype=torch.float32)
+
+# Create sparse Laplacian
+D2_sparse = torch.sparse_coo_tensor(indices, values, size=(N, N))
+D2 = D2_sparse / (dx**2)
+
+#print(D2_sparse)
+
 # Define the discrete Laplacian with periodic boundary conditions
-D2 = torch.zeros(N, N)
-
-# Fill the main diagonal
-D2 += torch.diag(-2 * torch.ones(N))
-
-# Fill the off-diagonals
-D2 += torch.diag(torch.ones(N - 1), diagonal=-1)
-D2 += torch.diag(torch.ones(N - 1), diagonal=1)
-D2[0, -1] = 1
-D2[-1, 0] = 1
-D2 = D2 / (dx**2)
-print(D2)
+#D2 = torch.zeros(N, N)
+#
+## Fill the main diagonal
+#D2 += torch.diag(-2 * torch.ones(N))
+#
+## Fill the off-diagonals
+#D2 += torch.diag(torch.ones(N - 1), diagonal=-1)
+#D2 += torch.diag(torch.ones(N - 1), diagonal=1)
+#D2[0, -1] = 1
+#D2[-1, 0] = 1
+#D2 = D2 / (dx**2)
+#print(D2)
 
 # Index for real and imaginary parts
 indR = slice(0, N)  # $u_{\mathrm{real}}$indices
@@ -79,23 +111,22 @@ while err > tol:
     # Split real and imaginary parts
     Ur = U[indR]
     Ui = U[indI]
-
     # Compute modulus squared of u
     U2 = Ur**2 + Ui**2
 
     # Jacobian components
-    J11 = -0.5 * D2 + diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
-    J22 = -0.5 * D2 + diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
+    J11 = + diag(g * (3 * Ur**2 + Ui**2) + V + w_sol) -0.5 * D2
+    J22 = + diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol) -0.5 * D2
     J12 = g * diag(2 * Ur * Ui)
     J = torch.cat(
         [torch.cat([J11, J12], dim=1), torch.cat([J12, J22], dim=1)], dim=0
     )
-    print(J)
 
     # Right-hand side (RHS)
     Fr = -0.5 * (D2 @ Ur) + (g * U2 + V + w_sol) * Ur
     Fi = -0.5 * (D2 @ Ui) + (g * U2 + V + w_sol) * Ui
     F = torch.cat([Fr, Fi], dim=0)
+    print(F.shape)
 
     # Newton correction
     DU = -torch.linalg.solve(J, F)  # Solve J * DU = -F

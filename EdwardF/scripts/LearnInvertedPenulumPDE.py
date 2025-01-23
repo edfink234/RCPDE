@@ -15,9 +15,12 @@ from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
 from torch import diag
 from warnings import filterwarnings
+from scipy.sparse import diags
+from scipy.sparse.linalg import splu
+from glob import glob
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = ""):
+def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -25,7 +28,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     def sech(x):
         if isinstance(x, torch.Tensor):
             return 1 / torch.cosh(x)
-        elif isinstance(x, (float, np.float64, int)):
+        elif isinstance(x, (float, np.float64, int, np.ndarray)):
             return 1 / np.cosh(x)
         else:
             raise TypeError(f"Unsupported input type: {type(x)}")
@@ -152,10 +155,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     root, info, ier, mesg = fsolve(min_force, x0, full_output=True)
 
     if ier == 1:
-        print(f"Root found: {root[0]}")
+        if not no_print:
+            print(f"Root found: {root[0]}")
         x_start, v_start = float(root[0]), 0.0
     else:
-        print(f"Root finding failed: {mesg}")
+        if not no_print:
+            print(f"Root finding failed: {mesg}")
         exit()
 
     x_start = round(float(x_start), 4)
@@ -171,58 +176,58 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             xmax = sum(x.*density)*dx/(sum(density)*dx);%Finding the CM
     '''
     
-    tol = 1e-4
+    tol = 1e-10
     g = -1;                         # g = 1 is defocusing and g =-1 is focusing
     N = 400;                        # number of mesh points
     L = -10; R = 10;                # Left and right bounds of interval
-    x = torch.linspace(L, R, N);    # discrete space
+    x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
+    N -= 1
     dx = x[1]-x[0];                 # mesh size
     point_5_over_dx_squared = (0.5 / dx**2)
     one_over_six = 1.0/6.0
-    print(np.sqrt(2)*dx*dx*0.5)
+    if not no_print:
+        print(np.sqrt(2)*dx*dx*0.5)
     assert(dt<np.sqrt(2)*dx*dx*0.5)
 
     A_sol = 2; c = 0; x0 = x_start;                     # Amplitude, vel. & position
-    u0 = A_sol*sech(A_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
+    u0 = A_sol*sech(A_sol*(x))*np.exp(1j*c*x);    # initial condition (IC)
     V = potential(x, 0)
-    U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
-    print(U.shape, u0.shape, V.shape)
+    
+    U = np.concatenate((np.real(u0), np.imag(u0)))
+    if not no_print:
+        print(U.shape, u0.shape, V.shape)
     w_sol = A_sol*A_sol*0.5 #temporal freq
 #    A_sol = 2; c = 0;
 #    w_sol = A*A*0.5 #temporal freq
 #    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
 #    V = potential(x, 0)
 #    U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
-#    print(U.shape, u0.shape, V.shape)
+    if not no_print:
+        print(U.shape, u0.shape, V.shape)
     
     err = np.inf
     
     # Define the discrete Laplacian with periodic boundary conditions
-    D2 = torch.zeros(N, N)
-
-    # Fill the main diagonal
-    D2 += torch.diag(-2 * torch.ones(N))
-
-    # Fill the off-diagonals
-    D2 += torch.diag(torch.ones(N - 1), diagonal=-1)
-    D2 += torch.diag(torch.ones(N - 1), diagonal=1)
-    D2[0, -1] = 1
-    D2[-1, 0] = 1
-    D2 = D2 / (dx**2)
+    ONE = np.ones(N)
+    D2 = diags([ONE, -2 * ONE, ONE], [-1, 0, 1], shape=(N, N)).toarray()
+    D2[0, -1] = D2[-1, 0] = 1  # Periodic boundary conditions
+    D2 /= dx**2
 
     # Index for real and imaginary parts
-    indR = slice(0, N)  # $u_{\mathrm{real}}$indices
-    indI = slice(N, 2 * N)  # $u_{\mathrm{imag}}$ part indices
+    indR = slice(0, N)
+    indI = slice(N, 2 * N)
     
     u = U[indR]+1j*U[indI];      # wrapping into a complex vector
-    print(f"u.shape = {u.shape}")
-    print(f"Max(abs(u)) = {max(abs(u))}")
+    if not no_print:
+        print(f"u.shape = {u.shape}")
+        print(f"Max(abs(u)) = {max(abs(u))}")
     idx=np.where(np.isclose(abs(u), max(abs(u))))
-    print(f"idx = {idx}")
-    print(f"abs(u)[idx] = {abs(u)[idx]}")
-    print(f"x[idx] = {x[idx]}")
-    print(f"x_start = {x_start}")
-    u_before = u.detach().clone()
+    if not no_print:
+        print(f"idx = {idx}")
+        print(f"abs(u)[idx] = {abs(u)[idx]}")
+        print(f"x[idx] = {x[idx]}")
+        print(f"x_start = {x_start}")
+    u_before = u.copy()
 
     # Main loop: checking Newton tolerance
     num_iter = 0
@@ -235,52 +240,56 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         U2 = Ur**2 + Ui**2
 
         # Jacobian components
-        J11 = -0.5 * D2 + diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
-        J22 = -0.5 * D2 + diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
-        J12 = diag(2 * g * Ur * Ui)
-        J = torch.cat(
-            [torch.cat([J11, J12], dim=1), torch.cat([J12, J22], dim=1)], dim=0
-        )
+        J11 = -0.5 * D2 + np.diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
+        J22 = -0.5 * D2 + np.diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
+        J12 = np.diag(2 * g * Ur * Ui)
+        if not no_print:
+            print(J11.shape, J22.shape, J12.shape)
+        J = np.block([[J11, J12], [J12, J22]])
 
         # Right-hand side (RHS)
         Fr = -0.5 * (D2 @ Ur) + (g * U2 + V + w_sol) * Ur
         Fi = -0.5 * (D2 @ Ui) + (g * U2 + V + w_sol) * Ui
-        F = torch.cat([Fr, Fi], dim=0)
+        F = np.concatenate((Fr, Fi))
 
         # Newton correction
-        DU = torch.linalg.solve(J, -F)  # Solve J * DU = -F
+        DU = splu(J).solve(-F)  # Solve J * DU = -F
         U1 = U + DU  # Update solution
-        print(f"DU.max() = {DU.max()}")
 
         # Update error and solution
-        err = torch.norm(F).numpy().item()
-        print(f"err = {err}")
-#        print(f"Condition number of J: {torch.linalg.cond(J)}")
+        err = np.linalg.norm(F)
+        if not no_print:
+            print(f"err = {err}")
+#        if not no_print:
+#            print(f"Condition number of J: {torch.linalg.cond(J)}")
         U = U1
         num_iter += 1
         if num_iter > 20:
-            break
+            if not no_print:
+                print("failed")
+            exit()
             
     u = U[indR]+1j*U[indI];      # wrapping into a complex vector
     Maxu=max(abs(u));
     idx=np.where(np.isclose(abs(u), Maxu))
 
-    print(f"u.shape = {u.shape}")
-    print(f"Max(abs(u)) = {Maxu}")
-    print(f"idx = {idx}")
-    print(f"abs(u)[idx] = {abs(u)[idx]}")
-    print(f"x[idx] = {x[idx]}")
-    print(f"x_start = {x_start}")
+    if not no_print:
+        print(f"u.shape = {u.shape}")
+        print(f"Max(abs(u)) = {Maxu}")
+        print(f"idx = {idx}")
+        print(f"abs(u)[idx] = {abs(u)[idx]}")
+        print(f"x[idx] = {x[idx]}")
+        print(f"x_start = {x_start}")
     
     # Compute the density (modulus squared of u)
-    density = u * torch.conj(u)  # Equivalent to |u|^2
+    density = u * np.conj(u)  # Equivalent to |u|^2
 
     # Calculate xmax (center of mass)
-    numerator = torch.sum(x * density.real) * dx
-    denominator = torch.sum(density.real) * dx
+    numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
+    denominator = np.sum(density.real) * dx
     xmax = numerator / denominator
     
-    plot_steady_state = True
+    plot_steady_state = False
     
     # Create a spline interpolator
     interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
@@ -294,18 +303,18 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     if plot_steady_state:
         # Plot real part
 #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
-        plt.plot(x.numpy(), u_before.real.numpy(), label="$u_{\mathrm{real}}(x,0)$ before Newton", color='purple')
+        plt.plot(x, u_before.real, label="$u_{\mathrm{real}}(x,0)$ before Newton", color='purple')
 
         # Plot imaginary part
-        plt.plot(x.numpy(), u_before.imag.numpy(), label="$u_{\mathrm{imag}}(x,0)$ before Newton", color='orange', linestyle='--')
+        plt.plot(x, u_before.imag, label="$u_{\mathrm{imag}}(x,0)$ before Newton", color='orange', linestyle='--')
         # Plot real part
 #        plt.plot(x.numpy(), Ur.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ after Newton + $V$", color='blue')
-        plt.plot(x.numpy(), u.real, label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
+        plt.plot(x, u.real, label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
         # Plot imaginary part
-        plt.plot(x.numpy(), u.imag, label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
+        plt.plot(x, u.imag, label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
         
         # Plot Potential
-        plt.plot(x.numpy(), V.numpy(), label="Potential $V(x)$", color='green', linestyle='--')
+        plt.plot(x, V, label="Potential $V(x)$", color='green', linestyle='--')
 
         # Add labels, title, and legend
         plt.title("$V(x)$, $u_{\mathrm{real}}(x,0)$ and $u_{\mathrm{imag}}(x,0)$")
@@ -317,7 +326,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         plt.savefig("newton_steady_state.svg")
         system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
         system(f"open newton_steady_state.pdf")
-    
                 
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
@@ -355,15 +363,18 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     except FileNotFoundError:
         # Create the file if it doesn't exist
         with open("../dataFiles/ICsPDE.txt", 'w') as f:
-            print("File ../dataFiles/ICsPDE.txt created successfully.")
+            if not no_print:
+                print("File ../dataFiles/ICsPDE.txt created successfully.")
 
-    print(df)
+    if not no_print:
+        print(df)
     parameters = (df[(df['x_0']==x_start) & (df['A']==A) & (df['b']==b) & (df['m']==m) & (df['Omega']==Omega)]) if not df.empty else []
     closest_row_idx = -1
     closest_x, closest_A, closest_b, closest_m, closest_Omega = x_start, A, b, m, Omega
 
     if len(parameters):
-        print(parameters)
+        if not no_print:
+            print(parameters)
         best_loss, best_t_value = parameters['best_loss'].item(), parameters['best_time'].item()
         try:
             t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
@@ -386,15 +397,18 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     # Load or instantiate the model
     model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_pde_.pth" if not base_model else base_model
     new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pth"
-    print(f"model_path = {model_path}")
-    print(f"new_model_path = {new_model_path}")
+    if not no_print:
+        print(f"model_path = {model_path}")
+        print(f"new_model_path = {new_model_path}")
     if closest_x == x_start and closest_A == A and closest_b == b and closest_m == m and closest_Omega == Omega:
-        print("exact match found")
+        if not no_print:
+            print("exact match found")
         assert(model_path == new_model_path or base_model)
     else:
-        print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
-        print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
-        print("problem!")
+        if not no_print:
+            print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
+            print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
+            print("problem!")
         exit()
     if os.path.exists(model_path) and load_model:
         if useLibTorch:
@@ -402,28 +416,34 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             new_model_path = new_model_path.replace(".pth", ".pt")
         else:
             model.load_state_dict(torch.load(model_path))#, weights_only=True))
-        print("Model loaded from file.")
-        print(f"Example input of {example} yields: {model(example)[0, 0]}")
+        if not no_print:
+            print("Model loaded from file.")
+            print(f"Example input of {example} yields: {model(example)[0, 0]}")
     elif os.path.exists(model_path) and not load_model:
-        print("Model exists but not loaded.")
+        if not no_print:
+            print("Model exists but not loaded.")
         if useLibTorch:
             new_model_path = new_model_path.replace(".pth", ".pt")
     else:
-        print("No saved model found.")
+        if not no_print:
+            print("No saved model found.")
     
     u = torch.tensor(u, dtype=torch.cfloat, requires_grad=True)
     density = u * torch.conj(u)  # Equivalent to |u|^2
+    x = torch.tensor(x)
 
     # Calculate xmax (center of mass)
     numerator = torch.sum(x * density.real) * dx
     denominator = torch.sum(density.real) * dx
     xmax = numerator / denominator
-    print(f"xmax = {xmax}")
+    if not no_print:
+        print(f"xmax = {xmax}")
 
     # Assuming u is a PyTorch tensor
     u_start = u.clone().detach().requires_grad_(True)
-    print(f"len(u_start) = {len(u_start)}")
-
+    if not no_print:
+        print(f"len(u_start) = {len(u_start)}")
+    
     def dxdt(v):
         return v
 
@@ -556,8 +576,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 xi_best = abs_xi_temp_i
                 
         smoothness_penalty /= best_time_idx
-        
-    #    print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
+#        if not no_print:
+#            print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
     #    exit()
         return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
@@ -615,7 +635,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 try:
                     update = torch.linalg.solve(hessian_damped, -grad)  # Solve for flattened update
                 except RuntimeError as e:
-                    print(f"Hessian inversion failed for parameter {name}: {e}")
+                    if not no_print:
+                        print(f"Hessian inversion failed for parameter {name}: {e}")
                     update = -grad  # Fallback to gradient descent step
                 
                 # Reshape the update to match parameter shape
@@ -644,17 +665,20 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 if saveLibTorch:
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
-                    print("libtorch version saved")
+                    if not no_print:
+                        print("libtorch version saved")
                 df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
-                    print(f"New best t value = {best_t_value}")
+                    if not no_print:
+                        print(f"New best t value = {best_t_value}")
                 try:
                     t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
                 except:
                     t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
                 df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
-                print(f"Best model saved with loss: {best_loss}")
+                if not no_print:
+                    print(f"Best model saved with loss: {best_loss}")
             else:
                 # Revert to previous parameters
                 with torch.no_grad():
@@ -662,7 +686,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         param.copy_(current_params[name])
 
             # Log current loss and time
-            print(f"Curr Loss = {new_loss}, Curr Time = {new_time:.6f}")
+            if not no_print:
+                print(f"Curr Loss = {new_loss}, Curr Time = {new_time:.6f}")
 
         # Restore best parameters to the model
         with torch.no_grad():
@@ -722,17 +747,20 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 if saveLibTorch:
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
-                    print("libtorch version saved")
+                    if not no_print:
+                        print("libtorch version saved")
                 df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
-                    print(f"New best t value = {best_t_value}")
+                    if not no_print:
+                        print(f"New best t value = {best_t_value}")
                 try:
                     t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
                 except:
                     t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
                 df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
-                print(f"Best model saved with loss: {best_loss}")
+                if not no_print:
+                    print(f"Best model saved with loss: {best_loss}")
 
             elif anneal and torch.exp(-delta_loss / temperature) > np.random.random():
                 current_params = perturbed_params
@@ -743,7 +771,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         param.copy_(current_params[name])
             
             temperature *= cooling_rate
-            print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}")
+            if not no_print:
+                print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}")
 
 
         # Restore best parameters to the model
@@ -751,10 +780,16 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             for name, param in model.named_parameters():
                 param.copy_(best_params[name])
 
-    print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
-    print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
-    print("best_loss =", best_loss)
-    print("Current loss and time =", loss_func())
+    loss_value_test = loss_func()
+    if not no_print:
+        print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
+        print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
+        print("best_loss =", best_loss)
+        print("Current loss and time =", loss_value_test)
+    
+    if get_model_loss_value:
+        return loss_value_test
+    exit()
 
     if not automate:
         ans = input("Proceed? (y/n): ")
@@ -764,7 +799,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     # Training loop
     global learning_rate
     learning_rate = 0.001
-    Algorithm = "adamax"
+    Algorithm = "brute force"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -812,17 +847,20 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                     if saveLibTorch:
                         traced_script_module = torch.jit.trace(model, example)
                         traced_script_module.save(new_model_path.replace(".pth",".pt"))
-                        print("libtorch version saved")
+                        if not no_print:
+                            print("libtorch version saved")
                     df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss, 'best_time': best_t_value})
                     if best_t_value != t_test_values[-1]:
-                        print(f"New best t value = {best_t_value}")
+                        if not no_print:
+                            print(f"New best t value = {best_t_value}")
                         try:
                             t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
                         except:
                             t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                     # Write to CSV
                     df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
-                    print(f"Best model saved with loss: {best_loss}")
+                    if not no_print:
+                        print(f"Best model saved with loss: {best_loss}")
 
                 loss_value.backward()  # Compute gradients
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -831,8 +869,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                     optimizer.step(closure)
                 else:
                     optimizer.step()
-                
-                print(f'Epoch {epoch}, Loss: {loss_value.item()}')
+                if not no_print:
+                    print(f'Epoch {epoch}, Loss: {loss_value.item()}')
 
                 if plot_progress and epoch % 5 == 0:
                     x_values, v_values, xi_values, a_values = [x_start], [v_start], [0.0], [0.0]
@@ -878,17 +916,21 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 raise(KeyboardInterrupt)
 
     except KeyboardInterrupt:
-        print("\nTraining interrupted. Saving data...")
+        if not no_print:
+            print("\nTraining interrupted. Saving data...")
 
         # Save the best model if it was updated
         if best_loss < float('inf'):  # Ensure that at least one model has been saved
-            print(f"Best model was saved with loss: {best_loss}")
+            if not no_print:
+                print(f"Best model was saved with loss: {best_loss}")
         else:
-            print("No new best model found.")
+            if not no_print:
+                print("No new best model found.")
             exit()
         
         model = XiModel()
-        print("New model path loaded =", new_model_path)
+        if not no_print:
+            print("New model path loaded =", new_model_path)
         if useLibTorch and os.path.exists(new_model_path):
             model = torch.jit.load(new_model_path)
         else:
@@ -928,7 +970,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             writer.writerow(["t_values", "xi_values", "x_values", "v_values"])
             for i in range(len(t_test_values)):
                 writer.writerow([t_values[i], xi_values[i], x_values[i], v_values[i]])
-        print("Data saved to CSV.")
+        if not no_print:
+            print("Data saved to CSV.")
         
         plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
         plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
@@ -948,7 +991,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
         system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
         system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
-        print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png saved")
+        if not no_print:
+            print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png saved")
         system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ")
         plt.close()
         
@@ -982,7 +1026,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         if not automate:
             answer = input("Movie (y/n)? ")
             if not answer.lower().startswith('y'):
-                print("Movie creation skipped.")
+                if not no_print:
+                    print("Movie creation skipped.")
                 exit()
             
         N = len(t_test_values)
@@ -1036,15 +1081,17 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
         # Create animation
         fps = N/best_t_value
-#        print(xi_values, type(xi_values))
-        print(f"Omega = {Omega}, b = {b}, A = {A}, xi_0 = {xi_values[0]}")
+        if not no_print:
+#            print(xi_values, type(xi_values))
+            print(f"Omega = {Omega}, b = {b}, A = {A}, xi_0 = {xi_values[0]}")
 
         ani = animation.FuncAnimation(fig, update, frames=range(0, N, 10), init_func=init, blit=True, interval = 1000/fps)
         
         # Save the animation
         ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
         system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
-        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
+        if not no_print:
+            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
         plt.close()
 
         if produceInverse:
@@ -1078,12 +1125,16 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             # Save the animation
             ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
             system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
-            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
+            if not no_print:
+                print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
 
         plt.close()
 
+for model_file in glob("../NeuralNetworkData/*pth"):
+    print(f"model_file = {model_file}")
 
-master_func(load_model = True, base_model = "")#xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_1_0_point_2_.pth")
+print(master_func(load_model = True, base_model = "xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_1_0_point_2_.pth", no_print = True, get_model_loss_value = True)[0].item())
+#master_func(load_model = True, base_model = "")
 exit()
 for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=round(A,2))

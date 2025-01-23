@@ -183,6 +183,28 @@ def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL():
         print(e)
     print(latex(solution))
 
+def ODE_IVP_Jan_22_MAT_638():
+    r'''
+    Attempts to solve the ODE:
+        l\ddot{\theta} + g\sin(\theta) = 0
+    '''
+    # Define variables and functions
+    t, l, g, A, omega = symbols('t l g A omega', positive=True)
+    theta = Function('theta')(t)
+
+    # Define the ODE
+    ode = Eq(
+        l*Derivative(theta, t, t) + (g * sin(theta)),
+        0
+    )
+    # Attempt to solve the ODE symbolically
+    solution = None
+    try:
+        solution = simplify(dsolve(ode, theta))
+    except Exception as e:
+        print(e)
+    print(latex(solution))
+
 
 #ODE_IVP()
 #ODE_IVP_PLUS_SOLITON()
@@ -190,5 +212,5 @@ def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL():
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI_VERTICAL()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI()
-ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL()
-
+#ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL()
+ODE_IVP_Jan_22_MAT_638()
