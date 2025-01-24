@@ -18,9 +18,10 @@ from warnings import filterwarnings
 from scipy.sparse import diags
 from scipy.sparse.linalg import splu
 from glob import glob
+from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False):
+def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -109,6 +110,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         return V_MT + V_SECH
 
     def potential(x, xi):
+        nonlocal A, b, Omega
         V_MT = 0.5 * Omega * Omega * x * x
         temp = torch.sech(b * (x - xi))
         V_SECH = A * temp * temp
@@ -581,6 +583,11 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     #    exit()
         return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
+    def wrapped_loss_func(params):
+        nonlocal A, b, Omega
+        A, b, Omega = params
+        return loss_func()[0].detach().numpy()
+
     # Loss function for optimization
     def closure():
         optimizer.zero_grad()  # Clear previous gradients
@@ -788,8 +795,11 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         print("Current loss and time =", loss_value_test)
     
     if get_model_loss_value:
+        if optimize_A_b_Omega_m:
+            initial_guess = [A, b, Omega]
+            loss_value_test = minimize(wrapped_loss_func, initial_guess)
+            return [loss_value_test.fun, *loss_value_test.x]
         return loss_value_test
-    exit()
 
     if not automate:
         ans = input("Proceed? (y/n): ")
@@ -1130,10 +1140,40 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
         plt.close()
 
-for model_file in glob("../NeuralNetworkData/*pth"):
-    print(f"model_file = {model_file}")
+def check_losses_on_pde_for_learned_odes():
+    loss_file_pairs = []
+    for model_file in glob("../NeuralNetworkData/*pth"):
+        try:
+            loss = master_func(load_model = True, base_model = model_file, no_print = True, get_model_loss_value = True)[0].item()
+            print(f"model_file = {model_file}, loss = {loss}")
+            loss_file_pairs.append((model_file, loss))
+        except Exception as e:
+            print(f"Error for file {model_file}: {e}")
+            print("Continuing.")
 
-print(master_func(load_model = True, base_model = "xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_1_0_point_2_.pth", no_print = True, get_model_loss_value = True)[0].item())
+    print(*loss_file_pairs, sep='\n')
+    best_file, best_loss = min(loss_file_pairs, key = lambda x: x[1])
+    print(f"Best loss = {best_loss}")
+    print(f"Best file = {best_file}")
+
+def optimize_losses_on_pde_for_learned_odes():
+    loss_file_pairs = []
+    for model_file in glob("../NeuralNetworkData/*pth"):
+#        try:
+        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = model_file, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
+        print(f"model_file = {model_file}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
+        loss_file_pairs.append((model_file, loss, optim_A, optim_b, optim_Omega))
+#        except Exception as e:
+#            print(f"Error for file {model_file}: {e}")
+#            print("Continuing.")
+
+    print(*loss_file_pairs, sep='\n')
+    best_file, best_loss = min(loss_file_pairs, key = lambda x: x[1])
+    print(f"Best loss = {best_loss}")
+    print(f"Best file = {best_file}")
+
+optimize_losses_on_pde_for_learned_odes()
+#check_losses_on_pde_for_learned_odes()
 #master_func(load_model = True, base_model = "")
 exit()
 for A in np.arange(1.1, 2.1, 0.1):
