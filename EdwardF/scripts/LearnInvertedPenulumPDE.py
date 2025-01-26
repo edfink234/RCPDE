@@ -21,7 +21,7 @@ from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False):
+def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -167,17 +167,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     x_start = round(float(x_start), 4)
     
-    '''
-        TODO: 
-             - Create starting wavefunction `u`, 
-             - Refined  starting wavefunction `u` with Newton for given potential 
-             - Use this `u` as the starting point for every call to `loss_func`
-             
-             Center of mass: x, v = [v(0), *diff(x)]
-            density = u.*conj(u);%Computing density
-            xmax = sum(x.*density)*dx/(sum(density)*dx);%Finding the CM
-    '''
-    
+    #TODO: MAKE A FUNCTION FOR THIS
+    ###BEGIN NEWTON
     tol = 1e-10
     g = -1;                         # g = 1 is defocusing and g =-1 is focusing
     N = 400;                        # number of mesh points
@@ -302,6 +293,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     # Replace NaN values with 0
     u = np.nan_to_num(u_displaced)
     
+    ###END NEWTON
     if plot_steady_state:
         # Plot real part
 #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
@@ -328,7 +320,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         plt.savefig("newton_steady_state.svg")
         system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
         system(f"open newton_steady_state.pdf")
-                
+        
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
         def __init__(self):
@@ -525,6 +517,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         return model(t_input)[0, 0]  # Get the output from the model
 
     def loss_func():
+        nonlocal A, b, Omega
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
@@ -796,10 +789,77 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     
     if get_model_loss_value:
         if optimize_A_b_Omega_m:
-            initial_guess = [A, b, Omega]
-            loss_value_test = minimize(wrapped_loss_func, initial_guess)
-            return [loss_value_test.fun, *loss_value_test.x]
-        return loss_value_test
+#            initial_guess = [A, b, Omega]
+#            loss_value_test = minimize(wrapped_loss_func, initial_guess)
+#            return [loss_value_test.fun, *loss_value_test.x]
+            # Hyperparameters
+            num_particles = 10
+            num_iterations = optimize_A_b_Omega_m_iterations
+            w = 5   # Inertia weight
+            c1 = 1.5  # Cognitive component
+            c2 = 1.5  # Social component
+
+            # Initialize particles around the current values
+            particles = [
+                {
+                    "position": {
+                        "A": A + 0.01 * np.random.randn(),
+                        "b": b + 0.01 * np.random.randn(),
+                        "Omega": Omega + 0.01 * np.random.randn(),
+                    },
+                    "velocity": {
+                        "A": 0.0,
+                        "b": 0.0,
+                        "Omega": 0.0,
+                    },
+                    "best_position": None,
+                    "best_value": float("inf"),
+                }
+                for _ in range(num_particles)
+            ]
+
+            # Initialize global best
+            global_best_position = None
+            global_best_value = loss_value_test[0].detach().numpy()
+            
+            try:
+                for i in (range(num_iterations) if num_iterations != np.inf else iter(int, 1)):
+                    for particle in particles:
+                        # Update global variables with particle values
+                        A, b, Omega = (
+                            particle["position"]["A"],
+                            particle["position"]["b"],
+                            particle["position"]["Omega"],
+                        )
+
+                        # Evaluate loss function
+                        #TODO: Need to do Newton again before calling loss_func()
+                        loss = loss_func()[0].detach().numpy()
+
+                        # Update personal best
+                        if loss < particle["best_value"]:
+                            particle["best_value"] = loss
+                            particle["best_position"] = particle["position"].copy()
+
+                        # Update global best
+                        if loss < global_best_value:
+                            global_best_value = loss
+                            global_best_position = particle["position"].copy()
+                            print(f"New best loss = {global_best_value}")
+                            print(f"New best position: A = {global_best_position['A']}, b = {global_best_position['b']}, Omega = {global_best_position['Omega']}")
+
+                    # Update velocities and positions
+                    for particle in particles:
+                        for key in ["A", "b", "Omega"]:
+                            r1, r2 = np.random.rand(), np.random.rand()
+                            cognitive = c1 * r1 * (particle["best_position"][key] - particle["position"][key])
+                            social = c2 * r2 * (global_best_position[key] - particle["position"][key])
+                            particle["velocity"][key] = w * particle["velocity"][key] + cognitive + social
+                            particle["position"][key] = np.abs(particle["position"][key] + particle["velocity"][key])
+            except KeyboardInterrupt:
+                # Apply the best found solution
+                A, b, Omega = global_best_position["A"], global_best_position["b"], global_best_position["Omega"]
+                return loss_func()[0].detach().numpy(), A, b, Omega
 
     if not automate:
         ans = input("Proceed? (y/n): ")
@@ -1153,26 +1213,38 @@ def check_losses_on_pde_for_learned_odes():
 
     print(*loss_file_pairs, sep='\n')
     best_file, best_loss = min(loss_file_pairs, key = lambda x: x[1])
+    worst_file, worst_loss = max(loss_file_pairs, key = lambda x: x[1])
+    print("="*20)
     print(f"Best loss = {best_loss}")
     print(f"Best file = {best_file}")
+    print(f"Worst loss = {worst_loss}")
+    print(f"Worst file = {worst_file}")
+#    Best loss = 4.934653040667099
+#    Best file = ../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth
+#    Worst loss = 5.5253880920493375
+#    Worst file = ../NeuralNetworkData/xi_model_IC_2_point_4513_1_point_7_1_point_0_1_point_0_0_point_2_.pth
 
-def optimize_losses_on_pde_for_learned_odes():
-    loss_file_pairs = []
-    for model_file in glob("../NeuralNetworkData/*pth"):
-#        try:
-        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = model_file, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
-        print(f"model_file = {model_file}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
-        loss_file_pairs.append((model_file, loss, optim_A, optim_b, optim_Omega))
-#        except Exception as e:
-#            print(f"Error for file {model_file}: {e}")
-#            print("Continuing.")
+def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
+    if file_choice == "all":
+        loss_file_pairs = []
+        for model_file in glob("../NeuralNetworkData/*pth"):
+    #        try:
+            loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = model_file, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
+            print(f"model_file = {model_file}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
+            loss_file_pairs.append((model_file, loss, optim_A, optim_b, optim_Omega))
+    #        except Exception as e:
+    #            print(f"Error for file {model_file}: {e}")
+    #            print("Continuing.")
 
-    print(*loss_file_pairs, sep='\n')
-    best_file, best_loss = min(loss_file_pairs, key = lambda x: x[1])
-    print(f"Best loss = {best_loss}")
-    print(f"Best file = {best_file}")
+        print(*loss_file_pairs, sep='\n')
+        best_file, best_loss = min(loss_file_pairs, key = lambda x: x[1])
+        print(f"Best loss = {best_loss}")
+        print(f"Best file = {best_file}")
+    else:
+        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
+        print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
-optimize_losses_on_pde_for_learned_odes()
+optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #check_losses_on_pde_for_learned_odes()
 #master_func(load_model = True, base_model = "")
 exit()
