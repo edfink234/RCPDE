@@ -102,12 +102,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             return (time() - start_time < to_time["time"]) or (best_loss >= to_loss['threshold'])
         else:
             return True
-            
-    def potential(x, xi):
-        V_MT = 0.5 * Omega * Omega * x * x
-        temp = torch.sech(A * (x - xi))
-        V_SECH = A * A * temp * temp
-        return V_MT + V_SECH
 
     def potential(x, xi):
         nonlocal A, b, Omega
@@ -167,160 +161,139 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     x_start = round(float(x_start), 4)
     
-    #TODO: MAKE A FUNCTION FOR THIS
     ###BEGIN NEWTON
-    tol = 1e-10
-    g = -1;                         # g = 1 is defocusing and g =-1 is focusing
-    N = 400;                        # number of mesh points
-    L = -10; R = 10;                # Left and right bounds of interval
-    x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
-    N -= 1
-    dx = x[1]-x[0];                 # mesh size
-    point_5_over_dx_squared = (0.5 / dx**2)
-    one_over_six = 1.0/6.0
-    if not no_print:
-        print(np.sqrt(2)*dx*dx*0.5)
-    assert(dt<np.sqrt(2)*dx*dx*0.5)
+    def refine_with_newton(plot_steady_state = False, return_all = True):
+        nonlocal A, b, Omega
+        tol = 1e-10
+        g = -1;                         # g = 1 is defocusing and g =-1 is focusing
+        N = 400;                        # number of mesh points
+        L = -10; R = 10;                # Left and right bounds of interval
+        x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
+        N -= 1
+        dx = x[1]-x[0];                 # mesh size
+        point_5_over_dx_squared = (0.5 / dx**2)
+        one_over_six = 1.0/6.0
+        assert(dt<np.sqrt(2)*dx*dx*0.5)
 
-    A_sol = 2; c = 0; x0 = x_start;                     # Amplitude, vel. & position
-    u0 = A_sol*sech(A_sol*(x))*np.exp(1j*c*x);    # initial condition (IC)
-    V = potential(x, 0)
-    
-    U = np.concatenate((np.real(u0), np.imag(u0)))
-    if not no_print:
-        print(U.shape, u0.shape, V.shape)
-    w_sol = A_sol*A_sol*0.5 #temporal freq
-#    A_sol = 2; c = 0;
-#    w_sol = A*A*0.5 #temporal freq
-#    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
-#    V = potential(x, 0)
-#    U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
-    if not no_print:
-        print(U.shape, u0.shape, V.shape)
-    
-    err = np.inf
-    
-    # Define the discrete Laplacian with periodic boundary conditions
-    ONE = np.ones(N)
-    D2 = diags([ONE, -2 * ONE, ONE], [-1, 0, 1], shape=(N, N)).toarray()
-    D2[0, -1] = D2[-1, 0] = 1  # Periodic boundary conditions
-    D2 /= dx**2
+        A_sol = 2; c = 0; x0 = x_start;                     # Amplitude, vel. & position
+        u0 = A_sol*sech(A_sol*(x))*np.exp(1j*c*x);    # initial condition (IC)
+        V = potential(x, 0)
+        
+        U = np.concatenate((np.real(u0), np.imag(u0)))
+        w_sol = A_sol*A_sol*0.5 #temporal freq
+    #    A_sol = 2; c = 0;
+    #    w_sol = A*A*0.5 #temporal freq
+    #    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
+    #    V = potential(x, 0)
+    #    U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
+        
+        err = np.inf
+        
+        # Define the discrete Laplacian with periodic boundary conditions
+        ONE = np.ones(N)
+        D2 = diags([ONE, -2 * ONE, ONE], [-1, 0, 1], shape=(N, N)).toarray()
+        D2[0, -1] = D2[-1, 0] = 1  # Periodic boundary conditions
+        D2 /= dx**2
 
-    # Index for real and imaginary parts
-    indR = slice(0, N)
-    indI = slice(N, 2 * N)
-    
-    u = U[indR]+1j*U[indI];      # wrapping into a complex vector
-    if not no_print:
-        print(f"u.shape = {u.shape}")
-        print(f"Max(abs(u)) = {max(abs(u))}")
-    idx=np.where(np.isclose(abs(u), max(abs(u))))
-    if not no_print:
-        print(f"idx = {idx}")
-        print(f"abs(u)[idx] = {abs(u)[idx]}")
-        print(f"x[idx] = {x[idx]}")
-        print(f"x_start = {x_start}")
-    u_before = u.copy()
+        # Index for real and imaginary parts
+        indR = slice(0, N)
+        indI = slice(N, 2 * N)
+        
+        u = U[indR]+1j*U[indI];      # wrapping into a complex vector
+        idx=np.where(np.isclose(abs(u), max(abs(u))))
+        u_before = u.copy()
 
-    # Main loop: checking Newton tolerance
-    num_iter = 0
-    while err > tol:
-        # Split real and imaginary parts
-        Ur = U[indR]
-        Ui = U[indI]
+        # Main loop: checking Newton tolerance
+        num_iter = 0
+        while err > tol:
+            # Split real and imaginary parts
+            Ur = U[indR]
+            Ui = U[indI]
 
-        # Compute modulus squared of u
-        U2 = Ur**2 + Ui**2
+            # Compute modulus squared of u
+            U2 = Ur**2 + Ui**2
 
-        # Jacobian components
-        J11 = -0.5 * D2 + np.diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
-        J22 = -0.5 * D2 + np.diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
-        J12 = np.diag(2 * g * Ur * Ui)
-        if not no_print:
-            print(J11.shape, J22.shape, J12.shape)
-        J = np.block([[J11, J12], [J12, J22]])
+            # Jacobian components
+            J11 = -0.5 * D2 + np.diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
+            J22 = -0.5 * D2 + np.diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
+            J12 = np.diag(2 * g * Ur * Ui)
+            J = np.block([[J11, J12], [J12, J22]])
 
-        # Right-hand side (RHS)
-        Fr = -0.5 * (D2 @ Ur) + (g * U2 + V + w_sol) * Ur
-        Fi = -0.5 * (D2 @ Ui) + (g * U2 + V + w_sol) * Ui
-        F = np.concatenate((Fr, Fi))
+            # Right-hand side (RHS)
+            Fr = -0.5 * (D2 @ Ur) + (g * U2 + V + w_sol) * Ur
+            Fi = -0.5 * (D2 @ Ui) + (g * U2 + V + w_sol) * Ui
+            F = np.concatenate((Fr, Fi))
 
-        # Newton correction
-        DU = splu(J).solve(-F)  # Solve J * DU = -F
-        U1 = U + DU  # Update solution
+            # Newton correction
+            DU = splu(J).solve(-F)  # Solve J * DU = -F
+            U1 = U + DU  # Update solution
 
-        # Update error and solution
-        err = np.linalg.norm(F)
-        if not no_print:
-            print(f"err = {err}")
-#        if not no_print:
-#            print(f"Condition number of J: {torch.linalg.cond(J)}")
-        U = U1
-        num_iter += 1
-        if num_iter > 20:
+            # Update error and solution
+            err = np.linalg.norm(F)
             if not no_print:
-                print("failed")
-            exit()
+                print(f"err = {err}")
+    #        if not no_print:
+    #            print(f"Condition number of J: {torch.linalg.cond(J)}")
+            U = U1
+            num_iter += 1
+            if num_iter > 20:
+                if not no_print:
+                    print("failed")
+                exit()
+                
+        u = U[indR]+1j*U[indI];      # wrapping into a complex vector
+        Maxu=max(abs(u));
+        idx=np.where(np.isclose(abs(u), Maxu))
+        
+        # Compute the density (modulus squared of u)
+        density = u * np.conj(u)  # Equivalent to |u|^2
+
+        # Calculate xmax (center of mass)
+        numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
+        denominator = np.sum(density.real) * dx
+        xmax = numerator / denominator
+        
+        plot_steady_state = False
+        
+        # Create a spline interpolator
+        interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
+
+        # Perform the displacement
+        u_displaced = interpolator(x - x_start)
+
+        # Replace NaN values with 0
+        u = np.nan_to_num(u_displaced)
+        if plot_steady_state:
+            # Plot real part
+    #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
+            plt.plot(x, u_before.real, label="$u_{\mathrm{real}}(x,0)$ before Newton", color='purple')
+
+            # Plot imaginary part
+            plt.plot(x, u_before.imag, label="$u_{\mathrm{imag}}(x,0)$ before Newton", color='orange', linestyle='--')
+            # Plot real part
+    #        plt.plot(x.numpy(), Ur.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ after Newton + $V$", color='blue')
+            plt.plot(x, u.real, label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
+            # Plot imaginary part
+            plt.plot(x, u.imag, label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
             
-    u = U[indR]+1j*U[indI];      # wrapping into a complex vector
-    Maxu=max(abs(u));
-    idx=np.where(np.isclose(abs(u), Maxu))
+            # Plot Potential
+            plt.plot(x, V, label="Potential $V(x)$", color='green', linestyle='--')
 
-    if not no_print:
-        print(f"u.shape = {u.shape}")
-        print(f"Max(abs(u)) = {Maxu}")
-        print(f"idx = {idx}")
-        print(f"abs(u)[idx] = {abs(u)[idx]}")
-        print(f"x[idx] = {x[idx]}")
-        print(f"x_start = {x_start}")
-    
-    # Compute the density (modulus squared of u)
-    density = u * np.conj(u)  # Equivalent to |u|^2
+            # Add labels, title, and legend
+            plt.title("$V(x)$, $u_{\mathrm{real}}(x,0)$ and $u_{\mathrm{imag}}(x,0)$")
+            plt.xlabel("x")
+            plt.legend()
+            plt.grid()
 
-    # Calculate xmax (center of mass)
-    numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
-    denominator = np.sum(density.real) * dx
-    xmax = numerator / denominator
-    
-    plot_steady_state = False
-    
-    # Create a spline interpolator
-    interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
-
-    # Perform the displacement
-    u_displaced = interpolator(x - x_start)
-
-    # Replace NaN values with 0
-    u = np.nan_to_num(u_displaced)
-    
-    ###END NEWTON
-    if plot_steady_state:
-        # Plot real part
-#        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
-        plt.plot(x, u_before.real, label="$u_{\mathrm{real}}(x,0)$ before Newton", color='purple')
-
-        # Plot imaginary part
-        plt.plot(x, u_before.imag, label="$u_{\mathrm{imag}}(x,0)$ before Newton", color='orange', linestyle='--')
-        # Plot real part
-#        plt.plot(x.numpy(), Ur.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ after Newton + $V$", color='blue')
-        plt.plot(x, u.real, label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
-        # Plot imaginary part
-        plt.plot(x, u.imag, label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
+            # Save and show the plot
+            plt.savefig("newton_steady_state.svg")
+            system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
+            system(f"open newton_steady_state.pdf")
         
-        # Plot Potential
-        plt.plot(x, V, label="Potential $V(x)$", color='green', linestyle='--')
-
-        # Add labels, title, and legend
-        plt.title("$V(x)$, $u_{\mathrm{real}}(x,0)$ and $u_{\mathrm{imag}}(x,0)$")
-        plt.xlabel("x")
-        plt.legend()
-        plt.grid()
-
-        # Save and show the plot
-        plt.savefig("newton_steady_state.svg")
-        system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
-        system(f"open newton_steady_state.pdf")
-        
+        return (u, x, dx, N, g, point_5_over_dx_squared, one_over_six) if return_all else u
+    
+    u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton()
+    
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
         def __init__(self):
@@ -382,7 +355,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         temp_df = df[relevant_cols]
 
         # Calculate Euclidean distance between each row and the target values
-        temp_df['distance'] = np.linalg.norm(temp_df - [x_start.numpy().item(), A, b, m, Omega], axis=1)
+        temp_df['distance'] = np.linalg.norm(temp_df - [x_start, A, b, m, Omega], axis=1)
         # Find the index of the row with the minimum distance
         closest_row_idx = temp_df['distance'].idxmin()
         parameters = temp_df.iloc[closest_row_idx]
@@ -394,7 +367,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     if not no_print:
         print(f"model_path = {model_path}")
         print(f"new_model_path = {new_model_path}")
-    if closest_x == x_start and closest_A == A and closest_b == b and closest_m == m and closest_Omega == Omega:
+    if closest_x == x_start and round(closest_A, 2) == round(A, 2) and round(closest_b, 2) == round(b, 2) and round(closest_m, 2) == round(m, 2) and round(closest_Omega, 2) == round(Omega, 2):
         if not no_print:
             print("exact match found")
         assert(model_path == new_model_path or base_model)
@@ -517,7 +490,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         return model(t_input)[0, 0]  # Get the output from the model
 
     def loss_func():
-        nonlocal A, b, Omega
+        nonlocal A, b, Omega, u, u_start
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
@@ -796,8 +769,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             num_particles = 10
             num_iterations = optimize_A_b_Omega_m_iterations
             w = 5   # Inertia weight
-            c1 = 1.5  # Cognitive component
-            c2 = 1.5  # Social component
+            c1 = 15  # Cognitive component
+            c2 = 15  # Social component
 
             # Initialize particles around the current values
             particles = [
@@ -820,7 +793,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
             # Initialize global best
             global_best_position = None
+            print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
             global_best_value = loss_value_test[0].detach().numpy()
+            print(f"Starting loss = {global_best_value}")
+            print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
             
             try:
                 for i in (range(num_iterations) if num_iterations != np.inf else iter(int, 1)):
@@ -833,7 +809,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         )
 
                         # Evaluate loss function
-                        #TODO: Need to do Newton again before calling loss_func()
+                        u = refine_with_newton(return_all = False)
+                            
+                        u_start = torch.tensor(u, dtype=torch.cfloat, requires_grad=True).clone().detach().requires_grad_(True)
                         loss = loss_func()[0].detach().numpy()
 
                         # Update personal best
@@ -868,8 +846,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     # Training loop
     global learning_rate
-    learning_rate = 0.001
-    Algorithm = "brute force"
+    learning_rate = 0.00001
+    Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -1117,14 +1095,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         
         ax.set_title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         sech = lambda x: 1/np.cosh(x)
-        
-        def potential(x, xi):
-            V_MT = 0.5 * Omega * Omega * x * x
-            temp = sech(A * (x - xi))
-            V_SECH = A * A * temp * temp
-            return V_MT + V_SECH
 
         def potential(x, xi):
+            nonlocal A, b, Omega
             V_MT = 0.5 * Omega * Omega * x * x
             temp = sech(b * (x - xi))
             V_SECH = A * temp * temp
@@ -1241,12 +1214,14 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
         print(f"Best loss = {best_loss}")
         print(f"Best file = {best_file}")
     else:
-        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
+        #BEST SO FAR
+        #Starting loss = 0.8616801642329329, Starting position: A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567
+        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
         print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
 optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #check_losses_on_pde_for_learned_odes()
-#master_func(load_model = True, base_model = "")
+#master_func(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
 exit()
 for A in np.arange(1.1, 2.1, 0.1):
     master_func(A=round(A,2))
@@ -1285,4 +1260,4 @@ for Omega in np.arange(0.3, 1.3, 0.1):
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
 
 
-#TODO: test A=1.5 randomly initialized
+#TODO: check if the newton is the same before and after optimizing
