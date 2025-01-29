@@ -25,6 +25,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
+    torch.use_deterministic_algorithms(True)
 
     def sech(x):
         if isinstance(x, torch.Tensor):
@@ -490,7 +491,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         return model(t_input)[0, 0]  # Get the output from the model
 
     def loss_func():
-        nonlocal A, b, Omega, u, u_start
+        nonlocal A, b, Omega, u, u_start, dt
+        print(f"A = {A}, b = {b}, m = {m}, Omega = {Omega}, dt = {dt}")
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
@@ -499,6 +501,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         best_time_idx = np.inf
         x_values = [x_start]
         u = u_start.clone()
+        print(f"u = {u}")
+
         
         for i in range(1, len(t_values)):
             xi_t = xi(t_values[i])
@@ -513,6 +517,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             numerator = torch.sum(x * density.real)
             denominator = torch.sum(density.real)
             x_values.append(numerator / denominator)
+        
         
         v = (x_values[2] - x_values[0]) / (2 * dt)
         v_values_temp.append(abs(v))
@@ -544,9 +549,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 xi_best = abs_xi_temp_i
                 
         smoothness_penalty /= best_time_idx
-#        if not no_print:
-#            print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
-    #    exit()
+        if not no_print:
+            print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
         return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
     def wrapped_loss_func(params):
@@ -794,6 +798,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             # Initialize global best
             global_best_position = None
             print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
+            u = torch.tensor(refine_with_newton(return_all = False), dtype=torch.cfloat, requires_grad=True)
+
+            u_start = u.clone().detach().requires_grad_(True)
             global_best_value = loss_value_test[0].detach().numpy()
             print(f"Starting loss = {global_best_value}")
             print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
@@ -811,7 +818,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         # Evaluate loss function
                         u = refine_with_newton(return_all = False)
                             
-                        u_start = torch.tensor(u, dtype=torch.cfloat, requires_grad=True).clone().detach().requires_grad_(True)
+                        u_start = torch.tensor(u, dtype=torch.cfloat, requires_grad=True).clone().detach()
                         loss = loss_func()[0].detach().numpy()
 
                         # Update personal best
@@ -823,6 +830,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         if loss < global_best_value:
                             global_best_value = loss
                             global_best_position = particle["position"].copy()
+                            print(f"Example input of {example} yields: {model(example)[0, 0]}")
                             print(f"New best loss = {global_best_value}")
                             print(f"New best position: A = {global_best_position['A']}, b = {global_best_position['b']}, Omega = {global_best_position['Omega']}")
 
@@ -1216,7 +1224,7 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
     else:
         #BEST SO FAR
         #Starting loss = 0.8616801642329329, Starting position: A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567
-        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
+        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.2922437525694463, b = 2.851373288066033, Omega = 0.3815554681671926)
         print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
 optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
@@ -1260,4 +1268,4 @@ for Omega in np.arange(0.3, 1.3, 0.1):
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
 
 
-#TODO: check if the newton is the same before and after optimizing
+#initial guess is u_0(x) = A_{\text{sol}}\cdot\text{sech}(A_{\text{sol}}\cdot x)e^{icx} with A_{\text{sol}} = 2, c=0.
