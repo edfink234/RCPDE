@@ -492,7 +492,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     def loss_func():
         nonlocal A, b, Omega, u, u_start, dt
-        print(f"A = {A}, b = {b}, m = {m}, Omega = {Omega}, dt = {dt}")
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
@@ -501,8 +500,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         best_time_idx = np.inf
         x_values = [x_start]
         u = u_start.clone()
-        print(f"u = {u}")
-
         
         for i in range(1, len(t_values)):
             xi_t = xi(t_values[i])
@@ -802,6 +799,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
             u_start = u.clone().detach().requires_grad_(True)
             global_best_value = loss_value_test[0].detach().numpy()
+            print(f"u.sum() = {u.sum()}")
             print(f"Starting loss = {global_best_value}")
             print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
             
@@ -1224,7 +1222,7 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
     else:
         #BEST SO FAR
         #Starting loss = 0.8616801642329329, Starting position: A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567
-        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.2922437525694463, b = 2.851373288066033, Omega = 0.3815554681671926)
+        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.2922437525694463, b = 2.851373288066033, Omega = 0.3815554681671926)
         print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
 optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
