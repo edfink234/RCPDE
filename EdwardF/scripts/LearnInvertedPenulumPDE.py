@@ -26,6 +26,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     np.random.seed(42)
     torch.manual_seed(42)
     torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     def sech(x):
         if isinstance(x, torch.Tensor):
@@ -124,6 +126,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         return -(Omega**2 * x) + (2 * A*b * torch.sech(b * (x - xi))**2 * torch.tanh(b * (x - xi)))
 
     def min_force(x):
+        nonlocal A, b, Omega
         return (Omega**2 * x) - (2 * A*b * np.cosh(b * (x))**(-2) * np.tanh(b * (x)))
 
     #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
@@ -145,26 +148,38 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     global t_test_values
     t_test_values = np.linspace(1e-8, T, num_steps)
 
-    # Initial guess for the root (you might need to adjust this)
-    x0 = 1.0
+    def get_x_start_and_v_start():
+        # Initial guess for the root (you might need to adjust this)
+        x0 = 1.0
 
-    # Find the root
-    root, info, ier, mesg = fsolve(min_force, x0, full_output=True)
+        # Find the root
+        root, info, ier, mesg = fsolve(min_force, x0, full_output=True)
 
-    if ier == 1:
-        if not no_print:
-            print(f"Root found: {root[0]}")
-        x_start, v_start = float(root[0]), 0.0
-    else:
-        if not no_print:
-            print(f"Root finding failed: {mesg}")
-        exit()
+        if ier == 1:
+            root_min, potential_min = root[0], potential(root[0], 0)
+            for root_val in root:
+                potential_val = potential(root_val, 0)
+                if potential_val < potential_min:
+                    potential_min = potential_val
+                    root_min = root_val
+            if not no_print:
+                print(f"Root found: {root_min}")
+            x_start, v_start = float(root_min), 0.0
+        else:
+            raise Exception(f"Root finding failed: {mesg}")
+            exit()
 
-    x_start = round(float(x_start), 4)
+        x_start = round(float(x_start), 4)
+        return x_start, v_start
+    
+    x_start, v_start = get_x_start_and_v_start()
+    min_x_start = 1
+    if np.abs(x_start) < min_x_start:
+        raise Exception(f"Error, must modify A, b, Omega so that |x_start| >= {min_x_start}")
     
     ###BEGIN NEWTON
     def refine_with_newton(plot_steady_state = False, return_all = True):
-        nonlocal A, b, Omega
+        nonlocal A, b, Omega, x_start, v_start
         tol = 1e-10
         g = -1;                         # g = 1 is defocusing and g =-1 is focusing
         N = 400;                        # number of mesh points
@@ -176,7 +191,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         one_over_six = 1.0/6.0
         assert(dt<np.sqrt(2)*dx*dx*0.5)
 
-        A_sol = 2; c = 0; x0 = x_start;                     # Amplitude, vel. & position
+        A_sol = 2; c = 0                     # Amplitude, vel. & position
         u0 = A_sol*sech(A_sol*(x))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
         
@@ -491,7 +506,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         return model(t_input)[0, 0]  # Get the output from the model
 
     def loss_func():
-        nonlocal A, b, Omega, u, u_start, dt
+        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
@@ -499,8 +514,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         best_time = np.inf
         best_time_idx = np.inf
         x_values = [x_start]
-        u = u_start.clone()
-        
+        u = u_start.detach().requires_grad_(True)
+        print(f"x_start in loss_func first = {x_start}")
+
         for i in range(1, len(t_values)):
             xi_t = xi(t_values[i])
             xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
@@ -517,6 +533,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         
         
         v = (x_values[2] - x_values[0]) / (2 * dt)
+
         v_values_temp.append(abs(v))
         
         for i in range(2, len(x_values)):
@@ -794,12 +811,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
             # Initialize global best
             global_best_position = None
-            print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
             u = torch.tensor(refine_with_newton(return_all = False), dtype=torch.cfloat, requires_grad=True)
-
             u_start = u.clone().detach().requires_grad_(True)
             global_best_value = loss_value_test[0].detach().numpy()
-            print(f"u.sum() = {u.sum()}")
             print(f"Starting loss = {global_best_value}")
             print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
             
@@ -814,6 +828,20 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         )
 
                         # Evaluate loss function
+                        x_start, v_start = get_x_start_and_v_start()
+                        epsilon = 1e-1
+                        while np.abs(x_start) < min_x_start:
+                            # Perturb A, b, Omega by a small amount
+                            perturbation_A = np.random.normal(0, epsilon)  # Small random perturbation for A
+                            perturbation_b = np.random.normal(0, epsilon)  # Small random perturbation for b
+                            perturbation_Omega = np.random.normal(0, epsilon)  # Small random perturbation for Omega
+                            
+                            A = A + perturbation_A
+                            b = b + perturbation_b
+                            Omega = Omega + perturbation_Omega
+                            x_start, v_start = get_x_start_and_v_start()
+                            
+                        
                         u = refine_with_newton(return_all = False)
                             
                         u_start = torch.tensor(u, dtype=torch.cfloat, requires_grad=True).clone().detach()
@@ -828,7 +856,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         if loss < global_best_value:
                             global_best_value = loss
                             global_best_position = particle["position"].copy()
-                            print(f"Example input of {example} yields: {model(example)[0, 0]}")
                             print(f"New best loss = {global_best_value}")
                             print(f"New best position: A = {global_best_position['A']}, b = {global_best_position['b']}, Omega = {global_best_position['Omega']}")
 
@@ -1265,5 +1292,3 @@ for Omega in np.arange(0.3, 1.3, 0.1):
 #../movies/trajectory_trap_plus_sech_squared/
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
 
-
-#initial guess is u_0(x) = A_{\text{sol}}\cdot\text{sech}(A_{\text{sol}}\cdot x)e^{icx} with A_{\text{sol}} = 2, c=0.
