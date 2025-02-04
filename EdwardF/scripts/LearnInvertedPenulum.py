@@ -666,7 +666,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
 
         plt.xlabel('t')
-        plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+        plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
         plt.savefig("trajectory_data.svg")
         system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
@@ -754,7 +754,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
             dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-            ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+            ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
             return dot, curve#, gold_dot
 
         # Create animation
@@ -802,45 +802,76 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 
         plt.close()
 
+if __name__=='__main__':
+    print("hi")
+    A_space = np.linspace(0.99, 0.66, 40)
+    b_space = np.linspace(0.99, 0.75, 40)
+    dA = A_space[0] - A_space[1]
+    dB = b_space[0] - b_space[1]
+    titles = open("result_times.txt").readlines()[-40:]
+    titles = [title.strip().split() for title in titles]
+    print("\n"*100)
+    print(*titles,sep='\n')
+    print("\n"*10)
+    for i, A, b, title in zip(range(len(A_space)), A_space, b_space, titles):
+        title[6] = str(A)
+        title[11] = str(b)
+        if A == 0.99:
+            title[4] = '1'
+            title[9] = '1'
+        else:
+            title[4] = str(A+dA)
+            title[9] = str(b+dB)
+        print(' '.join(title))
+        
+        
+    for A, b in zip(A_space, b_space):
+        start = time()
+        result = master_func(A=round(A,4), b = round(b, 4))
+        achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+        with open("result_times.txt", "a") as f:
+            f.write(f"Time from A = {A+0.01:.2f} to {A:.2f}, b = {b+0.01:.2f} to {b:.2f}, = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    
+    exit()
 
-#for A in np.arange(1.4099, 1.4899, 0.01):
-#    start = time()
-#    result = master_func(A=round(A,4))
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for A in np.arange(1.4099, 1.4899, 0.01):
+        start = time()
+        result = master_func(A=round(A,4))
+        achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+        with open("result_times.txt", "a") as f:
+            f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+            
+    master_func(A=1.5, load_model = True)
 
-master_func(A=1.5, load_model = True)
-exit()
 
-for A in np.arange(1.1, 2.1, 0.1):
-    master_func(A=round(A,2))
-#    start = time()
-#    result = master_func(A=A)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for m in np.arange(1.1, 2.1, 0.1):
-    master_func(m=round(m,2))
-#    start = time()
-#    result = master_func(m=m)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for b in np.arange(1., 2.1, 0.1):
-    master_func(b=round(b,2))
-#    start = time()
-#    result = master_func(b=b)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for Omega in np.arange(0.3, 1.3, 0.1):
-    master_func(Omega=round(Omega,2))
-#    start = time()
-#    result = master_func(Omega=Omega)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for A in np.arange(1.1, 2.1, 0.1):
+        master_func(A=round(A,2))
+    #    start = time()
+    #    result = master_func(A=A)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for m in np.arange(1.1, 2.1, 0.1):
+        master_func(m=round(m,2))
+    #    start = time()
+    #    result = master_func(m=m)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for b in np.arange(1., 2.1, 0.1):
+        master_func(b=round(b,2))
+    #    start = time()
+    #    result = master_func(b=b)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for Omega in np.arange(0.3, 1.3, 0.1):
+        master_func(Omega=round(Omega,2))
+    #    start = time()
+    #    result = master_func(Omega=Omega)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     
 
 

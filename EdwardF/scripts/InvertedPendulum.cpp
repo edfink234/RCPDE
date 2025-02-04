@@ -53,17 +53,44 @@ double timeElapsedSince(T start_time)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start_time).count()/1e9;
 }
 
-bool isFloat(const std::string& x)
+//https://medium.com/@ryan_forrester_/c-check-if-string-is-number-practical-guide-c7ba6db2febf
+bool isFloat(const std::string& s)
 {
-    try
+    enum State { START, INT, FRAC, EXP, EXP_NUM };
+    State state = START;
+    bool has_digits = false;
+
+    for (char c : s)
     {
-        std::stof(x);
-        return true;
+        switch (state)
+        {
+            case START:
+                if (c == '+' || c == '-') state = INT;
+                else if (std::isdigit(c)) { state = INT; has_digits = true; }
+                else if (c == '.') state = FRAC;
+                else return false;
+                break;
+            case INT:
+                if (std::isdigit(c)) has_digits = true;
+                else if (c == '.') state = FRAC;
+                else if (c == 'e' || c == 'E') state = EXP;
+                else return false;
+                break;
+            case FRAC:
+                if (std::isdigit(c)) has_digits = true;
+                else if (c == 'e' || c == 'E') state = EXP;
+                else return false;
+                break;
+            case EXP:
+                if (c == '+' || c == '-' || std::isdigit(c)) state = EXP_NUM;
+                else return false;
+                break;
+            case EXP_NUM:
+                if (!std::isdigit(c)) return false;
+                break;
+        }
     }
-    catch (std::invalid_argument& e)
-    {
-        return false;
-    }
+    return has_digits && (state == INT || state == FRAC || state == EXP_NUM);
 }
 
 std::vector<std::string> split(const std::string& str)
@@ -251,6 +278,11 @@ int trueMod(int N, int M)
 {
     return ((N % M) + M) % M;
 };
+
+bool isInvalid(float x)
+{
+    return (std::isnan(x) || std::isinf(x));
+}
 
 float Variance(const Eigen::VectorXf& vec)
 {

@@ -191,7 +191,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         one_over_six = 1.0/6.0
         assert(dt<np.sqrt(2)*dx*dx*0.5)
 
-        A_sol = 2; c = 0                     # Amplitude, vel. & position
+        A_sol = 1; c = 0                     # Amplitude, vel. & position
         u0 = A_sol*sech(A_sol*(x))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
         
@@ -361,8 +361,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         best_loss, best_t_value = parameters['best_loss'].item(), parameters['best_time'].item()
         try:
             t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
-        except:
-            t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+        except IndexError:
+            try:
+                t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+            except IndexError:
+                t_test_values = t_values
+                
         closest_row_idx = parameters.index[0]
     elif not df.empty:
         #Extract the row with the closest 'x_0', 'A', 'b', 'm', 'Omega' to (x_start, A, b, m, Omega) based on euclidean distance
@@ -871,7 +875,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 # Apply the best found solution
                 A, b, Omega = global_best_position["A"], global_best_position["b"], global_best_position["Omega"]
                 return loss_func()[0].detach().numpy(), A, b, Omega
-
+        return loss_value_test
+        
     if not automate:
         ans = input("Proceed? (y/n): ")
         if ans.lower() != 'y':
@@ -1206,16 +1211,25 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
         plt.close()
 
-def check_losses_on_pde_for_learned_odes():
+def check_losses_on_pde_for_learned_odes(file_choice = "all"):
     loss_file_pairs = []
-    for model_file in glob("../NeuralNetworkData/*pth"):
-        try:
-            loss = master_func(load_model = True, base_model = model_file, no_print = True, get_model_loss_value = True)[0].item()
-            print(f"model_file = {model_file}, loss = {loss}")
-            loss_file_pairs.append((model_file, loss))
-        except Exception as e:
-            print(f"Error for file {model_file}: {e}")
-            print("Continuing.")
+    if file_choice == "all":
+        for model_file in glob("../NeuralNetworkData/*pth"):
+            try:
+                loss = master_func(load_model = True, base_model = model_file, no_print = True, get_model_loss_value = True)[0].item()
+                print(f"model_file = {model_file}, loss = {loss}")
+                loss_file_pairs.append((model_file, loss))
+            except Exception as e:
+                print(f"Error for file {model_file}: {e}")
+                print("Continuing.")
+    else:
+#        try:
+        loss = master_func(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True)[0].item()
+        print(f"model_file = {file_choice}, loss = {loss}")
+        loss_file_pairs.append((file_choice, loss))
+#        except Exception as e:
+#            print(f"Error for file {file_choice}: {e}")
+#            print("Continuing.")
 
     print(*loss_file_pairs, sep='\n')
     best_file, best_loss = min(loss_file_pairs, key = lambda x: x[1])
@@ -1252,43 +1266,44 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
         loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.2922437525694463, b = 2.851373288066033, Omega = 0.3815554681671926)
         print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
-optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
-#check_losses_on_pde_for_learned_odes()
-#master_func(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
-exit()
-for A in np.arange(1.1, 2.1, 0.1):
-    master_func(A=round(A,2))
-#    start = time()
-#    result = master_func(A=A)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for m in np.arange(1.1, 2.1, 0.1):
-    master_func(m=round(m,2))
-#    start = time()
-#    result = master_func(m=m)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for b in np.arange(1., 2.1, 0.1):
-    master_func(b=round(b,2))
-#    start = time()
-#    result = master_func(b=b)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-for Omega in np.arange(0.3, 1.3, 0.1):
-    master_func(Omega=round(Omega,2))
-#    start = time()
-#    result = master_func(Omega=Omega)
-#    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-#    with open("result_times.txt", "a") as f:
-#        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-    
+if __name__ == "__main__":
+#    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
+    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
+    #master_func(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
+    exit()
+    for A in np.arange(1.1, 2.1, 0.1):
+        master_func(A=round(A,2))
+    #    start = time()
+    #    result = master_func(A=A)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for m in np.arange(1.1, 2.1, 0.1):
+        master_func(m=round(m,2))
+    #    start = time()
+    #    result = master_func(m=m)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for b in np.arange(1., 2.1, 0.1):
+        master_func(b=round(b,2))
+    #    start = time()
+    #    result = master_func(b=b)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+    for Omega in np.arange(0.3, 1.3, 0.1):
+        master_func(Omega=round(Omega,2))
+    #    start = time()
+    #    result = master_func(Omega=Omega)
+    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+    #    with open("result_times.txt", "a") as f:
+    #        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+        
 
 
 
-#../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
-#../movies/trajectory_trap_plus_sech_squared/
-#/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
+    #../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
+    #../movies/trajectory_trap_plus_sech_squared/
+    #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
 
