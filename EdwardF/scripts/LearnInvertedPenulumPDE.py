@@ -131,7 +131,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
     automate = True
-    produceInverse = True
+    produceInverse = False
     saveLibTorch = True
     useLibTorch = True
 
@@ -397,10 +397,11 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
             print("problem!")
         exit()
+    if useLibTorch:
+        new_model_path = new_model_path.replace(".pth", ".pt")
     if os.path.exists(model_path) and load_model:
         if useLibTorch:
             model = torch.jit.load(model_path.replace(".pth", ".pt"))
-            new_model_path = new_model_path.replace(".pth", ".pt")
         else:
             model.load_state_dict(torch.load(model_path))#, weights_only=True))
         if not no_print:
@@ -519,7 +520,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         best_time_idx = np.inf
         x_values = [x_start]
         u = u_start.detach().requires_grad_(True)
-        print(f"x_start in loss_func first = {x_start}")
+#        print(f"x_start in loss_func first = {x_start}")
 
         for i in range(1, len(t_values)):
             xi_t = xi(t_values[i])
@@ -885,7 +886,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     # Training loop
     global learning_rate
     learning_rate = 0.00001
-    Algorithm = "adamax"
+    Algorithm = "brute force"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -1018,6 +1019,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         if not no_print:
             print("New model path loaded =", new_model_path)
         if useLibTorch and os.path.exists(new_model_path):
+            if not no_print:
+                print(f"new_model_path = {new_model_path}")
             model = torch.jit.load(new_model_path)
         else:
             model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
@@ -1268,7 +1271,8 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
 
 if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
-    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
+#    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
+    master_func(load_model = True, base_model = "xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
     #master_func(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
     exit()
     for A in np.arange(1.1, 2.1, 0.1):
