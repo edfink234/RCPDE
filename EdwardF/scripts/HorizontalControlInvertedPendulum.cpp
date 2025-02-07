@@ -419,10 +419,10 @@ namespace InvertedPendulum
 
     // Constants
     constexpr float g = 9.81f; //gravitational acceleration on earth
-    constexpr float l = 1.0f;      //Fixing the length of the pendulum for simplicity and to avoid potential problems with "apparent stability"
+    constexpr float l = 4.0f;      //Fixing the length of the pendulum for simplicity and to avoid potential problems with "apparent stability"
     constexpr float T = 100.0f;       // Final time
     constexpr float dt = 0.01f;      // Time step
-    constexpr float x_0 = std::numbers::pi_v<float> - 0.1f;  // Initial angle
+    constexpr float x_0 = std::numbers::pi_v<float> - 0.14159f;  // Initial angle
     constexpr float v_0 = 0.0f;      // Initial angular velocity
     constexpr float dt_over_6 = dt/6.0f;
     
@@ -508,8 +508,9 @@ struct Board
     std::vector<std::string> (*diffeq)(Board&); //differential equation we want to solve
     float isConstTol;
     float upperVar;
+    bool simplify_original;
     
-    Board(bool primary = true, int n = 3, const std::string& expression_type = "prefix", std::string fitMethod = "PSO", int numFitIter = 1, std::string fitGradMethod = "naive_numerical", const Eigen::MatrixXf& theData = {}, bool visualize_exploration = false, bool cache = false, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false) : gen{rd()}, vel_dist{-1.0f, 1.0f}, pos_dist{0.0f, 1.0f}, num_fit_iter{numFitIter}, fit_method{fitMethod}, fit_grad_method{fitGradMethod}, is_primary{primary}
+    Board(bool primary = true, int n = 3, const std::string& expression_type = "prefix", std::string fitMethod = "PSO", int numFitIter = 1, std::string fitGradMethod = "naive_numerical", const Eigen::MatrixXf& theData = {}, bool visualize_exploration = false, bool cache = false, bool const_tokens = false, float isConstTol = 1e-1f, float upperVar = 0.02, bool const_token = false, bool simplifyOriginal = true) : gen{rd()}, vel_dist{-1.0f, 1.0f}, pos_dist{0.0f, 1.0f}, num_fit_iter{numFitIter}, fit_method{fitMethod}, fit_grad_method{fitGradMethod}, is_primary{primary}, simplify_original{simplifyOriginal}
     {
         if (n > 30)
         {
@@ -3272,7 +3273,10 @@ struct Board
             
             if (is_primary)
             {
-                ((this->expression_type == "prefix") ? simplifyPN(this->pieces) : simplifyRPN(this->pieces));
+                if (this->simplify_original)
+                {
+                    ((this->expression_type == "prefix") ? simplifyPN(this->pieces) : simplifyRPN(this->pieces));
+                }
                 this->expression_string.clear();
                 this->expression_string.reserve(8*pieces.size());
                 size_t const_count = 0;
@@ -5015,22 +5019,22 @@ DataRow SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::stri
      */
     std::atomic<float> max_score{0.0};
     std::atomic<float> best_MSE{FLT_MAX};
-    std::string best_expression, orig_expression;
-    
+    std::string best_expression, orig_expression, best_second_deriv_expression, orig_second_deriv_expression;
+
     auto start_time = Clock::now();
     
     /*
      Inside of thread:
      */
     
-    auto func = [&depth, &expression_type, &method, &num_fit_iter, &fit_grad_method, &data, &cache, &start_time, &time, &max_score, &sync_point, &best_expression, &orig_expression, &const_tokens, &isConstTol, &upperVar, &const_token, &best_MSE, &seed_expression]()
+    auto func = [&depth, &expression_type, &method, &num_fit_iter, &fit_grad_method, &data, &cache, &start_time, &time, &max_score, &sync_point, &best_expression, &orig_expression, &best_second_deriv_expression, &orig_second_deriv_expression, &const_tokens, &isConstTol, &upperVar, &const_token, &best_MSE, &seed_expression]()
     {
         std::random_device rand_dev;
         std::mt19937 generator(rand_dev()); // Mersenne Twister random number generator
-        Board x(true, depth, expression_type, method, num_fit_iter, fit_grad_method, data, false, cache, const_tokens, isConstTol, upperVar, const_token);
+        Board x(true, depth, expression_type, method, num_fit_iter, fit_grad_method, data, false, cache, const_tokens, isConstTol, upperVar, const_token, false);
         
         sync_point.arrive_and_wait();
-        Board secondary(false, 0, expression_type, method, num_fit_iter, fit_grad_method, data, false, cache, const_tokens, isConstTol, upperVar, const_token); //For perturbations
+        Board secondary(false, 0, expression_type, method, num_fit_iter, fit_grad_method, data, false, cache, const_tokens, isConstTol, upperVar, const_token, false); //For perturbations
         float score = 0.0f, check_point_score = 0.0f;
         
         std::vector<std::string> current;
@@ -5063,10 +5067,15 @@ DataRow SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::stri
                     best_MSE = x.MSE_curr;
                     best_expression = x._to_infix();
                     orig_expression = x.expression();
+                    best_second_deriv_expression = x._to_infix(x.derivat2);
+                    orig_second_deriv_expression = x.expression(x.derivat2);
+                    
                     std::cout << "\nUnique expressions = " << Board::expression_dict.size() << '\n';
                     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
                     std::cout << "Best expression = " << best_expression << '\n';
                     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+                    std::cout << "Best second derivative expression = " << best_second_deriv_expression << '\n';
+                    std::cout << "Best second derivative expression (original format) = " << orig_second_deriv_expression << '\n';
                 }
             }
             else
@@ -5192,6 +5201,8 @@ DataRow SimulatedAnnealing(const Eigen::MatrixXf& data, int depth = 3, std::stri
     std::cout << "Best score = " << max_score << ", MSE = " << best_MSE << '\n';
     std::cout << "Best expression = " << best_expression << '\n';
     std::cout << "Best expression (original format) = " << orig_expression << '\n';
+    std::cout << "Best second derivative expression = " << best_second_deriv_expression << '\n';
+    std::cout << "Best second derivative expression (original format) = " << orig_second_deriv_expression << '\n';
     
     return result;
 }
@@ -6219,41 +6230,12 @@ DataRow findClosestRow(float target)
 
 int main(int argc, char* argv[])
 {
-//    if (argc != 3)
-//    {
-//        std::cerr << "Usage: " << argv[0] << " <float_value> <int_value>\n";
-//        return 1;
-//    }
-//
-//    InvertedPendulum::x_0 = std::stof(argv[1]);
-//    std::cout << InvertedPendulum::x_0 << '\n';
     DataRow new_result;
-//    
     constexpr double time = 10000;
-//    
-//    if (std::stoi(argv[2]))
-//    {
-//        DataRow result = findClosestRow(InvertedPendulum::x_0);
-//        std::cout << result << '\n';
-//
-//        new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, result.depth /*fixed depth of generated solutions*/, result.expression_type /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split(result.orig_expression) /*seed expression for simulated annealing*/);
-//        if (result.x0 == InvertedPendulum::x_0 && new_result.mse < result.mse)
-//        {
-//            //Update file with new result
-//            puts("hello overwrite");
-//            overwriteCSVRow(result, new_result);
-//        }
-//        else
-//        {
-//            puts("hello addRow");
-//            addRow(new_result);
-//        }
-//    }
-//    else
-//    {
-        new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
-//        addRow(new_result);
-//    }
+
+//    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 tanh 100.000000 log * cos") /*seed expression for simulated annealing*/);
+    
     return 0;
 }
 
