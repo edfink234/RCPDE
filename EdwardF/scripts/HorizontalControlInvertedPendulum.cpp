@@ -818,6 +818,20 @@ struct Board
                 new_expression[op_idx] = "0"; //change '*' to '0'
                 new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
             }
+            else if (new_expression[first_arg_idx_high] == "1") //* x 1 -> x (because, since prefix operators come at the beginning, if the beginning of the second argument of '*' is 1, then the whole second argument MUST be 1, therefore the expression reduces to * x 1, which is 1)
+            {
+                //puts("hi 251");
+                //erase the '1' at the end
+                if (first_arg_idx_high == static_cast<int>(new_expression.size()) - 1)
+                {
+                    new_expression.pop_back();
+                }
+                else
+                {
+                    new_expression.erase(new_expression.begin() + first_arg_idx_high, new_expression.end());
+                }
+                new_expression.erase(new_expression.begin() + op_idx); //erase the '*'
+            }
         }
         else
         {
@@ -1258,6 +1272,11 @@ struct Board
                 //puts("hi 241");
                 new_expression[first_arg_idx_low] = "0";
                 new_expression.erase(new_expression.begin() + first_arg_idx_low + 1, new_expression.end()); //erase the rest of x and y
+            }
+            else if (new_expression.back() == "1") // x 1 * -> x (because, since postfix operators come at the end, if the end of the second argument of '*' is 1, then the whole second argument MUST be 1, therefore the expression reduces to x 1 *, which is x)
+            {
+                //puts("hi 247");
+                new_expression.pop_back(); //erase the '1'
             }
             else
             {
@@ -6250,8 +6269,8 @@ int main(int argc, char* argv[])
     constexpr double time = 10000;
 
 //    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
-//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 tanh 100.000000 log * cos") /*seed expression for simulated annealing*/);
-    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("cos * tanh x0 log 100.000000") /*seed expression for simulated annealing*/);
+    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 tanh 100.000000 log * cos") /*seed expression for simulated annealing*/);
+//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("cos * tanh x0 log 100.000000") /*seed expression for simulated annealing*/);
     
     return 0;
 }

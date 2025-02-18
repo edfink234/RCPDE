@@ -205,6 +205,28 @@ def ODE_IVP_Jan_22_MAT_638():
         print(e)
     print(latex(solution))
 
+def ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_ZERO():
+    r'''
+    Solves the ODE:
+        \ddot{\theta} + \frac{g}{l}(\theta) =  \frac{ A \omega^2}{l}\cos(\omega t - \delta)
+    '''
+    # Define variables and functions
+    t, l, g, A, omega, theta_0, theta_dot_0, delta = symbols('t l g A omega, theta_0, theta_dot_0, delta', positive=True)
+    theta = Function('theta')(t)
+
+    # Define the ODE
+    ode = Eq(
+        Derivative(theta, t, t) + (g / l) * (theta) - ((A * omega * omega) / l) * cos(omega * t - delta),
+        0
+    )
+    # Attempt to solve the ODE symbolically
+    solution = None
+    try:
+        solution = dsolve(ode, theta)#, ics={theta.subs(t,0): theta_0, diff(theta, t).subs(t,0): theta_dot_0})
+    except Exception as e:
+        print(e)
+    print(latex(solution))
+
 
 #ODE_IVP()
 #ODE_IVP_PLUS_SOLITON()
@@ -213,4 +235,5 @@ def ODE_IVP_Jan_22_MAT_638():
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_PI_VERTICAL()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI()
 #ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_2ND_PI_VERTICAL()
-ODE_IVP_Jan_22_MAT_638()
+#ODE_IVP_Jan_22_MAT_638()
+ODE_IVP_LAGRANGIAN_FORMULATION_TAYLOR_1ST_ZERO()

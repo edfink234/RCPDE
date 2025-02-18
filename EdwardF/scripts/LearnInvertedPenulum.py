@@ -522,7 +522,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 
     # Training loop
     global learning_rate
-    learning_rate = 0.000125
+    learning_rate = 0.00006
     Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
@@ -559,7 +559,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         else:
             while criterion():
 #                if epoch >= 1000:
-#                    return best_loss
+#                    return {"result": f'target not achieved, best loss after epoch 1000 = {best_loss}', "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega}
                 optimizer.zero_grad()  # Zero the gradients
                 loss_value, t_value = loss_func()
                 
@@ -801,36 +801,39 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
             print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
 
         plt.close()
+        return {"result": "target achieved", "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega}
 
 if __name__=='__main__':
-    print("hi")
-    A_space = np.linspace(0.99, 0.66, 40)
-    b_space = np.linspace(0.99, 0.75, 40)
-    dA = A_space[0] - A_space[1]
+#    A_space = np.linspace(0.655, 0.675, 10)
+#    b_space = np.linspace(0.750, 0.666, 10)
+    A_space = np.linspace(0.67277778, 0.675, 2)
+    b_space = np.linspace(0.67344445, 0.666, 2)
+    dA = A_space[1] - A_space[0]
     dB = b_space[0] - b_space[1]
-    titles = open("result_times.txt").readlines()[-40:]
-    titles = [title.strip().split() for title in titles]
-    print("\n"*100)
-    print(*titles,sep='\n')
-    print("\n"*10)
-    for i, A, b, title in zip(range(len(A_space)), A_space, b_space, titles):
-        title[6] = str(A)
-        title[11] = str(b)
-        if A == 0.99:
-            title[4] = '1'
-            title[9] = '1'
-        else:
-            title[4] = str(A+dA)
-            title[9] = str(b+dB)
-        print(' '.join(title))
-        
+    print(f"dA={dA}, dB={dB}")
+#    titles = open("result_times.txt").readlines()[-40:]
+#    titles = [title.strip().split() for title in titles]
+#    print("\n"*100)
+#    print(*titles,sep='\n')
+#    print("\n"*10)
+#    for i, A, b, title in zip(range(len(A_space)), A_space, b_space, titles):
+#        title[6] = str(A)
+#        title[11] = str(b)
+#        if A == 0.99:
+#            title[4] = '1'
+#            title[9] = '1'
+#        else:
+#            title[4] = str(A+dA)
+#            title[9] = str(b+dB)
+#        print(' '.join(title))
+#        
         
     for A, b in zip(A_space, b_space):
         start = time()
         result = master_func(A=round(A,4), b = round(b, 4))
-        achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
+        achieved = result["result"]
         with open("result_times.txt", "a") as f:
-            f.write(f"Time from A = {A+0.01:.2f} to {A:.2f}, b = {b+0.01:.2f} to {b:.2f}, = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
+            f.write(f"Time from A = {result['closest_A']:.4f} to {A:.4f}, b = {result['closest_b']:.4f} to {b:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
     
     exit()
 
@@ -842,7 +845,6 @@ if __name__=='__main__':
             f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
             
     master_func(A=1.5, load_model = True)
-
 
     for A in np.arange(1.1, 2.1, 0.1):
         master_func(A=round(A,2))
@@ -880,5 +882,5 @@ if __name__=='__main__':
 #../movies/trajectory_trap_plus_sech_squared/
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
 
-
-#TODO: test A=1.5 randomly initialized
+#ls -t -r ../movies/trajectory_trap_plus_sech_squared/*mp4 | tail -n 10| xargs
+#ls -t -r ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/*png | tail -n 10 | xargs 

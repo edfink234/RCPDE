@@ -1,0 +1,136 @@
+\documentclass{article}
+\usepackage[x11names, svgnames, rgb]{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{snakes,arrows,shapes}
+\usepackage{amsmath}
+%
+%
+
+%
+
+%
+
+\begin{document}
+\pagestyle{empty}
+%
+%
+%
+
+\enlargethispage{100cm}
+% Start of code
+\begin{tikzpicture}[>=latex',line join=bevel,]
+%%
+\node (4989097360) at (405.0bp,16.375bp) [draw,fill=darkolivegreen1,rectangle] {
+ ()};
+  \node (4989147744) at (355.0bp,85.125bp) [draw,fill=gray,rectangle] {SelectBackward0};
+  \node (4989147120) at (364.0bp,147.88bp) [draw,fill=gray,rectangle] {SelectBackward0};
+  \node (4989147600) at (404.0bp,204.62bp) [draw,fill=gray,rectangle] {AddBackward0};
+  \node (4989143936) at (455.0bp,85.125bp) [draw,fill=darkolivegreen3,rectangle] {
+ (1, 1)};
+  \node (4989147696) at (345.0bp,261.38bp) [draw,fill=gray,rectangle] {AddmmBackward0};
+  \node (4989146112) at (176.0bp,318.12bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989096880) at (175.0bp,381.25bp) [draw,fill=lightblue,rectangle] {fc\_out.bias
+ (1)};
+  \node (4989146160) at (293.0bp,318.12bp) [draw,fill=gray,rectangle] {TanhBackward0};
+  \node (4989145584) at (284.0bp,381.25bp) [draw,fill=gray,rectangle] {AddmmBackward0};
+  \node (4989106112) at (125.0bp,450.75bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989096720) at (125.0bp,520.25bp) [draw,fill=lightblue,rectangle] {fc4.bias
+ (4)};
+  \node (4989105296) at (240.0bp,450.75bp) [draw,fill=gray,rectangle] {TanhBackward0};
+  \node (4989105872) at (232.0bp,520.25bp) [draw,fill=gray,rectangle] {AddmmBackward0};
+  \node (4989105968) at (78.0bp,589.75bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989096560) at (78.0bp,659.25bp) [draw,fill=lightblue,rectangle] {fc3.bias
+ (4)};
+  \node (4989106064) at (193.0bp,589.75bp) [draw,fill=gray,rectangle] {TanhBackward0};
+  \node (4989105824) at (185.0bp,659.25bp) [draw,fill=gray,rectangle] {AddmmBackward0};
+  \node (4989154112) at (50.0bp,728.75bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4379163680) at (50.0bp,798.25bp) [draw,fill=lightblue,rectangle] {fc2.bias
+ (4)};
+  \node (4989153488) at (165.0bp,728.75bp) [draw,fill=gray,rectangle] {TanhBackward0};
+  \node (4989154160) at (157.0bp,798.25bp) [draw,fill=gray,rectangle] {AddmmBackward0};
+  \node (4989154352) at (63.0bp,867.75bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4379163440) at (63.0bp,937.25bp) [draw,fill=lightblue,rectangle] {fc1.bias
+ (4)};
+  \node (4989154304) at (169.0bp,867.75bp) [draw,fill=gray,rectangle] {TBackward0};
+  \node (4989154400) at (169.0bp,937.25bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4988774976) at (169.0bp,1006.8bp) [draw,fill=lightblue,rectangle] {fc1.weight
+ (4, 1)};
+  \node (4989153536) at (268.0bp,728.75bp) [draw,fill=gray,rectangle] {TBackward0};
+  \node (4989154448) at (275.0bp,798.25bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4379061280) at (275.0bp,867.75bp) [draw,fill=lightblue,rectangle] {fc2.weight
+ (4, 4)};
+  \node (4989106016) at (296.0bp,589.75bp) [draw,fill=gray,rectangle] {TBackward0};
+  \node (4989105728) at (342.0bp,659.25bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4379183200) at (362.0bp,728.75bp) [draw,fill=lightblue,rectangle] {fc3.weight
+ (4, 4)};
+  \node (4989105248) at (343.0bp,450.75bp) [draw,fill=gray,rectangle] {TBackward0};
+  \node (4989106208) at (350.0bp,520.25bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989096640) at (390.0bp,589.75bp) [draw,fill=lightblue,rectangle] {fc4.weight
+ (4, 4)};
+  \node (4989146640) at (400.0bp,318.12bp) [draw,fill=gray,rectangle] {TBackward0};
+  \node (4989105920) at (402.0bp,381.25bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989096800) at (446.0bp,450.75bp) [draw,fill=lightblue,rectangle] {fc\_out.weight
+ (1, 4)};
+  \node (4989147984) at (514.0bp,261.38bp) [draw,fill=gray,rectangle] {AddmmBackward0};
+  \node (4989105200) at (514.0bp,318.12bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989097040) at (514.0bp,381.25bp) [draw,fill=lightblue,rectangle] {fc\_skip.bias
+ (1)};
+  \node (4989106160) at (623.0bp,318.12bp) [draw,fill=gray,rectangle] {TBackward0};
+  \node (4989154592) at (626.0bp,381.25bp) [draw,fill=gray,rectangle] {AccumulateGrad};
+  \node (4989096960) at (626.0bp,450.75bp) [draw,fill=lightblue,rectangle] {fc\_skip.weight
+ (1, 1)};
+  \draw [->] (4989147744) ..controls (368.7bp,65.833bp) and (378.09bp,53.303bp)  .. (4989097360);
+  \draw [->] (4989147120) ..controls (361.35bp,129.01bp) and (359.6bp,117.19bp)  .. (4989147744);
+  \draw [->] (4989147600) ..controls (391.56bp,186.6bp) and (384.19bp,176.51bp)  .. (4989147120);
+  \draw [->] (4989147600) ..controls (413.51bp,184.86bp) and (420.47bp,170.74bp)  .. (426.0bp,158.25bp) .. controls (432.66bp,143.21bp) and (439.55bp,126.14bp)  .. (4989143936);
+  \draw [->] (4989147696) ..controls (363.77bp,242.96bp) and (375.4bp,232.17bp)  .. (4989147600);
+  \draw [->] (4989146112) ..controls (233.53bp,298.49bp) and (273.96bp,285.39bp)  .. (4989147696);
+  \draw [->] (4989096880) ..controls (175.38bp,356.85bp) and (175.53bp,348.07bp)  .. (4989146112);
+  \draw [->] (4989146160) ..controls (309.4bp,299.86bp) and (319.37bp,289.36bp)  .. (4989147696);
+  \draw [->] (4989145584) ..controls (286.65bp,362.27bp) and (288.4bp,350.38bp)  .. (4989146160);
+  \draw [->] (4989106112) ..controls (175.09bp,428.49bp) and (219.88bp,409.47bp)  .. (4989145584);
+  \draw [->] (4989096720) ..controls (125.0bp,494.15bp) and (125.0bp,482.64bp)  .. (4989106112);
+  \draw [->] (4989105296) ..controls (252.84bp,430.05bp) and (263.23bp,414.12bp)  .. (4989145584);
+  \draw [->] (4989105872) ..controls (234.29bp,499.96bp) and (236.07bp,484.88bp)  .. (4989105296);
+  \draw [->] (4989105968) ..controls (126.4bp,567.54bp) and (169.52bp,548.64bp)  .. (4989105872);
+  \draw [->] (4989096560) ..controls (78.0bp,633.15bp) and (78.0bp,621.64bp)  .. (4989105968);
+  \draw [->] (4989106064) ..controls (204.38bp,569.05bp) and (213.59bp,553.12bp)  .. (4989105872);
+  \draw [->] (4989105824) ..controls (187.29bp,638.96bp) and (189.07bp,623.88bp)  .. (4989106064);
+  \draw [->] (4989154112) ..controls (92.126bp,706.69bp) and (129.24bp,688.13bp)  .. (4989105824);
+  \draw [->] (4379163680) ..controls (50.0bp,772.15bp) and (50.0bp,760.64bp)  .. (4989154112);
+  \draw [->] (4989153488) ..controls (170.75bp,708.35bp) and (175.28bp,693.07bp)  .. (4989105824);
+  \draw [->] (4989154160) ..controls (159.29bp,777.96bp) and (161.07bp,762.88bp)  .. (4989153488);
+  \draw [->] (4989154352) ..controls (91.46bp,846.31bp) and (115.95bp,828.73bp)  .. (4989154160);
+  \draw [->] (4379163440) ..controls (63.0bp,911.15bp) and (63.0bp,899.64bp)  .. (4989154352);
+  \draw [->] (4989154304) ..controls (165.57bp,847.46bp) and (162.89bp,832.38bp)  .. (4989154160);
+  \draw [->] (4989154400) ..controls (169.0bp,916.96bp) and (169.0bp,901.88bp)  .. (4989154304);
+  \draw [->] (4988774976) ..controls (169.0bp,980.65bp) and (169.0bp,969.14bp)  .. (4989154400);
+  \draw [->] (4989153536) ..controls (242.99bp,707.41bp) and (221.65bp,690.05bp)  .. (4989105824);
+  \draw [->] (4989154448) ..controls (273.0bp,777.96bp) and (271.44bp,762.88bp)  .. (4989153536);
+  \draw [->] (4379061280) ..controls (275.0bp,841.65bp) and (275.0bp,830.14bp)  .. (4989154448);
+  \draw [->] (4989106016) ..controls (276.95bp,568.65bp) and (261.0bp,551.83bp)  .. (4989105872);
+  \draw [->] (4989105728) ..controls (328.51bp,638.45bp) and (317.5bp,622.3bp)  .. (4989106016);
+  \draw [->] (4379183200) ..controls (354.53bp,702.55bp) and (351.08bp,690.89bp)  .. (4989105728);
+  \draw [->] (4989105248) ..controls (325.52bp,429.75bp) and (311.01bp,413.15bp)  .. (4989145584);
+  \draw [->] (4989106208) ..controls (348.0bp,499.96bp) and (346.44bp,484.88bp)  .. (4989105248);
+  \draw [->] (4989096640) ..controls (374.83bp,563.15bp) and (367.55bp,550.86bp)  .. (4989106208);
+  \draw [->] (4989146640) ..controls (382.58bp,299.78bp) and (371.88bp,289.14bp)  .. (4989147696);
+  \draw [->] (4989105920) ..controls (401.41bp,362.27bp) and (401.02bp,350.38bp)  .. (4989146640);
+  \draw [->] (4989096800) ..controls (429.31bp,424.15bp) and (421.3bp,411.86bp)  .. (4989105920);
+  \draw [->] (4989147984) ..controls (477.44bp,242.18bp) and (452.83bp,229.93bp)  .. (4989147600);
+  \draw [->] (4989105200) ..controls (514.0bp,300.72bp) and (514.0bp,291.72bp)  .. (4989147984);
+  \draw [->] (4989097040) ..controls (514.0bp,356.85bp) and (514.0bp,348.07bp)  .. (4989105200);
+  \draw [->] (4989106160) ..controls (586.85bp,298.97bp) and (562.62bp,286.79bp)  .. (4989147984);
+  \draw [->] (4989154592) ..controls (625.12bp,362.27bp) and (624.53bp,350.38bp)  .. (4989106160);
+  \draw [->] (4989096960) ..controls (626.0bp,424.65bp) and (626.0bp,413.14bp)  .. (4989154592);
+  \draw [->,dotted] (4989143936) ..controls (437.3bp,60.492bp) and (430.1bp,50.883bp)  .. (4989097360);
+%
+\end{tikzpicture}
+% End of code
+
+%
+\end{document}
+%
+
+

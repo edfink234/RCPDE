@@ -31,9 +31,18 @@ Veff_no_trap = lambda n: (-(-0.16e2  *  B  *  A  *  (A  *  exp((2  *  A  *  (2  
 suspicious_bs = lambda n: (exp((10  *  A  *  rho)) - 0.5e1  *  \
     exp((2  *  A  *  (n + 4  *  rho))) + 0.10e2  *  exp((2  *  A  *  (2  *  n + 3  *  rho))) - 0.10e2  *  \
     exp((2  *  A  *  (3  *  n + 2  *  rho))) + 0.5e1  *  exp((2  *  A  *  (4  *  n + rho))) - exp((10  *  A  *  n)))
+    
+numerator_suspicios_bs = lambda n: (A  *  exp((2  *  A  *  (2  *  n + 3  *  rho)))  *  n + A  * \
+    exp((2  *  A  *  (3  *  n + 2  *  rho)))  *  n - A  *  exp((2  *  A  *  (n + 4  *  rho)))  *  n - A  *  \
+    exp((2  *  A  *  (4  *  n + rho)))  *  n - A  *  exp((2  *  A  *  (2  *  n + 3  *  rho)))  *  rho - A  *  \
+    exp((2  *  A  *  (3  *  n + 2  *  rho)))  *  rho + A  *  exp((2  *  A  *  (n + 4  *  rho)))  *  rho + A  *  \
+    exp((2  *  A  *  (4  *  n + rho)))  *  rho + 0.3e1  *  exp((2  *  A  *  (2  *  n + 3  *  rho))) - 0.3e1  *  \
+    exp((2  *  A  *  (3  *  n + 2  *  rho))) - exp((2  *  A  *  (n + 4  *  rho))) + \
+    exp((2  *  A  *  (4  *  n + rho))))
 
 window=0.5
-plt.plot(np.linspace(-window, window, 1000), suspicious_bs(np.linspace(-window, window, 1000)))
+plt.plot(x:=np.linspace(0, window, 1000), suspicious_bs(np.linspace(0, window, 1000)))
+plt.plot(x, numerator_suspicios_bs(x))
 plt.ylim(-1,2)
 plt.show()
 plt.close()
