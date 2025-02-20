@@ -192,7 +192,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         assert(dt<np.sqrt(2)*dx*dx*0.5)
 
         A_sol = 1; c = 0                     # Amplitude, vel. & position
-        u0 = A_sol*sech(A_sol*(x))*np.exp(1j*c*x);    # initial condition (IC)
+        u0 = A_sol*sech(A_sol*(x - x_start))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
         
         U = np.concatenate((np.real(u0), np.imag(u0)))
@@ -268,14 +268,14 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
         denominator = np.sum(density.real) * dx
         xmax = numerator / denominator
-        
-        plot_steady_state = False
-        
+        if not no_print:
+            print(f"xmax = {xmax}, x_start = {x_start}, xmax - x_start = {xmax - x_start}")
+                
         # Create a spline interpolator
         interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
 
         # Perform the displacement
-        u_displaced = interpolator(x - x_start)
+        u_displaced = interpolator(x + (xmax - x_start))
 
         # Replace NaN values with 0
         u = np.nan_to_num(u_displaced)
@@ -308,6 +308,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         
         return (u, x, dx, N, g, point_5_over_dx_squared, one_over_six) if return_all else u
     
+#    refine_with_newton(plot_steady_state=True)
+#    exit()
     u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton()
     
     # Define the neural network for xi(t)
@@ -340,7 +342,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     global best_t_value
     best_t_value = T
     global df
-    df = None
+    df = pd.DataFrame()
     try:
         df = pd.read_csv("../dataFiles/ICsPDE.txt", names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
     except FileNotFoundError:
@@ -570,7 +572,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         smoothness_penalty /= best_time_idx
         if not no_print:
             print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
-        return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
+#        return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
+        return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + velocity_penalty*v_best + xi_penalty*xi_best), best_time
+
 
     def wrapped_loss_func(params):
         nonlocal A, b, Omega
@@ -885,8 +889,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
     # Training loop
     global learning_rate
-    learning_rate = 0.00001
-    Algorithm = "brute force"
+    learning_rate = 0.01
+    Algorithm = "adam"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -912,7 +916,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 1, anneal = False, initial_temp = 10)
+            brute_force(fine = False, coolingRate = 1, anneal = False, initial_temp = 9)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -1143,6 +1147,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             temp = sech(b * (x - xi))
             V_SECH = A * temp * temp
             return V_MT + V_SECH
+        def potential_magnetic_trap(x, xi):
+            nonlocal A, b, Omega
+            V_MT = 0.5 * Omega * Omega * x * x
+            return V_MT
         # Initialization function
         def init():
     #        gold_dot.set_data([], [])
@@ -1156,7 +1164,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             t = (i) * (best_t_value / (N - 1))  # Calculate current time
             y_values = potential(x_range, xi_values[i])
             density = (u_values[i] * torch.conj(u_values[i])).detach().numpy()
-            dot.set_data(x, density + y_values)
+            dot.set_data(x, density + potential_magnetic_trap(x_range, xi_values[i]))
             center.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
@@ -1198,7 +1206,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                 t = (i) * (best_t_value / (N - 1))  # Calculate current time
                 y_values = potential(x_range, -xi_values[i])
                 density = (u_values[i] * torch.conj(u_values[i])).detach().numpy()[::-1]
-                dot.set_data(x, density + y_values)
+                dot.set_data(x, density + potential_magnetic_trap(x_range, xi_values[i]))
                 center.set_data([-x_values[i]], [potential(x_values[i], -xi_values[i])])
                 curve.set_data(x_range, y_values)
         #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
@@ -1272,7 +1280,9 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
 if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
-    master_func(load_model = True, base_model = "xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
+    master_func(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt")
+#    master_func(load_model = True)
+
     #master_func(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
     exit()
     for A in np.arange(1.1, 2.1, 0.1):
