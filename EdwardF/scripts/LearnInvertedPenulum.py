@@ -15,7 +15,7 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, simulate_only = {"simulate_only": False, "xStart": 0}, T = 10):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -69,7 +69,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
 #    A = 1.2        # Amplitude of the potential
 #    b = 1.0        # Width of the potential
     sigma = 1.0    # Width of the (Gaussian) potential, not used currently
-    T = 10.0       # Final time
+    T = T       # Final time
     dt = 0.01      # Time step
     x_star = 0.0   # Final position sought
     v_th = 0.01    # Velocity threshold, not used currently
@@ -192,7 +192,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         try:
             t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
         except:
-            t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+            t_test_values = None if simulate_only else t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
         closest_row_idx = parameters.index[0]
     else:
         #Extract the row with the closest 'x_0', 'A', 'b', 'm', 'Omega' to (x_start, A, b, m, Omega) based on euclidean distance
@@ -265,10 +265,21 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
         t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
         return model(t_input)[0, 0]  # Get the output from the model
 
+    def simulate_trajectory(xStart = None):
+        xStart = x_start if not xStart else xStart
+        x, v = (x_start if not xStart else xStart), v_start
+        x_values = [x]
+        for i, t in enumerate(t_values[1:]):
+            x, v = rk4_step(x, v, torch.tensor([[0]], dtype=torch.float32)[0, 0], dt)
+            x_values.append(x.detach().numpy())  # Use detach()
+
+        return x_values, t_values
+
+    if simulate_only["simulate_only"]:
+        return simulate_trajectory(simulate_only["xStart"])
+
     def loss_func():
-#        global x_start, v_start, m, delta_t, x_th, v_th, smoothness_penalty_factor, time_penalty_factor, velocity_penalty
         x, v = x_start, v_start
-    #    a = force(torch.tensor(x_start), xi(0.0)) / m
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = []  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [] # Temporary storage for v values to calculate max velocity
@@ -599,11 +610,12 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True):
                     for i, t in enumerate(t_test_values):
                         xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
                         xi_values.append(xi_t.detach().numpy())
-                        x, v = rk4_step(x, v, xi_t, dt)
                         a = force(x, xi_t) / m
                         x_values.append(x.detach().numpy())  # Use detach()
                         v_values.append(v.detach().numpy())  # Use detach()
                         a_values.append(a.detach().numpy())
+                        x, v = rk4_step(x, v, xi_t, dt)
+                        
                     plt.plot(t_values, x_values, label='x(t) [m]', color='blue')
                     plt.plot(t_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
                     plt.plot(t_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
@@ -830,7 +842,7 @@ if __name__=='__main__':
         
     for A, b in zip(A_space, b_space):
         start = time()
-        result = master_func(A=round(A,4), b = round(b, 4))
+        result = master_func_learn_ivp_ode(A=round(A,4), b = round(b, 4))
         achieved = result["result"]
         with open("result_times.txt", "a") as f:
             f.write(f"Time from A = {result['closest_A']:.4f} to {A:.4f}, b = {result['closest_b']:.4f} to {b:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
@@ -839,38 +851,38 @@ if __name__=='__main__':
 
     for A in np.arange(1.4099, 1.4899, 0.01):
         start = time()
-        result = master_func(A=round(A,4))
+        result = master_func_learn_ivp_ode(A=round(A,4))
         achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
         with open("result_times.txt", "a") as f:
             f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
             
-    master_func(A=1.5, load_model = True)
+    master_func_learn_ivp_ode(A=1.5, load_model = True)
 
     for A in np.arange(1.1, 2.1, 0.1):
-        master_func(A=round(A,2))
+        master_func_learn_ivp_ode(A=round(A,2))
     #    start = time()
-    #    result = master_func(A=A)
+    #    result = master_func_learn_ivp_ode(A=A)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for m in np.arange(1.1, 2.1, 0.1):
-        master_func(m=round(m,2))
+        master_func_learn_ivp_ode(m=round(m,2))
     #    start = time()
-    #    result = master_func(m=m)
+    #    result = master_func_learn_ivp_ode(m=m)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for b in np.arange(1., 2.1, 0.1):
-        master_func(b=round(b,2))
+        master_func_learn_ivp_ode(b=round(b,2))
     #    start = time()
-    #    result = master_func(b=b)
+    #    result = master_func_learn_ivp_ode(b=b)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for Omega in np.arange(0.3, 1.3, 0.1):
-        master_func(Omega=round(Omega,2))
+        master_func_learn_ivp_ode(Omega=round(Omega,2))
     #    start = time()
-    #    result = master_func(Omega=Omega)
+    #    result = master_func_learn_ivp_ode(Omega=Omega)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")

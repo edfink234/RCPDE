@@ -13,6 +13,7 @@ from random import choice
 from time import time
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
+from scipy.integrate import solve_ivp
 from torch import diag
 from warnings import filterwarnings
 from scipy.sparse import diags
@@ -21,7 +22,7 @@ from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf):
+def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0}, T = 100):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -85,7 +86,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 #    A = 1.2        # Amplitude of the potential
 #    b = 1.0        # Width of the potential
     sigma = 1.0     # Width of the (Gaussian) potential, not used currently
-    T = 10.0        # Final time
+    T = T        # Final time
     dt = 0.001      # Time step
     num_steps = int(T / dt)
     
@@ -178,25 +179,26 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         raise Exception(f"Error, must modify A, b, Omega so that |x_start| >= {min_x_start}")
     
     ###BEGIN NEWTON
-    def refine_with_newton(plot_steady_state = False, return_all = True):
+    def refine_with_newton_helper(plot_steady_state = False, return_all = True, xStart = None, lr=1):
         nonlocal A, b, Omega, x_start, v_start
+        xStart = x_start if not xStart else xStart.numpy().item()
         tol = 1e-10
         g = -1;                         # g = 1 is defocusing and g =-1 is focusing
-        N = 400;                        # number of mesh points
-        L = -10; R = 10;                # Left and right bounds of interval
+        N = 1201;                        # number of mesh points
+        L = -20; R = 20;                # Left and right bounds of interval
         x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
         N -= 1
         dx = x[1]-x[0];                 # mesh size
         point_5_over_dx_squared = (0.5 / dx**2)
         one_over_six = 1.0/6.0
-        assert(dt<np.sqrt(2)*dx*dx*0.5)
+#        assert(dt<np.sqrt(2)*dx*dx*0.5)
 
         A_sol = 1; c = 0                     # Amplitude, vel. & position
-        u0 = A_sol*sech(A_sol*(x - x_start))*np.exp(1j*c*x);    # initial condition (IC)
+        u0 = A_sol*sech(A_sol*(x - xStart))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
         
         U = np.concatenate((np.real(u0), np.imag(u0)))
-        w_sol = A_sol*A_sol*0.5 #temporal freq
+        w_sol = 0.5#A_sol*A_sol*0.5 #temporal freq
     #    A_sol = 2; c = 0;
     #    w_sol = A*A*0.5 #temporal freq
     #    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
@@ -242,7 +244,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
             # Newton correction
             DU = splu(J).solve(-F)  # Solve J * DU = -F
-            U1 = U + DU  # Update solution
+            U1 = U + lr*DU  # Update solution
 
             # Update error and solution
             err = np.linalg.norm(F)
@@ -252,10 +254,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     #            print(f"Condition number of J: {torch.linalg.cond(J)}")
             U = U1
             num_iter += 1
-            if num_iter > 20:
+            if num_iter > 100:
                 if not no_print:
-                    print("failed")
-                exit()
+                    print(f"Failed")
+                return [False]
                 
         u = U[indR]+1j*U[indI];      # wrapping into a complex vector
         Maxu=max(abs(u));
@@ -265,17 +267,26 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         density = u * np.conj(u)  # Equivalent to |u|^2
 
         # Calculate xmax (center of mass)
-        numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
-        denominator = np.sum(density.real) * dx
+#        numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
+#        denominator = np.sum(density.real) * dx
+        
+        numerator = np.trapz(x * density.real, x)
+        denominator = np.trapz(density.real, x)
+        
         xmax = numerator / denominator
         if not no_print:
-            print(f"xmax = {xmax}, x_start = {x_start}, xmax - x_start = {xmax - x_start}")
+            print(f"xmax = {xmax}, xStart = {xStart}, xmax - xStart = {xmax - xStart}")
                 
         # Create a spline interpolator
+        if not no_print:
+            print(f"x.shape = {x.shape}, u.shape = {u.shape}")
         interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
 
         # Perform the displacement
-        u_displaced = interpolator(x + (xmax - x_start))
+        u_displaced = interpolator(x + (xmax - xStart))
+#        u_displaced = np.roll(u, 1)
+#        u_displaced *= A_sol/max(u_displaced)
+#        u_displaced = interpolator(x)
 
         # Replace NaN values with 0
         u = np.nan_to_num(u_displaced)
@@ -283,7 +294,6 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             # Plot real part
     #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
             plt.plot(x, u_before.real, label="$u_{\mathrm{real}}(x,0)$ before Newton", color='purple')
-
             # Plot imaginary part
             plt.plot(x, u_before.imag, label="$u_{\mathrm{imag}}(x,0)$ before Newton", color='orange', linestyle='--')
             # Plot real part
@@ -291,7 +301,9 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             plt.plot(x, u.real, label="$u_{\mathrm{real}}(x,0)$ after Newton", color='blue')
             # Plot imaginary part
             plt.plot(x, u.imag, label="$u_{\mathrm{imag}}(x,0)$ after Newton", color='red', linestyle='--')
-            
+            y_max = max((*u_before.real, *u_before.imag, *u.real, *u.imag))
+            plt.ylim(0, y_max)
+            plt.xlim(-10, 10)
             # Plot Potential
             plt.plot(x, V, label="Potential $V(x)$", color='green', linestyle='--')
 
@@ -303,11 +315,20 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
 
             # Save and show the plot
             plt.savefig("newton_steady_state.svg")
+            plt.close()
             system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
             system(f"open newton_steady_state.pdf")
+#        print(max(u))
         
-        return (u, x, dx, N, g, point_5_over_dx_squared, one_over_six) if return_all else u
+        return (True, u, x, dx, N, g, point_5_over_dx_squared, one_over_six) if return_all else (True, u)
     
+    def refine_with_newton(plot_steady_state = False, return_all = True, xStart = None, lr=1):
+        result = refine_with_newton_helper(plot_steady_state = plot_steady_state, return_all = return_all, xStart = torch.tensor(xStart) if xStart else None, lr=lr)
+        while not result[0]:
+            lr *= 0.5
+            result = refine_with_newton_helper(plot_steady_state = plot_steady_state, return_all = return_all, xStart = torch.tensor(xStart) if xStart else None, lr=lr)
+        return result[1:]
+        
 #    refine_with_newton(plot_steady_state=True)
 #    exit()
     u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton()
@@ -342,7 +363,7 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     global best_t_value
     best_t_value = T
     global df
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=["x_0", "A", "b", "m", "Omega", "best_loss", "best_time"])
     try:
         df = pd.read_csv("../dataFiles/ICsPDE.txt", names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
     except FileNotFoundError:
@@ -423,8 +444,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
     x = torch.tensor(x)
 
     # Calculate xmax (center of mass)
-    numerator = torch.sum(x * density.real) * dx
-    denominator = torch.sum(density.real) * dx
+#    numerator = torch.sum(x * density.real) * dx
+#    denominator = torch.sum(density.real) * dx
+    numerator = torch.trapezoid(x * density.real, x)
+    denominator = torch.trapezoid(density.real, x)
     xmax = numerator / denominator
     if not no_print:
         print(f"xmax = {xmax}")
@@ -506,12 +529,74 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
         RK4 = u + (k1 + 2 * k2 + 2 * k3 + k4) * one_over_six
         
         return RK4
+    
+    def ODE_DOP853(u, N, g, V, dt):
+        """
+        Perform one step of the DOP853 method for the NLS equation.
+
+        Parameters:
+            u (torch.Tensor): Current solution (complex tensor).
+            N (int): Number of grid points.
+            g (float): Nonlinearity coefficient.
+            V (torch.Tensor): Potential array.
+            dt (float): Time step.
+
+        Returns:
+            torch.Tensor: Updated solution after one DOP853 step.
+        """
+        # Convert torch.Tensor to numpy array for use with scipy
+        u_np = u
+        V_np = V
+
+        # Define the RHS function for solve_ivp
+        def rhs_func(t, u_flat):
+#            u_reshaped = u_flat.reshape(-1)  # Ensure u is a 1D array
+            u_flat = torch.tensor(u_flat, dtype=torch.complex64)
+            rhs = NLS_RHS(u_flat, N, g, V)
+            return rhs.detach().numpy().flatten()
+
+        # Time span for the ODE solver
+        t_span = (0, dt)  # Solve from t=0 to t=dt
+
+        # Solve the ODE using DOP853
+        sol = solve_ivp(rhs_func, t_span, u_np.flatten(), method='DOP853', t_eval=[dt])
+
+        # Extract the solution at t = dt
+        u_new_np = sol.y[:, -1].reshape(u_np.shape)
+
+        # Convert back to torch.Tensor
+        u_new = torch.tensor(u_new_np, dtype=torch.complex64)
+
+        return u_new
 
     # Define the xi function using the neural network
     def xi(t):
         t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
         return model(t_input)[0, 0]  # Get the output from the model
+    
+    def simulate_trajectory(xStart = None):
+        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start
+        xStart = x_start if not xStart else xStart
+        x_values = [xStart]
+        u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton(xStart = torch.tensor([[xStart]], dtype=torch.float32), plot_steady_state=True)
+        u = torch.tensor(u, dtype=torch.cfloat)
+        x = torch.tensor(x)
+        for i in range(1, len(t_values)):
+            V = potential(x = x_values[-1], xi = 0)
+            u = ODE_DOP853(u, N, g, V, dt)
+            
+            # Compute the density (modulus squared of u)
+            density = u * torch.conj(u)  # Equivalent to |u|^2
 
+            # Calculate xmax (center of mass)
+            numerator = torch.trapezoid(x * density.real, x)
+            denominator = torch.trapezoid(density.real, x)
+            x_values.append((numerator / denominator).numpy().item())
+        return x_values, t_values
+        
+    if simulate_only["simulate_only"]:
+        return simulate_trajectory(simulate_only["xStart"])
+    
     def loss_func():
         nonlocal A, b, Omega, u, u_start, dt, x_start, v_start
         smoothness_penalty = 0.0  # Initialize smoothness penalty
@@ -534,8 +619,8 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             density = u * torch.conj(u)  # Equivalent to |u|^2
 
             # Calculate xmax (center of mass)
-            numerator = torch.sum(x * density.real)
-            denominator = torch.sum(density.real)
+            numerator = torch.trapezoid(x * density.real, x)
+            denominator = torch.trapezoid(density.real, x)
             x_values.append(numerator / denominator)
         
         
@@ -976,8 +1061,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
                         density = u * torch.conj(u)  # Equivalent to |u|^2
 
                         # Calculate xmax (center of mass)
-                        numerator = torch.sum(x * density.real)
-                        denominator = torch.sum(density.real)
+#                        numerator = torch.sum(x * density.real)
+#                        denominator = torch.sum(density.real)
+                        numerator = torch.trapezoid(x * density.real, x)
+                        denominator = torch.trapezoid(density.real, x)
                         x_values.append((numerator / denominator).detach().numpy())
             
                     v = (x_values[2] - x_values[0]) / (2 * dt)
@@ -1042,8 +1129,10 @@ def master_func(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_
             density = u_values[-1] * torch.conj(u_values[-1])  # Equivalent to |u|^2
 
             # Calculate xmax (center of mass)
-            numerator = torch.sum(x * density.real)
-            denominator = torch.sum(density.real)
+#            numerator = torch.sum(x * density.real)
+#            denominator = torch.sum(density.real)
+            numerator = torch.trapezoid(x * density.real, x)
+            denominator = torch.trapezoid(density.real, x)
             x_values.append((numerator / denominator).detach().numpy())
 
         v = (x_values[2] - x_values[0]) / (2 * dt)
@@ -1227,7 +1316,7 @@ def check_losses_on_pde_for_learned_odes(file_choice = "all"):
     if file_choice == "all":
         for model_file in glob("../NeuralNetworkData/*pth"):
             try:
-                loss = master_func(load_model = True, base_model = model_file, no_print = True, get_model_loss_value = True)[0].item()
+                loss = master_func_learn_ivp_pde(load_model = True, base_model = model_file, no_print = True, get_model_loss_value = True)[0].item()
                 print(f"model_file = {model_file}, loss = {loss}")
                 loss_file_pairs.append((model_file, loss))
             except Exception as e:
@@ -1235,7 +1324,7 @@ def check_losses_on_pde_for_learned_odes(file_choice = "all"):
                 print("Continuing.")
     else:
 #        try:
-        loss = master_func(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True)[0].item()
+        loss = master_func_learn_ivp_pde(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True)[0].item()
         print(f"model_file = {file_choice}, loss = {loss}")
         loss_file_pairs.append((file_choice, loss))
 #        except Exception as e:
@@ -1260,7 +1349,7 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
         loss_file_pairs = []
         for model_file in glob("../NeuralNetworkData/*pth"):
     #        try:
-            loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = model_file, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
+            loss, optim_A, optim_b, optim_Omega = master_func_learn_ivp_pde(load_model = True, base_model = model_file, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
             print(f"model_file = {model_file}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
             loss_file_pairs.append((model_file, loss, optim_A, optim_b, optim_Omega))
     #        except Exception as e:
@@ -1274,42 +1363,42 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
     else:
         #BEST SO FAR
         #Starting loss = 0.8616801642329329, Starting position: A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567
-        loss, optim_A, optim_b, optim_Omega = master_func(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.2922437525694463, b = 2.851373288066033, Omega = 0.3815554681671926)
+        loss, optim_A, optim_b, optim_Omega = master_func_learn_ivp_pde(load_model = True, base_model = file_choice, no_print = True, get_model_loss_value = True, optimize_A_b_Omega_m = True, A = 1.2922437525694463, b = 2.851373288066033, Omega = 0.3815554681671926)
         print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
 if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
-    master_func(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt")
-#    master_func(load_model = True)
+    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt")
+#    master_func_learn_ivp_pde(load_model = True)
 
-    #master_func(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
+    #master_func_learn_ivp_pde(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
     exit()
     for A in np.arange(1.1, 2.1, 0.1):
-        master_func(A=round(A,2))
+        master_func_learn_ivp_pde(A=round(A,2))
     #    start = time()
-    #    result = master_func(A=A)
+    #    result = master_func_learn_ivp_pde(A=A)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for m in np.arange(1.1, 2.1, 0.1):
-        master_func(m=round(m,2))
+        master_func_learn_ivp_pde(m=round(m,2))
     #    start = time()
-    #    result = master_func(m=m)
+    #    result = master_func_learn_ivp_pde(m=m)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for b in np.arange(1., 2.1, 0.1):
-        master_func(b=round(b,2))
+        master_func_learn_ivp_pde(b=round(b,2))
     #    start = time()
-    #    result = master_func(b=b)
+    #    result = master_func_learn_ivp_pde(b=b)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for Omega in np.arange(0.3, 1.3, 0.1):
-        master_func(Omega=round(Omega,2))
+        master_func_learn_ivp_pde(Omega=round(Omega,2))
     #    start = time()
-    #    result = master_func(Omega=Omega)
+    #    result = master_func_learn_ivp_pde(Omega=Omega)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
