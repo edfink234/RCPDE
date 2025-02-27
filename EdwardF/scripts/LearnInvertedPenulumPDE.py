@@ -634,7 +634,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             numerator = torch.trapezoid(x * density_real_flat, x)
             denominator = torch.trapezoid(density_real_flat, x)
             x_values.append(numerator / denominator)
-        
+            #TODO: plot x_values vs t_values here once just to check for sanity's sake that it matches what I see in `compareTrajectories.py`
         v = (x_values[2] - x_values[0]) / (2 * dt)
 
         v_values_temp.append(abs(v))
