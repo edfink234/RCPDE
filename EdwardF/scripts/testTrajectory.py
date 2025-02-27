@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
+from os import system
 
 def rate(t, u, params):
     u = u.reshape(-1, 1)
@@ -71,25 +72,43 @@ plt.axline((xStart, 0), (xStart, max(sol.flatten())))
 plt.title('Solution')
 plt.show()
 print(f"sol.shape = {sol.shape}")
-uinit = np.vstack([np.roll(sol, 1).reshape(-1, 1), np.zeros((nx, 1))])
-print(f"uinit.shape = {uinit.shape}")
-tspan = np.linspace(0, 100, 100001)
-sol_ode = solve_ivp(lambda t, u: rate(t, u, params), [tspan[0], tspan[-1]], uinit.flatten(), t_eval=tspan, method="DOP853")
+uinit = np.vstack([sol, np.zeros((nx, 1))])
+print(f"uinit.shape = {uinit.shape}") #uinit.shape = (2402, 1)
+tspan = np.linspace(0, 100, 1001)
+dt = tspan[1] - tspan[0]
+field = np.zeros((nx, len(tspan)), dtype=np.complex_)
+print(f"field.shape = {field.shape}, field[:, 0] = {field[:, 0]}")
+print(f"uinit[:nx].shape = {uinit[:nx].shape}, uinit[nx:].shape = {uinit[nx:].shape}")
+field[:, 0] = (uinit[:nx] + 1j*uinit[nx:]).flatten()
+print(f"field.shape = {field.shape}, field[:, 0] = {field[:, 0]}")
+sol_ode = solve_ivp(lambda t, u: rate(t, u, params), (tspan[0], tspan[1]), uinit.flatten(), t_eval=[tspan[1]], method="DOP853")
+field[:, 1] = (sol_ode.y[:nx] + 1j*sol_ode.y[nx:]).flatten()
+print(f"sol_ode.y.shape = {sol_ode.y.shape}")
+for i in range(2, len(tspan)):
+    sol_ode = solve_ivp(lambda t, u: rate(t, u, params), (tspan[i-1], tspan[i]), sol_ode.y.flatten(), t_eval=[tspan[i]], method="DOP853")
+#    print("len(sol_ode) = {0}, type(sol_ode) = {1}".format(len(sol_ode), type(sol_ode)))
+#    print(f"sol_ode.y.shape = {sol_ode.y.shape}")
+    field[:, i] = (sol_ode.y[:nx] + 1j*sol_ode.y[nx:]).flatten()
+    
+#sol_ode = solve_ivp(lambda t, u: rate(t, u, params), [tspan[0], tspan[-1]], uinit.flatten(), t_eval=tspan, method="DOP853")
 
-field = sol_ode.y[:nx, :] + 1j * sol_ode.y[nx:, :]
-plt.figure()
-plt.imshow(np.abs(field)**2, extent=[x.min(), x.max(), tspan.min(), tspan.max()], aspect='auto', cmap='viridis')
-plt.colorbar()
-plt.title('Field Evolution')
-plt.show()
+#field = sol_ode.y[:nx, :] + 1j * sol_ode.y[nx:, :]
+#plt.figure()
+#plt.imshow(np.abs(field)**2, extent=[x.min(), x.max(), tspan.min(), tspan.max()], aspect='auto', cmap='viridis')
+#plt.colorbar()
+#plt.title('Field Evolution')
+#plt.show()
 
 # Compute center of mass
 com = np.zeros(len(tspan))
 for i in range(len(tspan)):
     temp = field[:, i].reshape(-1)  # Flatten temp to shape (1201,)
-    com[i] = np.trapz(x.flatten() * np.abs(temp)**2, x.flatten()) / np.trapz(np.abs(temp)**2, x.flatten())
+    com[i] = np.trapz(x.flatten() * (temp*np.conj(temp)), x.flatten()) / np.trapz((temp*np.conj(temp)), x.flatten())
+#    print(type(com[i]))
 
 plt.figure()
-plt.plot(com)
+plt.plot(tspan, com)
 plt.title('Center of Mass')
-plt.show()
+plt.savefig("COMStathisTrajectoryPython.png", dpi=5*96)
+plt.close()
+system("open COMStathisTrajectoryPython.png")

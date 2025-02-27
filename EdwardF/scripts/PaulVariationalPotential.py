@@ -41,12 +41,11 @@ numerator_suspicios_bs = lambda n: (A  *  exp((2  *  A  *  (2  *  n + 3  *  rho)
     exp((2  *  A  *  (4  *  n + rho))))
 
 window=0.5
-plt.plot(x:=np.linspace(0, window, 1000), suspicious_bs(np.linspace(0, window, 1000)))
-plt.plot(x, numerator_suspicios_bs(x))
-plt.ylim(-1,2)
-plt.show()
-plt.close()
-exit()
+#plt.plot(x:=np.linspace(0, window, 1000), suspicious_bs(np.linspace(0, window, 1000)))
+#plt.plot(x, numerator_suspicios_bs(x))
+#plt.ylim(-1,2)
+#plt.show()
+#plt.close()
 
 def sech_fit(x, A, b):
     return A * sech(b * x)
@@ -90,7 +89,8 @@ y_fit_sech2 = sech2_fit(x, A_sech2, b_sech2)
 
 # Plot results
 plt.figure(figsize=(8, 5))
-plt.plot(x, y, label="Original", color="black")
+mt_part = .5*Omega*Omega*x*x
+plt.plot(x, y+mt_part, label="Original", color="black")
 model_func = lambda x: np.sin(np.sin((np.sin(sech(0.45118 * x)) - 0.02943) * sech(x)))
 model.predict = model_func
 
@@ -99,9 +99,12 @@ mse_pysr = np.mean((y - model.predict(x))**2)
 mse_sech = np.mean((y - y_fit_sech)**2)
 mse_sech2 = np.mean((y - y_fit_sech2)**2)
 
-plt.plot(x, model.predict(x), "--", label=r"$V(x) = \mathrm{sin}(\mathrm{sin}((\mathrm{sin}(\mathrm{sech}(0.45118 \cdot x)) - 0.02943) \cdot \mathrm{sech}(x)))$"f', MSE = {mse_pysr:.3e}', color="red")
-plt.plot(x, y_fit_sech, label=r'$V(x) = A\cdot\mathrm{sech}(bx), $'f'$A={A_sech:.3f}$, $b={b_sech:.3f}$'f', MSE = {mse_sech:.3e}', linestyle='dashed')
-plt.plot(x, y_fit_sech2, label=r'$V(x) = A\cdot\mathrm{sech}^2(bx), $'f'$A={A_sech2:.3f}, b={b_sech2:.3f}$'f', MSE = {mse_sech2:.3e}', linestyle='dotted')
+plt.plot(x, model.predict(x)+mt_part, "--", label=r"$V(x) = \mathrm{sin}(\mathrm{sin}((\mathrm{sin}(\mathrm{sech}(0.45118 \cdot x)) - 0.02943) \cdot \mathrm{sech}(x)))$"f', MSE = {mse_pysr:.3e}', color="red")
+plt.plot(x, y_fit_sech+mt_part, label=r'$V(x) = A\cdot\mathrm{sech}(bx), $'f'$A={A_sech:.3f}$, $b={b_sech:.3f}$'f', MSE = {mse_sech:.3e}', linestyle='dashed')
+plt.plot(x, y_fit_sech2+mt_part, label=r'$V(x) = A\cdot\mathrm{sech}^2(bx), $'f'$A={A_sech2:.3f}, b={b_sech2:.3f}$'f', MSE = {mse_sech2:.3e}', linestyle='dotted')
+
+print(min(y_fit_sech2+mt_part))
+print(min(y+mt_part))
 plt.legend()
 plt.xlabel("x")
 plt.ylabel("V(x)")

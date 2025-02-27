@@ -87,7 +87,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 #    b = 1.0        # Width of the potential
     sigma = 1.0     # Width of the (Gaussian) potential, not used currently
     T = T        # Final time
-    dt = 0.001      # Time step
+    dt = 0.1      # Time step
     num_steps = int(T / dt)
     
     x_star = 0.0   # Final position sought
@@ -179,7 +179,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         raise Exception(f"Error, must modify A, b, Omega so that |x_start| >= {min_x_start}")
     
     ###BEGIN NEWTON
-    def refine_with_newton_helper(plot_steady_state = False, return_all = True, xStart = None, lr=1):
+    def refine_with_newton_helper(plot_steady_state = False, return_all = True, xStart = None, lr=1, scipySolve = True):
         nonlocal A, b, Omega, x_start, v_start
         xStart = x_start if not xStart else xStart.numpy().item()
         tol = 1e-10
@@ -220,44 +220,62 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         u = U[indR]+1j*U[indI];      # wrapping into a complex vector
         idx=np.where(np.isclose(abs(u), max(abs(u))))
         u_before = u.copy()
-
-        # Main loop: checking Newton tolerance
-        num_iter = 0
-        while err > tol:
+        
+        def fresid(U):
             # Split real and imaginary parts
             Ur = U[indR]
             Ui = U[indI]
-
             # Compute modulus squared of u
             U2 = Ur**2 + Ui**2
-
-            # Jacobian components
-            J11 = -0.5 * D2 + np.diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
-            J22 = -0.5 * D2 + np.diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
-            J12 = np.diag(2 * g * Ur * Ui)
-            J = np.block([[J11, J12], [J12, J22]])
-
-            # Right-hand side (RHS)
-            Fr = -0.5 * (D2 @ Ur) + (g * U2 + V + w_sol) * Ur
-            Fi = -0.5 * (D2 @ Ui) + (g * U2 + V + w_sol) * Ui
-            F = np.concatenate((Fr, Fi))
-
-            # Newton correction
-            DU = splu(J).solve(-F)  # Solve J * DU = -F
-            U1 = U + lr*DU  # Update solution
-
-            # Update error and solution
-            err = np.linalg.norm(F)
+            common_term = (g * U2 + V + w_sol)
+            return np.concatenate((-0.5 * (D2 @ Ur) + common_term * Ur,\
+                                   -0.5 * (D2 @ Ui) + common_term * Ui))
+        if scipySolve:
+            U, infodict, ier, msg = fsolve(fresid, U, full_output=True)
             if not no_print:
-                print(f"err = {err}")
-    #        if not no_print:
-    #            print(f"Condition number of J: {torch.linalg.cond(J)}")
-            U = U1
-            num_iter += 1
-            if num_iter > 100:
+                if ier == 1:
+                    print("Solution found, error estimate:", np.linalg.norm(infodict['fvec']))
+                else:
+                    print("Solution may not have converged:", msg)
+        else:
+            # Main loop: checking Newton tolerance
+            num_iter = 0
+            while err > tol:
+                # Split real and imaginary parts
+                Ur = U[indR]
+                Ui = U[indI]
+                
+                # Compute modulus squared of u
+                U2 = Ur**2 + Ui**2
+
+                # Right-hand side (RHS)
+                common_term = (g * U2 + V + w_sol)
+                Fr = -0.5 * (D2 @ Ur) + common_term * Ur
+                Fi = -0.5 * (D2 @ Ui) + common_term * Ui
+                F = fresid(U2, Ur, Ui)
+
+                # Jacobian components
+                J11 = -0.5 * D2 + np.diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
+                J22 = -0.5 * D2 + np.diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
+                J12 = np.diag(2 * g * Ur * Ui)
+                J = np.block([[J11, J12], [J12, J22]])
+
+                # Newton correction
+                DU = splu(J).solve(-F)  # Solve J * DU = -F
+                U1 = U + lr*DU  # Update solution
+
+                # Update error and solution
+                err = np.linalg.norm(F)
                 if not no_print:
-                    print(f"Failed")
-                return [False]
+                    print(f"err = {err}")
+        #        if not no_print:
+        #            print(f"Condition number of J: {torch.linalg.cond(J)}")
+                U = U1
+                num_iter += 1
+                if num_iter > 100:
+                    if not no_print:
+                        print(f"Failed")
+                    return [False]
                 
         u = U[indR]+1j*U[indI];      # wrapping into a complex vector
         Maxu=max(abs(u));
@@ -530,7 +548,13 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         
         return RK4
     
-    def ODE_DOP853(u, N, g, V, dt):
+    # Define the RHS function for solve_ivp
+    def rhs_func(t, u_flat, V):
+        u_flat = torch.tensor(u_flat, dtype=torch.complex64)
+        rhs = NLS_RHS(u_flat, N, g, V)
+        return rhs.detach().numpy().flatten()
+        
+    def ODE_DOP853(u, N, g, V, t, dt):
         """
         Perform one step of the DOP853 method for the NLS equation.
 
@@ -548,26 +572,13 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         u_np = u
         V_np = V
 
-        # Define the RHS function for solve_ivp
-        def rhs_func(t, u_flat):
-#            u_reshaped = u_flat.reshape(-1)  # Ensure u is a 1D array
-            u_flat = torch.tensor(u_flat, dtype=torch.complex64)
-            rhs = NLS_RHS(u_flat, N, g, V)
-            return rhs.detach().numpy().flatten()
-
         # Time span for the ODE solver
-        t_span = (0, dt)  # Solve from t=0 to t=dt
-
+        t_span = (t, t+dt)  # Solve from t=t to t=t+dt
         # Solve the ODE using DOP853
-        sol = solve_ivp(rhs_func, t_span, u_np.flatten(), method='DOP853', t_eval=[dt])
+        sol = solve_ivp(rhs_func, t_span, u_np.flatten(), args=(V,), method='DOP853', t_eval=[t+dt])
 
         # Extract the solution at t = dt
-        u_new_np = sol.y[:, -1].reshape(u_np.shape)
-
-        # Convert back to torch.Tensor
-        u_new = torch.tensor(u_new_np, dtype=torch.complex64)
-
-        return u_new
+        return sol.y
 
     # Define the xi function using the neural network
     def xi(t):
@@ -581,24 +592,25 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton(xStart = torch.tensor([[xStart]], dtype=torch.float32), plot_steady_state=True)
         u = torch.tensor(u, dtype=torch.cfloat)
         x = torch.tensor(x)
+        x_flat = x
         for i in range(1, len(t_values)):
-            V = potential(x = x_values[-1], xi = 0)
-            u = ODE_DOP853(u, N, g, V, dt)
+            V = potential(x, xi = 0)
+            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
             
             # Compute the density (modulus squared of u)
-            density = u * torch.conj(u)  # Equivalent to |u|^2
-
+            density_real_flat = (torch.conj(u)*u).real.flatten() # Equivalent to |u|^2
             # Calculate xmax (center of mass)
-            numerator = torch.trapezoid(x * density.real, x)
-            denominator = torch.trapezoid(density.real, x)
-            x_values.append((numerator / denominator).numpy().item())
+#            print(f"x.shape = {x.shape}, density.real.shape = {density.real.shape}, u.shape = {u.shape}")
+            numerator = torch.trapezoid((x_flat * density_real_flat), x_flat)
+            denominator = torch.trapezoid(density_real_flat, x_flat)
+            x_values.append((numerator / denominator))
         return x_values, t_values
         
     if simulate_only["simulate_only"]:
         return simulate_trajectory(simulate_only["xStart"])
     
     def loss_func():
-        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start
+        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, x
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
@@ -606,23 +618,22 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         best_time = np.inf
         best_time_idx = np.inf
         x_values = [x_start]
-        u = u_start.detach().requires_grad_(True)
+        u = u_start.detach().requires_grad_(False)
 #        print(f"x_start in loss_func first = {x_start}")
 
         for i in range(1, len(t_values)):
             xi_t = xi(t_values[i])
             xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
-            V = potential(x = x_values[-1], xi = xi_t)
-            u = ODE_RK4(u, N, g, V, dt)
+            V = potential(x, xi = xi_t)
+            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
             
             # Compute the density (modulus squared of u)
-            density = u * torch.conj(u)  # Equivalent to |u|^2
+            density_real_flat = (torch.conj(u)*u).real.flatten() # Equivalent to |u|^2
 
             # Calculate xmax (center of mass)
-            numerator = torch.trapezoid(x * density.real, x)
-            denominator = torch.trapezoid(density.real, x)
+            numerator = torch.trapezoid(x * density_real_flat, x)
+            denominator = torch.trapezoid(density_real_flat, x)
             x_values.append(numerator / denominator)
-        
         
         v = (x_values[2] - x_values[0]) / (2 * dt)
 
