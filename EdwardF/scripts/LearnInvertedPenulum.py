@@ -15,7 +15,7 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, simulate_only = {"simulate_only": False, "xStart": 0}, T = 10):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -137,7 +137,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     if ier == 1:
         print(f"Root found: {root[0]}")
-        x_start, v_start = float(root[0]), 0.0
+        x_start, v_start = float(root[0]), v_start
     else:
         print(f"Root finding failed: {mesg}")
         exit()
@@ -269,6 +269,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         xStart = x_start if not xStart else xStart
         x, v = (x_start if not xStart else xStart), v_start
         x_values = [x]
+        print(f"x_values[-1] = {x_values[-1]}, v = {v}")
         for i, t in enumerate(t_values[1:]):
             x, v = rk4_step(x, v, torch.tensor([[0]], dtype=torch.float32)[0, 0], dt)
             x_values.append(x.detach().numpy())  # Use detach()

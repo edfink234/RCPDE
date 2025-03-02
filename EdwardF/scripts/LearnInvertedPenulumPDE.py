@@ -22,7 +22,7 @@ from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0}, T = 100):
+def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 100, v_start = 0.0, interpolate = True, add_kick = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -150,6 +150,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     t_test_values = np.linspace(1e-8, T, num_steps)
 
     def get_x_start_and_v_start():
+        nonlocal v_start
         # Initial guess for the root (you might need to adjust this)
         x0 = 1.0
 
@@ -165,7 +166,9 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                     root_min = root_val
             if not no_print:
                 print(f"Root found: {root_min}")
-            x_start, v_start = float(root_min), 0.0
+            x_start, v_start = float(root_min), v_start
+            if not no_print:
+                print(f"v_start = {v_start}")
         else:
             raise Exception(f"Root finding failed: {mesg}")
             exit()
@@ -281,33 +284,38 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         Maxu=max(abs(u));
         idx=np.where(np.isclose(abs(u), Maxu))
         
-        # Compute the density (modulus squared of u)
-        density = u * np.conj(u)  # Equivalent to |u|^2
-
-        # Calculate xmax (center of mass)
-#        numerator = np.sum(x * density.real) * dx #TODO: Maybe use trapezoid rule here?
-#        denominator = np.sum(density.real) * dx
         
-        numerator = np.trapz(x * density.real, x)
-        denominator = np.trapz(density.real, x)
+        if interpolate:
+            # Compute the density (modulus squared of u)
+            # density = u * np.conj(u)  # Equivalent to |u|^2
+
+            # Calculate xmax (center of mass)
+            #numerator = np.sum(x * density.real) * dx
+            #denominator = np.sum(density.real) * dx
+
+            # Compute the density (modulus squared of u)
+            density = u * np.conj(u)  # Equivalent to |u|^2
+
+            # Calculate xmax (center of mass)
+            numerator = np.trapz(x * density.real, x)
+            denominator = np.trapz(density.real, x)
+
+            xmax = numerator / denominator
+            if not no_print:
+                print(f"xmax = {xmax}, xStart = {xStart}, xmax - xStart = {xmax - xStart}")
+                print(f"x.shape = {x.shape}, u.shape = {u.shape}")
+            # Create a spline interpolator
+            interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
+
+            # Perform the displacement
+            u_displaced = interpolator(x + (xmax - xStart))
+    #        u_displaced = np.roll(u, 1)
+    #        u_displaced *= A_sol/max(u_displaced)
+    #        u_displaced = interpolator(x)
+
+            # Replace NaN values with 0
+            u = np.nan_to_num(u_displaced)
         
-        xmax = numerator / denominator
-        if not no_print:
-            print(f"xmax = {xmax}, xStart = {xStart}, xmax - xStart = {xmax - xStart}")
-                
-        # Create a spline interpolator
-        if not no_print:
-            print(f"x.shape = {x.shape}, u.shape = {u.shape}")
-        interpolator = interp1d(x, u, kind='cubic', bounds_error=False, fill_value=np.nan)
-
-        # Perform the displacement
-        u_displaced = interpolator(x + (xmax - xStart))
-#        u_displaced = np.roll(u, 1)
-#        u_displaced *= A_sol/max(u_displaced)
-#        u_displaced = interpolator(x)
-
-        # Replace NaN values with 0
-        u = np.nan_to_num(u_displaced)
         if plot_steady_state:
             # Plot real part
     #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
@@ -586,10 +594,24 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         return model(t_input)[0, 0]  # Get the output from the model
     
     def simulate_trajectory(xStart = None):
-        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start
+        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, add_kick
         xStart = x_start if not xStart else xStart
         x_values = [xStart]
+
         u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton(xStart = torch.tensor([[xStart]], dtype=torch.float32), plot_steady_state=True)
+        # Compute the density (modulus squared of u)
+        density = u * np.conj(u)  # Equivalent to |u|^2
+        # Calculate xmax (center of mass)
+        numerator = np.trapz(x * density.real, x)
+        denominator = np.trapz(density.real, x)
+        xmax = numerator / denominator
+        
+        mass_values = [denominator] if simulate_only["store mass values"] else None # Store mass at each time step
+
+        if not no_print:
+            print(f"xStart = {xStart}, xmax = {xmax}")
+        if add_kick:
+            u *= np.exp(1j*v_start*x)
         u = torch.tensor(u, dtype=torch.cfloat)
         x = torch.tensor(x)
         x_flat = x
@@ -604,7 +626,13 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             numerator = torch.trapezoid((x_flat * density_real_flat), x_flat)
             denominator = torch.trapezoid(density_real_flat, x_flat)
             x_values.append((numerator / denominator))
-        return x_values, t_values
+            if simulate_only["store mass values"]:
+                mass_values.append(denominator)
+        if simulate_only["store mass values"]:
+            for i in range(1, len(mass_values)):
+                mass_values[i] = 1 - mass_values[i]/mass_values[0]
+            mass_values[0] = 0
+        return x_values, t_values, xmax, mass_values
         
     if simulate_only["simulate_only"]:
         return simulate_trajectory(simulate_only["xStart"])
