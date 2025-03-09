@@ -1014,7 +1014,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     # Training loop
     global learning_rate
     learning_rate = 0.01
-    Algorithm = "adam"
+    Algorithm = "brute force"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -1162,17 +1162,16 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             xi_t = xi(t_values[i])
             xi_values.append(xi_t.detach().numpy())
             V = potential(x = x_values[-1], xi = xi_values[-1])
-            u_values.append(ODE_RK4(u_values[-1], N, g, V, dt))
-            
+            u_values.append(ODE_DOP853(u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1], N, g, V, t_test_values[i], dt))
             # Compute the density (modulus squared of u)
-            density = u_values[-1] * torch.conj(u_values[-1])  # Equivalent to |u|^2
+            density = np.squeeze(u_values[-1] * np.conj(u_values[-1]))  # Equivalent to |u|^2
+            #print(f"u_values[-1].shape = {u_values[-1].shape}, x.shape = {x.shape}, density.shape = {density.shape}")
 
             # Calculate xmax (center of mass)
-#            numerator = torch.sum(x * density.real)
-#            denominator = torch.sum(density.real)
-            numerator = torch.trapezoid(x * density.real, x)
-            denominator = torch.trapezoid(density.real, x)
-            x_values.append((numerator / denominator).detach().numpy())
+            numerator = np.trapz(x * density.real, x)
+            denominator = np.trapz(density.real, x)
+            x_values.append(numerator / denominator)
+
 
         v = (x_values[2] - x_values[0]) / (2 * dt)
         v_values.append(v)
@@ -1291,7 +1290,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         def update(i):
             t = (i) * (best_t_value / (N - 1))  # Calculate current time
             y_values = potential(x_range, xi_values[i])
-            density = (u_values[i] * torch.conj(u_values[i])).detach().numpy()
+            u_np = u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1]
+            density = np.squeeze(u_np * np.conj(u_np))
             dot.set_data(x, density + potential_magnetic_trap(x_range, xi_values[i]))
             center.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
@@ -1408,7 +1408,9 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
 if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
-    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt")
+#    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
+    master_func_learn_ivp_pde(load_model = True, T = 10)
+
 #    master_func_learn_ivp_pde(load_model = True)
 
     #master_func_learn_ivp_pde(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)

@@ -15,12 +15,28 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Paul_Potential = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
+    ICsFile = '../dataFiles/ICsPaul.txt' if use_Paul_Potential else '../dataFiles/ICs.txt'
 
-    sech = lambda x: 1/torch.cosh(x)
+    def sech(x):
+        if isinstance(x, torch.Tensor):
+            return 1 / torch.cosh(x)
+        elif isinstance(x, (float, np.float64, int, np.ndarray)):
+            return 1 / np.cosh(x)
+        else:
+            raise TypeError(f"Unsupported input type: {type(x)}")
+    
+    def tanh(x):
+        if isinstance(x, torch.Tensor):
+            return torch.tanh(x)
+        elif isinstance(x, (float, np.float64, int, np.ndarray)):
+            return np.tanh(x)
+        else:
+            raise TypeError(f"Unsupported input type: {type(x)}")
+
     torch.sech = sech
 
     def flt_to_str(flt):
@@ -102,14 +118,66 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     # Function to compute the force (negative derivative of potential)
     def force(x, xi):
-        return -(Omega**2 * x) + (2 * A**3 * torch.sech(A * (x - xi))**2 * torch.tanh(A * (x - xi)))
+        temp = x - xi
+        temp_sech = torch.sech(A * (temp))
+        return -(Omega*Omega * x) + (2 * A*A*A * temp_sech*temp_sech * tanh(A * (temp)))
 
     def force(x, xi):
-        return -(Omega**2 * x) + (2 * A*b * torch.sech(b * (x - xi))**2 * torch.tanh(b * (x - xi)))
+        temp = x - xi
+        temp_sech = torch.sech(b * (temp))
+        return -(Omega*Omega * x) + (2 * A*b * temp_sech*temp_sech * tanh(b * (temp)))
 
-    def min_force(x):
-        return (Omega**2 * x) - (2 * A*b * np.cosh(b * (x))**(-2) * np.tanh(b * (x)))
+    # Define the effective potential functions
+    #$V_{\text{eff}}(x) = \frac{8B\left(Ae^{4A(x-\xi)}(x-\xi)+Ae^{2A(x-\xi)}(x-\xi)-e^{4A(x-\xi)}+e^{2A(x-\xi)}\right)}{e^{6A(x-\xi)}-3e^{4A(x-\xi)}+3e^{2A(x-\xi)}-1}$
+    def Veff(x, xi = 0):
+        temp = x-xi
+        temp_2_exp = np.exp(2 * A * temp)
+        temp_4_exp = np.exp(4 * A * temp)
+        return (8 * b * (A * temp_4_exp * temp + A * temp_2_exp * temp - temp_4_exp + temp_2_exp) /
+            (np.exp(6 * A * temp) - 3 * temp_4_exp + 3 * temp_2_exp - 1))
 
+    #$V_{\text{eff\_tay}}(x) = - \frac{4}{15} B \left( A^2 (x-\xi)^2 - \frac{5}{2} \right)$
+    def Veff_tay(x, xi = 0):
+        temp=x-xi
+        return - 4 / 15 * (b) * (A*A * (temp*temp) - 5 / 2)
+
+    # Define the effective potential function that switches between Veff and Veff_tay
+    def Veff_no_trap(x, xi = 0):
+        L, R = -0.01, 0.01
+        effpot = np.zeros_like(x)
+        for i in range(len(x)):
+            if L <= x[i] <= R:
+                effpot[i] = Veff_tay(x[i], xi)
+            else:
+                effpot[i] = Veff(x[i], xi)
+        return effpot + 0.5*Omega*Omega*x*x
+
+    # Define the effective force functions
+    #Force $F = \frac{8AB\mathrm{e}^{2A \left(x - {\xi}\right)} \left(\left(2Ax - 2A{\xi} - 3\right) \mathrm{e}^{4A \left(x - {\xi}\right)} + \left(8Ax - 8A{\xi}\right) \mathrm{e}^{2A \left(x - {\xi}\right)} + 2Ax - 2A{\xi} + 3\right)}{\left(\mathrm{e}^{2A \left(x - {\xi}\right)} - 1\right)^{4}}$
+    def Feff(x, xi=0):
+        temp = x - xi
+        return (8 * A * b * np.exp(2 * A * temp) * ((2 * A * temp - 3) * np.exp(4 * A * temp) + (8 * A * temp) * np.exp(2 * A * temp) + 2 * A * temp + 3) /
+                (np.exp(2 * A * temp) - 1) ** 4)
+
+    #Force $F = \frac{8A^{2} B \left(x - {\xi}\right)}{15}$
+    def Feff_tay(x, xi=0):
+        return (8 * A ** 2 * b * (x - xi)) / 15
+
+    # Define the effective force function that switches between Feff and Feff_tay
+    def Force_eff_no_trap(x, xi=0):
+        L, R = -0.01, 0.01
+        eff_force = np.zeros_like(x)
+        for i in range(len(x)):
+            if L <= x[i] <= R:
+                eff_force[i] = Feff_tay(x[i], xi)
+            else:
+                eff_force[i] = Feff(x[i], xi)
+        return eff_force - (Omega*Omega * x)
+    
+    potential = Veff_no_trap if use_Paul_Potential else potential
+    force = Force_eff_no_trap if use_Paul_Potential else force
+    min_force = lambda x: force(x, 0)
+    
     #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
     automate = True
     produceInverse = False
@@ -142,7 +210,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         print(f"Root finding failed: {mesg}")
         exit()
 
-    x_start = round(float(x_start), 4)
+    x_start = round(float(x_start), 6)
 
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
@@ -176,10 +244,10 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     global df
     df = None
     try:
-        df = pd.read_csv("../dataFiles/ICs.txt", names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
+        df = pd.read_csv(ICsFile, names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
     except FileNotFoundError:
         # Create the file if it doesn't exist
-        with open("../dataFiles/ICs.txt", 'w') as f:
+        with open(ICsFile, 'w') as f:
             print("File created successfully.")
 
     parameters = df[(df['x_0']==x_start) & (df['A']==A) & (df['b']==b) & (df['m']==m) & (df['Omega']==Omega)]
@@ -205,16 +273,16 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         # Find the index of the row with the minimum distance
         closest_row_idx = temp_df['distance'].idxmin()
         parameters = temp_df.iloc[closest_row_idx]
-        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
+        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 6), round(parameters['A'], 6), round(parameters['b'], 6), round(parameters['m'], 6), round(parameters['Omega'], 6)
 
     # Load or instantiate the model
-    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_.pth"
-    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pth"
+    file_suffix = +("_Paul_.pth" if use_Paul_Potential else "_.pth")
+    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 6))}_{flt_to_str(round(closest_b, 6))}_{flt_to_str(round(closest_m, 6))}_{flt_to_str(round(closest_Omega, 6))}{file_suffix}" if not base_model else base_model
+    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}"
     print(model_path)
     print(new_model_path)
-    if closest_x == x_start and closest_A == A and closest_b == b and closest_m == m and closest_Omega == Omega:
-        print("exact match found")
-        assert(model_path == new_model_path)
+    if closest_x == x_start and round(closest_A, 4) == round(A, 4) and round(closest_b, 4) == round(b, 4) and round(closest_m, 4) == round(m, 4) and round(closest_Omega, 4) == round(Omega, 4):
+        assert(model_path == new_model_path or base_model)
     else:
         print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
         print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
@@ -415,7 +483,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A, 6), 'b': round(b, 6), 'm': round(m, 6), 'Omega': round(Omega, 6), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
                 try:
@@ -423,7 +491,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                 except:
                     t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
-                df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
+                df.to_csv(ICsFile, header=None, index=False)
                 print(f"Best model saved with loss: {best_loss}")
             else:
                 # Revert to previous parameters
@@ -493,7 +561,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A, 6), 'b': round(b, 6), 'm': round(m, 6), 'Omega': round(Omega, 6), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     print(f"New best t value = {best_t_value}")
                 try:
@@ -501,7 +569,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                 except:
                     t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
-                df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
+                df.to_csv(ICsFile, header=None, index=False)
                 print(f"Best model saved with loss: {best_loss}")
 
             elif anneal and torch.exp(-delta_loss / temperature) > np.random.random():
@@ -534,7 +602,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     # Training loop
     global learning_rate
-    learning_rate = 0.00006
+    learning_rate = 0.006
     Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
@@ -592,7 +660,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                         except:
                             t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                     # Write to CSV
-                    df.to_csv('../dataFiles/ICs.txt', header=None, index=False)
+                    df.to_csv(ICsFile, header=None, index=False)
                     print(f"Best model saved with loss: {best_loss}")
 
                 loss_value.backward()  # Compute gradients
@@ -679,16 +747,16 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
 
         plt.xlabel('t')
-        plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+        plt.title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
         plt.savefig("trajectory_data.svg")
-        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
-        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
-        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
-        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
-        print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png saved")
-        system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ")
+        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf trajectory_data.svg")
+        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf")
+        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.png")
+        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.png")
+        print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.png saved")
+        system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf ")
         plt.close()
         
         if produceInverse:
@@ -706,15 +774,15 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
             
             plt.xlabel('t')
-            plt.title(f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+            plt.title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             plt.legend()
             plt.savefig("trajectory_data.svg")
-            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf trajectory_data.svg")
-            system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
-            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf")
-            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
-            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.png")
+            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf trajectory_data.svg")
+            system(f"rm trajectory_data.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf")
+            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf")
+            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.png")
+            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.png")
 
             plt.close()
         
@@ -738,21 +806,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
         ax.legend()
-        
-        ax.set_title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
-        sech = lambda x: 1/np.cosh(x)
-        
-        def potential(x, xi):
-            V_MT = 0.5 * Omega * Omega * x * x
-            temp = sech(A * (x - xi))
-            V_SECH = A * A * temp * temp
-            return V_MT + V_SECH
+        ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
 
-        def potential(x, xi):
-            V_MT = 0.5 * Omega * Omega * x * x
-            temp = sech(b * (x - xi))
-            V_SECH = A * temp * temp
-            return V_MT + V_SECH
         # Initialization function
         def init():
     #        gold_dot.set_data([], [])
@@ -767,7 +822,11 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-            ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+            ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+            if movie_x_lims:
+                ax.set_xlim(movie_x_lims)
+            if movie_y_lims:
+                ax.set_ylim(movie_y_lims)
             return dot, curve#, gold_dot
 
         # Create animation
@@ -778,9 +837,9 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
         
         # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4")
-        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
+        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.mp4")
+        print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.mp4'")
         plt.close()
 
         if produceInverse:
@@ -796,34 +855,39 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             ax.set_xlabel("x")
             ax.set_ylabel("Potential")
             ax.legend()
-            ax.set_title(f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
-            sech = lambda x: 1/np.cosh(x)
+            ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             def update(i):
                 t = (i) * (best_t_value / (N - 1))  # Calculate current time
                 y_values = potential(x_range, -xi_values[i])
                 dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
                 curve.set_data(x_range, y_values)
     #            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
-                ax.set_title(f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+                ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+                if movie_x_lims:
+                    ax.set_xlim(movie_x_lims)
+                if movie_y_lims:
+                    ax.set_ylim(movie_y_lims)
                 return dot, curve#, gold_dot
             ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval = 1000/fps)
         
             # Save the animation
-            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4")
-            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_.mp4'")
+            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.mp4")
+            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}_.mp4'")
 
         plt.close()
         return {"result": "target achieved", "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega}
 
 if __name__=='__main__':
-#    A_space = np.linspace(0.655, 0.675, 10)
-#    b_space = np.linspace(0.750, 0.666, 10)
-    A_space = np.linspace(0.67277778, 0.675, 2)
-    b_space = np.linspace(0.67344445, 0.666, 2)
-    dA = A_space[1] - A_space[0]
-    dB = b_space[0] - b_space[1]
-    print(f"dA={dA}, dB={dB}")
+#    Before (Friday March 7, 2025, 3:20 am), cat -n result_times.txt yields 99 lines
+#    master_func_learn_ivp_ode(A = 0.06747453989858264, b = 0.6657915466867125, load_model = True, movie_y_lims = (0.01, 0.15), movie_x_lims = (-1, 1))
+    master_func_learn_ivp_ode(A = 1, b = 0.1, use_Paul_Potential = True, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt")
+    exit()
+#    A_space = np.linspace(0.67277778, 0.06747453989858264, 6)
+#    b_space = np.linspace(0.67344445, 0.6657915466867125, 6)
+#    dA = A_space[1] - A_space[0]
+#    dB = b_space[0] - b_space[1]
+#    print(f"dA={dA}, dB={dB}")
 #    titles = open("result_times.txt").readlines()[-40:]
 #    titles = [title.strip().split() for title in titles]
 #    print("\n"*100)
@@ -843,7 +907,7 @@ if __name__=='__main__':
         
     for A, b in zip(A_space, b_space):
         start = time()
-        result = master_func_learn_ivp_ode(A=round(A,4), b = round(b, 4))
+        result = master_func_learn_ivp_ode(A=round(A, 6), b = round(b, 6))
         achieved = result["result"]
         with open("result_times.txt", "a") as f:
             f.write(f"Time from A = {result['closest_A']:.4f} to {A:.4f}, b = {result['closest_b']:.4f} to {b:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
@@ -852,7 +916,7 @@ if __name__=='__main__':
 
     for A in np.arange(1.4099, 1.4899, 0.01):
         start = time()
-        result = master_func_learn_ivp_ode(A=round(A,4))
+        result = master_func_learn_ivp_ode(A=round(A, 6))
         achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
         with open("result_times.txt", "a") as f:
             f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
@@ -860,28 +924,28 @@ if __name__=='__main__':
     master_func_learn_ivp_ode(A=1.5, load_model = True)
 
     for A in np.arange(1.1, 2.1, 0.1):
-        master_func_learn_ivp_ode(A=round(A,2))
+        master_func_learn_ivp_ode(A=round(A, 6))
     #    start = time()
     #    result = master_func_learn_ivp_ode(A=A)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for m in np.arange(1.1, 2.1, 0.1):
-        master_func_learn_ivp_ode(m=round(m,2))
+        master_func_learn_ivp_ode(m=round(m, 6))
     #    start = time()
     #    result = master_func_learn_ivp_ode(m=m)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for b in np.arange(1., 2.1, 0.1):
-        master_func_learn_ivp_ode(b=round(b,2))
+        master_func_learn_ivp_ode(b=round(b, 6))
     #    start = time()
     #    result = master_func_learn_ivp_ode(b=b)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
     for Omega in np.arange(0.3, 1.3, 0.1):
-        master_func_learn_ivp_ode(Omega=round(Omega,2))
+        master_func_learn_ivp_ode(Omega=round(Omega, 6))
     #    start = time()
     #    result = master_func_learn_ivp_ode(Omega=Omega)
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
