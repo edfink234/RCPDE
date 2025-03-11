@@ -444,8 +444,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         if not no_print:
             print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
             print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
-            print("problem!")
-        exit()
     if useLibTorch:
         new_model_path = new_model_path.replace(".pth", ".pt")
     if os.path.exists(model_path) and load_model:
@@ -641,7 +639,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, x
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
-        v_values_temp = [abs(v_start)] # Temporary storage for v values to calculate max velocity
+        v_values_temp = [v_start] # Temporary storage for v values to calculate max velocity
         best_loss_ = np.inf
         best_time = np.inf
         best_time_idx = np.inf
@@ -1040,7 +1038,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 1, anneal = False, initial_temp = 9)
+            brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 9)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -1157,11 +1155,11 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
         # Save data to CSV
         data_path = "../dataFiles/trajectory_data_pde.csv"
-        x_values, v_values, xi_values, a_values, u_values = [x_start], [v_start], [0.0], [0.0], [u_start.clone()]
+        x_values, v_values, xi_values, a_values, u_values, densities = [x_start], [v_start], [0.0], [0.0], [u_start.clone()], [np.squeeze(u_start.detach().numpy() * np.conj(u_start.detach().numpy()))]
         for i in range(1, len(t_test_values)):
             xi_t = xi(t_values[i])
             xi_values.append(xi_t.detach().numpy())
-            V = potential(x = x_values[-1], xi = xi_values[-1])
+            V = potential(x, xi = xi_values[-1])
             u_values.append(ODE_DOP853(u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1], N, g, V, t_test_values[i], dt))
             # Compute the density (modulus squared of u)
             density = np.squeeze(u_values[-1] * np.conj(u_values[-1]))  # Equivalent to |u|^2
@@ -1171,7 +1169,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             numerator = np.trapz(x * density.real, x)
             denominator = np.trapz(density.real, x)
             x_values.append(numerator / denominator)
-
+            densities.append(density)
 
         v = (x_values[2] - x_values[0]) / (2 * dt)
         v_values.append(v)
@@ -1290,9 +1288,9 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         def update(i):
             t = (i) * (best_t_value / (N - 1))  # Calculate current time
             y_values = potential(x_range, xi_values[i])
-            u_np = u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1]
-            density = np.squeeze(u_np * np.conj(u_np))
-            dot.set_data(x, density + potential_magnetic_trap(x_range, xi_values[i]))
+#            u_np = u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1]
+#            density = np.squeeze(u_np * np.conj(u_np))
+            dot.set_data(x, densities[i])
             center.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
@@ -1305,7 +1303,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 #            print(xi_values, type(xi_values))
             print(f"Omega = {Omega}, b = {b}, A = {A}, xi_0 = {xi_values[0]}")
 
-        ani = animation.FuncAnimation(fig, update, frames=range(0, N, 10), init_func=init, blit=True, interval = 1000/fps)
+        ani = animation.FuncAnimation(fig, update, frames=range(0, N, 1), init_func=init, blit=True, interval = 1000/fps)
         
         # Save the animation
         ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
@@ -1409,7 +1407,8 @@ if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
 #    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
-    master_func_learn_ivp_pde(load_model = True, T = 10)
+    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
+#    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
 
 #    master_func_learn_ivp_pde(load_model = True)
 
