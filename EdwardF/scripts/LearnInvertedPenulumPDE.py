@@ -1011,7 +1011,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     # Training loop
     global learning_rate
-    learning_rate = 0.01
+    learning_rate = 0.001
     Algorithm = "brute force"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
@@ -1038,7 +1038,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 9)
+            brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 1)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -1409,6 +1409,7 @@ if __name__ == "__main__":
 #    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
     master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
+#    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt", T = 10)
 
 #    master_func_learn_ivp_pde(load_model = True)
 
