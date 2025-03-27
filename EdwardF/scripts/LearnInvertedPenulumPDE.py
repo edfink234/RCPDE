@@ -94,7 +94,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.1e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.1e-4}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss

@@ -890,6 +890,31 @@ struct Board
                 new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.begin() + second_arg_idx_high);
             }
         }
+        else if (expression[low] == "^") // ^ x y
+        {
+            int op_idx = new_expression.size();
+            new_expression.push_back(expression[low]); // /
+            int temp = low+1+grasp[low+1];
+            int first_arg_idx_low = new_expression.size();
+            graspSimplifyPrefixHelper(expression, low+1, temp, grasp, new_expression, true); // / x
+            int first_arg_idx_high = new_expression.size();
+            graspSimplifyPrefixHelper(expression, temp+1, temp+1+grasp[temp+1], grasp, new_expression, true); // / x y
+            int second_arg_idx_high = new_expression.size();
+            int step;
+            if (new_expression[first_arg_idx_high] == "0") //^ x 0 -> 1 (because, since prefix operators come at the beginning, if the beginning of the second argument of '^' is 0, then the whole second argument MUST be 0, therefore the expression reduces to ^ x 0, which is 1)
+            {
+                //puts("hi 334");
+                new_expression[op_idx] = "1"; //change '^' to '1'
+                new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
+            }
+            else if (new_expression[first_arg_idx_low] == "0") // ^ 0 x -> 0 (x > 0 assumed)
+            {
+                //puts("hi 340");
+                new_expression[op_idx] = "0"; //change '^' to '0'
+                new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
+            }
+            
+        }
         else
         {
             for (int i = low; i <= up; i++)
@@ -1074,18 +1099,18 @@ struct Board
                         
                         else if (expression[i] == "^")
                         {
-                            if (expression[i+1] == "0" && is_const(expression[i+2])) // ^ 0 x -> 0
+                            if (expression[i+2] == "0" && is_const(expression[i+1])) // ^ x 0 -> 1
                             {
-                                //puts("hi 215");
-                                expression[i] = "0";
+                                //puts("hi 223");
+                                expression[i] = "1";
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "0" && is_const(expression[i+1])) // ^ x 0 -> 1
+                            else if (expression[i+1] == "0" && is_const(expression[i+2])) // ^ 0 x -> 0 (x > 0)
                             {
-                                //puts("hi 223");
-                                expression[i] = "1";
+                                //puts("hi 215");
+                                expression[i] = "0";
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
@@ -1384,6 +1409,32 @@ struct Board
                 new_expression.push_back(expression[up]);
             }
         }
+        else if (expression[up] == "^") //x y ^
+        {
+            int first_arg_idx_low = new_expression.size();
+            graspSimplifyPostfixHelper(expression, low, up-2-grasp[up-1], grasp, new_expression, true); //x
+            int first_arg_idx_high = new_expression.size();
+            graspSimplifyPostfixHelper(expression, up-1-grasp[up-1], up-1, grasp, new_expression, true); //y
+            int second_arg_idx_high = new_expression.size();
+            int step;
+            
+            if (new_expression.back() == "0") // x 0 ^ -> 1 (because, since postfix operators come at the end, if the end of the second argument of '^' is 0, then the whole second argument MUST be 0, therefore the expression reduces to x 0 ^, which is 1)
+            {
+                //puts("hi 318");
+                new_expression[first_arg_idx_low] = "1";
+                new_expression.erase(new_expression.begin() + first_arg_idx_low + 1, new_expression.end()); //erase the rest of x and y
+            }
+            else if (new_expression[first_arg_idx_high - 1] == "0") //0 x ^ -> 0 (because, since postfix operators come at the end, if the end of the first argument of '^' is 0, then the whole second argument MUST be 0, therefore the expression reduces to 0 x ^, which is 0) (assume x > 0)
+            {
+                //puts("hi 324");
+                new_expression[first_arg_idx_low] = "0";
+                new_expression.erase(new_expression.begin() + first_arg_idx_low + 1, new_expression.end()); //erase the rest of x and y
+            }
+            else
+            {
+                new_expression.push_back(expression[up]);
+            }
+        }
         else
         {
             for (int i = low; i <= up; i++)
@@ -1568,18 +1619,18 @@ struct Board
                         
                         else if (expression[i] == "^")
                         {
-                            if (expression[i-2] == "0" && is_const(expression[i-1])) // "0 x ^" -> "0"
+                            if (expression[i-1] == "0" && is_const(expression[i-2])) // "x 0 ^" -> "1"
                             {
-                                //puts("hi 215");
-                                expression[i] = "0";
+                                //puts("hi 223");
+                                expression[i] = "1";
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-1] == "0" && is_const(expression[i-2])) // "x 0 ^" -> "1"
+                            else if (expression[i-2] == "0" && is_const(expression[i-1])) // "0 x ^" -> "0" (x > 0)
                             {
-                                //puts("hi 223");
-                                expression[i] = "1";
+                                //puts("hi 215");
+                                expression[i] = "0";
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
@@ -1856,9 +1907,9 @@ struct Board
         state.x = x_0;    // x(0) = x0
         state.v = v_0;    // v(0) = 0
         float max_dev = 0.0f, temp = 0.0f, t = 0.0f;
+        float max_xp_dev = std::fabs(expression_evaluator(this->params, this->pieces, 0.0f));
         
         // Time evolution loop
-        
         for (int step = 0; step < steps; ++step)
         {
             t = step * dt;
@@ -1869,6 +1920,11 @@ struct Board
                 this->MSE_curr = FLT_MAX;
                 return 0.0f;
             }
+            temp = std::fabs(expression_evaluator(this->params, this->pieces, t));
+            if (temp > max_xp_dev)
+            {
+                max_xp_dev = temp;
+            }
             temp = std::fabs(state.x - x_0);
             if (temp > max_dev)
             {
@@ -1876,13 +1932,13 @@ struct Board
             }
         }
         
-        if (isInvalid(max_dev))
+        if (isInvalid(max_dev) || isInvalid(max_xp_dev))
         {
             this->MSE_curr = FLT_MAX;
             return 0.0f;
         }
         
-        this->MSE_curr = max_dev;
+        this->MSE_curr = max_dev + max_xp_dev; //penalizing angle's deviation from theta_0 AND x_p(t)'s deviation from x=0
         
         return (1.0f / (1.0f + this->MSE_curr));
     }
@@ -1895,9 +1951,9 @@ struct Board
         state.x = x_0;    // x(0) = x0
         state.v = v_0;    // v(0) = 0
         float max_dev = 0.0f, temp = 0.0f, t = 0.0f;
+        float max_xp_dev = std::fabs(expression_evaluator(this->params, this->pieces, 0.0f));
         
         // Time evolution loop
-        
         for (int step = 0; step < steps; ++step)
         {
             t = step * dt;
@@ -1908,6 +1964,11 @@ struct Board
                 this->MSE_curr = FLT_MAX;
                 return 0.0f;
             }
+            temp = std::fabs(expression_evaluator(this->params, this->pieces, t));
+            if (temp > max_xp_dev)
+            {
+                max_xp_dev = temp;
+            }
             temp = std::fabs(state.x - x_0);
             if (temp > max_dev)
             {
@@ -1915,14 +1976,14 @@ struct Board
             }
         }
         
-        if (isInvalid(max_dev))
+        if (isInvalid(max_dev) || isInvalid(max_xp_dev))
         {
             this->MSE_curr = FLT_MAX;
             return 0.0f;
         }
         
-        this->MSE_curr = max_dev;
-        
+        this->MSE_curr = max_dev + max_xp_dev; //penalizing angle's deviation from theta_0 AND x_p(t)'s deviation from x=0
+
         return (1.0f / (1.0f + this->MSE_curr));
     }
     
@@ -6369,14 +6430,15 @@ int main(int argc, char* argv[])
     DataRow new_result;
     constexpr double time = 10000;
 
-//    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
 //    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("x0 0.999487 + 4.176018 4 sech - ^") /*seed expression for simulated annealing*/);
-    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("^ + x0 0.999487 - 4.176018 sech 4") /*seed expression for simulated annealing*/);
+//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 3 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("^ + x0 0.999487 - 4.176018 sech 4") /*seed expression for simulated annealing*/);
     
     
     return 0;
 }
-//cos * tanh x0 log 100.000000
+// 1.414214 x0 100.000000 * cos cos ~ acos / (MSE = 3.79787)
+// ln cos tanh - 4 / x0 0.648054 (MSE = 5.83702)
 //git push --set-upstream origin PrefixPostfixSymbolicDifferentiator
 
 //g++ -Wall -std=c++20 -o HorizontalControlInvertedPendulum HorizontalControlInvertedPendulum.cpp -O2 -I/opt/homebrew/opt/eigen/include/eigen3 -I/opt/homebrew/opt/eigen/include/eigen3 -I/Users/edwardfinkelstein/LBFGSpp -ftree-vectorize -L/opt/homebrew/Cellar/boost/1.84.0 -I/opt/homebrew/Cellar/boost/1.84.0/include -march=native
