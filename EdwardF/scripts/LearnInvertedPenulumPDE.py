@@ -194,7 +194,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         dx = x[1]-x[0];                 # mesh size
         point_5_over_dx_squared = (0.5 / dx**2)
         one_over_six = 1.0/6.0
-#        assert(dt<np.sqrt(2)*dx*dx*0.5)
+#        assert(dt<0.7071067811865476*dx*dx)
 
         A_sol = 1; c = 0                     # Amplitude, vel. & position
         u0 = A_sol*sech(A_sol*(x - xStart))*np.exp(1j*c*x);    # initial condition (IC)
@@ -228,7 +228,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             # Split real and imaginary parts
             Ur = U[indR]
             Ui = U[indI]
-            # Compute modulus squared of u
+            # Compute the modulus squared of u
             U2 = Ur**2 + Ui**2
             common_term = (g * U2 + V + w_sol)
             return np.concatenate((-0.5 * (D2 @ Ur) + common_term * Ur,\
@@ -486,25 +486,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     def dvdt(x, xi):
         return force(x, xi) / m
-
-    # RK4 step for updating state
-    def rk4_step(x, v, xi_t, dt):
-        k1_x = dxdt(v)
-        k1_v = dvdt(x, xi_t)
-
-        k2_x = dxdt(v + 0.5 * dt * k1_v)
-        k2_v = dvdt(x + 0.5 * dt * k1_x, xi_t)
-
-        k3_x = dxdt(v + 0.5 * dt * k2_v)
-        k3_v = dvdt(x + 0.5 * dt * k2_x, xi_t)
-
-        k4_x = dxdt(v + dt * k3_v)
-        k4_v = dvdt(x + dt * k3_x, xi_t)
-
-        x_new = x + (dt * one_over_six) * (k1_x + 2.0 * k2_x + 2.0 * k3_x + k4_x)
-        v_new = v + (dt * one_over_six) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v)
-
-        return x_new, v_new
     
     def NLS_RHS(u, N, g, V):
         """
