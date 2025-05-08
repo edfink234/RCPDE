@@ -1246,56 +1246,56 @@ struct Board
                     {
                         if (expression[i] == "~" && expression[i+1] == "~")
                         {
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "exp" && (expression[i+1] == "ln" || expression[i+1] == "log"))
                         {
                             //puts("hi 361");
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
                             simplified = true;
                             break;
                         }
                         else if (expression[i+1] == "exp" && (expression[i] == "ln" || expression[i] == "log"))
                         {
                             //puts("hi 369");
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "cos" && (expression[i+1] == "acos" || expression[i+1] == "arccos"))
                         {
                             //puts("hi 403");
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
+                            simplified = true;
+                            break;
+                        }
+                        else if ((expression[i] == "cos") && (expression[i+1] == "~")) //cos(-x) = cos(x)
+                        {
+                            //puts("hi 708");
+                            expression.erase(expression.begin() + i + 1); // Remove the '~'
                             simplified = true;
                             break;
                         }
                         else if (expression[i+1] == "cos" && (expression[i] == "acos" || expression[i] == "arccos"))
                         {
                             //puts("hi 411");
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sin" && (expression[i+1] == "asin" || expression[i+1] == "arcsin"))
                         {
                             //puts("hi 419");
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
                             simplified = true;
                             break;
                         }
                         else if (expression[i+1] == "sin" && (expression[i] == "asin" || expression[i] == "arcsin"))
                         {
                             //puts("hi 427");
-                            expression[i] = expression[i+2];
-                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            expression.erase(expression.begin() + i, expression.begin() + i + 2); // Remove elements at i and i + 1
                             simplified = true;
                             break;
                         }
@@ -1791,56 +1791,56 @@ struct Board
                     {
                         if (expression[i] == "~" && expression[i-1] == "~")
                         {
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "exp" && (expression[i-1] == "ln" || expression[i-1] == "log"))
                         {
                             //puts("hi 360");
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
                             simplified = true;
                             break;
                         }
                         else if (expression[i-1] == "exp" && (expression[i] == "ln" || expression[i] == "log"))
                         {
                             //puts("hi 368");
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "cos" && (expression[i-1] == "acos" || expression[i-1] == "arccos"))
                         {
                             //puts("hi 408");
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
+                            simplified = true;
+                            break;
+                        }
+                        else if (expression[i] == "cos" && expression[i-1] == "~") //cos(-x) -> cos(x)
+                        {
+                            //puts("hi 688");
+                            expression.erase(expression.begin() + i - 1); // Remove the '~'
                             simplified = true;
                             break;
                         }
                         else if (expression[i-1] == "cos" && (expression[i] == "acos" || expression[i] == "arccos"))
                         {
                             //puts("hi 416");
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sin" && (expression[i-1] == "asin" || expression[i-1] == "arcsin"))
                         {
                             //puts("hi 424");
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
                             simplified = true;
                             break;
                         }
                         else if (expression[i-1] == "sin" && (expression[i] == "asin" || expression[i] == "arcsin"))
                         {
                             //puts("hi 432");
-                            expression[i] = expression[i-2];
-                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            expression.erase(expression.begin() + i - 1, expression.begin() + i + 1); // Remove elements at i - 1 and i
                             simplified = true;
                             break;
                         }
@@ -6490,13 +6490,13 @@ int main(int argc, char* argv[])
     constexpr double time = 10000;
 
 //    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
-//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("1.414214 x0 100.000000 * cos cos ~ acos /") /*seed expression for simulated annealing*/);
-    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 5 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("ln cos tanh - 4 / x0 0.648054") /*seed expression for simulated annealing*/);
+    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("0.998013 x0 100.000000 * cos cos ~ acos /") /*seed expression for simulated annealing*/);
+//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 5 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("ln cos tanh - 4 / x0 0.648054") /*seed expression for simulated annealing*/);
     
     
     return 0;
 }
-// 1.414214 x0 100.000000 * cos cos ~ acos / (MSE = 3.79787)
+// 0.998013 x0 100.000000 * cos cos ~ acos / (MSE = 3.61761)
 // ln cos tanh - 4 / x0 0.648054 (MSE = 5.83702)
 //git push --set-upstream origin PrefixPostfixSymbolicDifferentiator
 
