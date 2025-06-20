@@ -22,8 +22,7 @@ def declutter(latex_string):
         r"1.0 \dot": r"\dot",  # Remove floating-point 1.0
         r"1.0 u": r"u",   # Remove floating-point 1.0
         r"2.0": r"2",  # Ensure integer coefficients
-        r"0.5": r"\frac{1}{2}",  # Convert 0.5 to fraction,
-        r"\\": r"\nonumber \\" # Removes the automatic numbering from the align environment
+        r"0.5": r"\frac{1}{2}"  # Convert 0.5 to fraction
     }
     for str_to_replace, replacement in declutter_map.items():
         latex_string = latex_string.replace(str_to_replace, replacement)
@@ -56,17 +55,15 @@ potential_term = -V * u_a_conj * u_a
 # Total Lagrangian density
 L_dens = time_term + spatial_term + nonlinear_term + potential_term
 L_dens = sp.cancel(sp.expand(L_dens)).rewrite(sp.cosh, sp.sech)
+# Express sech and tanh in terms of sinh and cosh
 L_dens_latex = declutter(sp.multiline_latex(L_dens_symbol, L_dens, 1)) #https://github.com/sympy/sympy/blob/master/sympy/printing/latex.py#L3192
 print("L density LaTeX:", L_dens_latex)
 
 # u = A(t) * (x - X(t))  =>  x = u / A(t) + X(t) => dx = du / A(t)
 subs_dict = {x: u / A(t) + X(t)}
-L_dens = L_dens.subs(subs_dict) * (1 / A(t))
+L_dens = sp.expand(sp.cancel(L_dens.subs(subs_dict) * (1 / A(t))))
 L_dens_latex = declutter(sp.multiline_latex(L_dens_symbol, L_dens, 1))
 print("L density LaTeX after u-sub:", L_dens_latex)
-L_dens = sp.expand(sp.cancel(L_dens))
-L_dens_latex = declutter(sp.multiline_latex(L_dens_symbol, L_dens, 1))
-print("L density LaTeX after u-sub and simplification:", L_dens_latex)
 
 # --- exact (–∞,∞) integrals of sech^n --------------------------
 def I_sech_even(power):
@@ -80,38 +77,30 @@ def I_sech_even(power):
     return sp.integrate((1 - z**2)**(m - 1), (z, -1, 1))
 
 L_terms = sp.Add.make_args(L_dens)   # split the density into its Σ pieces
-wild_q = sp.Wild('q', properties=[lambda k: k.is_integer])
-
 total = 0
+
 for i, term in enumerate(L_terms):
     coeff, integrand = term.as_independent(u)
-
-#    print(f"integrand = {integrand}")
-    # (1) odd integrand  → integral = 0
+#    print(f"\n{i+1}: coefficient = {coeff}, integrand = {integrand}",end='')
+    # --- (1) odd integrand  → integral = 0 -----------------------
     if integrand.subs(u, -u) == -integrand:
+#        print(f", total = {total}")
         continue
-
-    # (2) pure sech^n
-    if integrand.is_Pow and integrand.base == sech(u):
+    # --- (2) plain sech^n ---------------------------------------
+    elif integrand.is_Pow and integrand.base == sech(u):
         n = int(integrand.exp)
         total += coeff * I_sech_even(n)
-        continue
-
-    # (3)  tanh²·sech^q
-    hit = integrand.match(tanh(u)**2 * sech(u)**wild_q)
-    if hit:
-        q = int(hit[wild_q])
-        total += coeff * (I_sech_even(q) - I_sech_even(q + 2))
-        continue
-
-    # (4) fallback – let SymPy try the definite integral itself
-    integrand_x = integrand.subs(u, A(t) * (x - X(t)))
-    # And since du = A(t) dx, we multiply by A(t)
-    val = A(t) * sp.Integral(integrand_x, (x, -sp.oo, sp.oo))
-
-    # if val is still an unevaluated Integral, SymPy couldn’t do it;
-    # we keep the symbolic object so the algebra downstream still works
-    total += coeff * val # works for both numbers and Integral(...)
+    # --- (2) plain sech^n ---------------------------------------
+    else:
+        patt = tanh(u)**2 * sech(u)**sp.Wild('q')
+        hit = integrand.match(patt)
+        if hit:
+            q = int(hit[sp.Wild('q')])
+            total += coeff * (I_sech_even(q) - I_sech_even(q + 2))
+        else:
+            total += coeff * sp.integrate(integrand, (u, -sp.oo*A(t), sp.oo*A(t)), manual=True)
+#    print(f", total = {total}")
 
 L_a = total
-print("Effective Lagrangian:", declutter(sp.multiline_latex(L_a_symbol, L_a, 2)))
+print("Effective Lagrangian $L_a(t)$ =")
+print(declutter(sp.multiline_latex(sp.Symbol('L_a'), L_a, 1)))
