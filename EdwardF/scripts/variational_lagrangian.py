@@ -30,7 +30,6 @@ def declutter(latex_string):
     
     return latex_string
 
-
 # Define symbols
 L_dens_symbol, L_a_symbol, u, x, t = sp.symbols('\\mathcal{L} L_a u x t', real=True)
 A, X, B, C = sp.symbols('A X B C', real=True, cls=sp.Function)  # Variational parameters as functions of t
@@ -86,8 +85,7 @@ total = 0
 for i, term in enumerate(L_terms):
     coeff, integrand = term.as_independent(u)
 
-#    print(f"integrand = {integrand}")
-    # (1) odd integrand  → integral = 0
+    # (1) odd integrand → integral = 0
     if integrand.subs(u, -u) == -integrand:
         continue
 
