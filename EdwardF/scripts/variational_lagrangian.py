@@ -22,8 +22,9 @@ def declutter(latex_string):
         r"1.0 \dot": r"\dot",  # Remove floating-point 1.0
         r"1.0 u": r"u",   # Remove floating-point 1.0
         r"2.0": r"2",  # Ensure integer coefficients
-        r"0.5": r"\frac{1}{2}",  # Convert 0.5 to fraction,
-        r"\\": r"\nonumber \\" # Removes the automatic numbering from the align environment
+        r"0.5": r"\dfrac{1}{2}",  # Convert 0.5 to fraction,
+        r"\\": r"\nonumber \\", # Removes the automatic numbering from the align environment
+        r"\frac": r"\dfrac"
     }
     for str_to_replace, replacement in declutter_map.items():
         latex_string = latex_string.replace(str_to_replace, replacement)
@@ -33,7 +34,9 @@ def declutter(latex_string):
 # Define symbols
 L_dens_symbol, L_a_symbol, u, x, t = sp.symbols('\\mathcal{L} L_a u x t', real=True)
 A, X, B, C = sp.symbols('A X B C', real=True, cls=sp.Function)  # Variational parameters as functions of t
-V = sp.Function('V')(x)  # External potential V(x)
+#V = sp.Function('V')(x)  # External arbitrary potential V(x)
+Omega, A0, b = sp.symbols('Omega A0 b', real=True)
+V = Rational(1, 2) * Omega**2 * x**2 + A0 * sech(b * x)**2
 
 # Define the ansatz
 chi = A(t) * (x - X(t))  # Argument of sech^2
@@ -78,6 +81,12 @@ def I_sech_even(power):
     z = sp.symbols('z')
     return sp.integrate((1 - z**2)**(m - 1), (z, -1, 1))
 
+def I_u2_sech4():
+    """
+    ∫_{-∞}^{∞} u^2 sech^4 du 
+    """
+    return (sp.pi**2 - 6)/9        # exact
+
 L_terms = sp.Add.make_args(L_dens)   # split the density into its Σ pieces
 wild_q = sp.Wild('q', properties=[lambda k: k.is_integer])
 
@@ -101,9 +110,16 @@ for i, term in enumerate(L_terms):
         q = int(hit[wild_q])
         total += coeff * (I_sech_even(q) - I_sech_even(q + 2))
         continue
+    
 
-    # (4) fallback – let SymPy try the definite integral itself
-    integrand_x = integrand.subs(u, A(t) * (x - X(t)))
+    # (4)  u^2 sech^4(u)
+    if integrand == u**2 * sech(u)**4:
+        print(f"COEFF = {coeff}, INTEGRAND = {integrand}")
+        total += coeff * I_u2_sech4()
+        continue
+
+    # (5) fallback – let SymPy try the definite integral itself
+    integrand_x = sp.cancel(integrand.subs(u, A(t) * (x - X(t))))
     # And since du = A(t) dx, we multiply by A(t)
     val = A(t) * sp.Integral(integrand_x, (x, -sp.oo, sp.oo))
 
@@ -112,4 +128,7 @@ for i, term in enumerate(L_terms):
     total += coeff * val # works for both numbers and Integral(...)
 
 L_a = total
-print("Effective Lagrangian:", declutter(sp.multiline_latex(L_a_symbol, L_a, 2)))
+print("Effective Lagrangian:", declutter(sp.multiline_latex(sp.simplify(L_a_symbol), L_a, 2)))
+
+
+
