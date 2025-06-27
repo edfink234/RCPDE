@@ -9,6 +9,7 @@ def declutter(latex_string):
         r"\frac{d}{d t} B": r"\dot{\mathcal{B}}",
         r"\frac{d}{d t} C": r"\dot{\mathcal{C}}",
         r"A": r"\mathcal{A}",
+        r"A_{0}": r"A",
         r"X": r"\mathcal{X}",
         r"B": r"\mathcal{B}",
         r"C": r"\mathcal{C}",
@@ -33,9 +34,9 @@ def declutter(latex_string):
 
 # Define symbols
 L_dens_symbol, L_a_symbol, u, x, t = sp.symbols('\\mathcal{L} L_a u x t', real=True)
-A, X, B, C = sp.symbols('A X B C', real=True, cls=sp.Function)  # Variational parameters as functions of t
+A, X, B, C = sp.symbols('\\mathcal{A} \\mathcal{X} \\mathcal{B} \\mathcal{C}', real=True, cls=sp.Function)  # Variational parameters as functions of t
 #V = sp.Function('V')(x)  # External arbitrary potential V(x)
-Omega, A0, b = sp.symbols('Omega A0 b', real=True)
+Omega, A0, b = sp.symbols('Omega A b', real=True)
 V = Rational(1, 2) * Omega**2 * x**2 + A0 * sech(b * x)**2
 
 # Define the ansatz
@@ -128,7 +129,7 @@ for i, term in enumerate(L_terms):
     total += coeff * val # works for both numbers and Integral(...)
 
 L_a = total
-print("Effective Lagrangian:", declutter(sp.multiline_latex(sp.simplify(L_a_symbol), L_a, 2)))
+print("Effective Lagrangian:", sp.multiline_latex(sp.simplify(L_a_symbol), L_a, 2))
 
 
 
