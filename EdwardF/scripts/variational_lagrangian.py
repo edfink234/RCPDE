@@ -4,15 +4,15 @@ from sympy import sech, tanh, sinh, cosh, simplify, Rational
 def declutter(latex_string):
     """Customizes LaTeX output by replacing specific patterns and adjusting parentheses."""
     declutter_map = {
-        r"\frac{d}{d t} A": r"\dot{\mathcal{A}}",
-        r"\frac{d}{d t} X": r"\dot{\mathcal{X}}",
-        r"\frac{d}{d t} B": r"\dot{\mathcal{B}}",
-        r"\frac{d}{d t} C": r"\dot{\mathcal{C}}",
-        r"A": r"\mathcal{A}",
+        r"\frac{d}{d t} \mathcal{A}": r"\dot{\mathcal{A}}",
+        r"\frac{d}{d t} \mathcal{X}": r"\dot{\mathcal{X}}",
+        r"\frac{d}{d t} \mathcal{B}": r"\dot{\mathcal{B}}",
+        r"\frac{d}{d t} \mathcal{C}": r"\dot{\mathcal{C}}",
+#        r"A": r"\mathcal{A}",
         r"A_{0}": r"A",
-        r"X": r"\mathcal{X}",
-        r"B": r"\mathcal{B}",
-        r"C": r"\mathcal{C}",
+#        r"X": r"\mathcal{X}",
+#        r"B": r"\mathcal{B}",
+#        r"C": r"\mathcal{C}",
         r"{\left(t \right)}": r"(t)",
         r"1.0 x": r"x",  # Remove floating-point 1.0
         r"1.0 V": r"V",  # Remove floating-point 1.0
@@ -20,6 +20,10 @@ def declutter(latex_string):
         r"1.0 \mathcal{X}": r"\mathcal{X}",  # Remove floating-point 1.0
         r"1.0 \mathcal{B}": r"\mathcal{B}",  # Remove floating-point 1.0
         r"1.0 \mathcal{C}": r"\mathcal{C}",  # Remove floating-point 1.0
+        r"\mathcal{A}(t)": r"\mathcal{A}",  # Remove (t)
+        r"\mathcal{X}(t)": r"\mathcal{X}",  # Remove (t)
+        r"\mathcal{B}(t)": r"\mathcal{B}",  # Remove (t)
+        r"\mathcal{C}(t)": r"\mathcal{C}",  # Remove (t)
         r"1.0 \dot": r"\dot",  # Remove floating-point 1.0
         r"1.0 u": r"u",   # Remove floating-point 1.0
         r"2.0": r"2",  # Ensure integer coefficients
@@ -62,6 +66,8 @@ L_dens = sp.cancel(sp.expand(L_dens)).rewrite(sp.cosh, sp.sech)
 L_dens_latex = declutter(sp.multiline_latex(L_dens_symbol, L_dens, 1)) #https://github.com/sympy/sympy/blob/master/sympy/printing/latex.py#L3192
 print("L density LaTeX:", L_dens_latex)
 
+#width-matching assumption  b ≔ 𝒜(t)
+L_dens = L_dens.subs(b, A(t))
 # u = A(t) * (x - X(t))  =>  x = u / A(t) + X(t) => dx = du / A(t)
 subs_dict = {x: u / A(t) + X(t)}
 L_dens = L_dens.subs(subs_dict) * (1 / A(t))
@@ -88,10 +94,25 @@ def I_u2_sech4():
     """
     return (sp.pi**2 - 6)/9        # exact
 
+def I_mixed_shift(A_t, X_t):
+    """
+    ∫_{-∞}^{∞} sech⁴(A_x * X_t) · sech²(u + A_t*X_t) du
+    """
+    s = A_t * X_t
+    num = 32*sp.exp(2*s)*(sp.exp(6*s)
+          + (9 - 12*s)*sp.exp(4*s)
+          + (-12*s - 9)*sp.exp(2*s) - 1)
+    den = 3*A_t*(sp.exp(10*s) - 5*sp.exp(8*s) + 10*sp.exp(6*s)
+          - 10*sp.exp(4*s) + 5*sp.exp(2*s) - 1)
+    return num / den
+
 L_terms = sp.Add.make_args(L_dens)   # split the density into its Σ pieces
 wild_q = sp.Wild('q', properties=[lambda k: k.is_integer])
 
 total = 0
+
+
+#Integration loop:
 for i, term in enumerate(L_terms):
     coeff, integrand = term.as_independent(u)
 
@@ -112,24 +133,34 @@ for i, term in enumerate(L_terms):
         total += coeff * (I_sech_even(q) - I_sech_even(q + 2))
         continue
     
-
     # (4)  u^2 sech^4(u)
     if integrand == u**2 * sech(u)**4:
         print(f"COEFF = {coeff}, INTEGRAND = {integrand}")
         total += coeff * I_u2_sech4()
         continue
 
-    # (5) fallback – let SymPy try the definite integral itself
-    integrand_x = sp.cancel(integrand.subs(u, A(t) * (x - X(t))))
+    integrand = sp.cancel(integrand.subs(u, A(t) * (x - X(t))))
     # And since du = A(t) dx, we multiply by A(t)
-    val = A(t) * sp.Integral(integrand_x, (x, -sp.oo, sp.oo))
+    coeff *= A(t)
+    
+    # (5) sech⁴(A·x)·sech²(A·x - A·X)
+    test = (sech(A(t)*x)**2) * (sech(A(t)*(x-X(t)))**4)
+    print(f"test = {test}")
+    if sp.cancel(integrand - test) == 0:
+        print(f"COEFF = {coeff}, INTEGRAND = {integrand}")
+        total += coeff * I_mixed_shift(A(t), X(t))
+        continue
+    else:
+        print(f"failed, COEFF = {coeff}, INTEGRAND = {integrand}")
+    # (6) fallback – let SymPy try the definite integral itself
+    integrand = sp.Integral(integrand, (x, -sp.oo, sp.oo))
 
     # if val is still an unevaluated Integral, SymPy couldn’t do it;
     # we keep the symbolic object so the algebra downstream still works
-    total += coeff * val # works for both numbers and Integral(...)
+    total += coeff * integrand # works for both numbers and Integral(...)
 
 L_a = total
-print("Effective Lagrangian:", sp.multiline_latex(sp.simplify(L_a_symbol), L_a, 2))
+print("Effective Lagrangian:", declutter(sp.multiline_latex((L_a_symbol), L_a, 2)))
 
 
 
