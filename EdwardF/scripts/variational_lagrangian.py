@@ -8,12 +8,16 @@ def declutter(latex_string):
         r"\frac{d}{d t} \mathcal{X}": r"\dot{\mathcal{X}}",
         r"\frac{d}{d t} \mathcal{B}": r"\dot{\mathcal{B}}",
         r"\frac{d}{d t} \mathcal{C}": r"\dot{\mathcal{C}}",
+        r"\frac{d^{2}}{d t^{2}} \mathcal{A}": r"\ddot{\mathcal{A}}",
+        r"\frac{d^{2}}{d t^{2}} \mathcal{X}": r"\ddot{\mathcal{X}}",
+        r"\frac{d^{2}}{d t^{2}} \mathcal{B}": r"\ddot{\mathcal{B}}",
+        r"\frac{d^{2}}{d t^{2}} \mathcal{C}": r"\ddot{\mathcal{C}}",
 #        r"A": r"\mathcal{A}",
         r"A_{0}": r"A",
 #        r"X": r"\mathcal{X}",
 #        r"B": r"\mathcal{B}",
 #        r"C": r"\mathcal{C}",
-        r"{\left(t \right)}": r"(t)",
+        r"{\left(t \right)}": r"",
         r"1.0 x": r"x",  # Remove floating-point 1.0
         r"1.0 V": r"V",  # Remove floating-point 1.0
         r"1.0 \mathcal{A}": r"\mathcal{A}",  # Remove floating-point 1.0
@@ -111,7 +115,6 @@ wild_q = sp.Wild('q', properties=[lambda k: k.is_integer])
 
 total = 0
 
-
 #Integration loop:
 for i, term in enumerate(L_terms):
     coeff, integrand = term.as_independent(u)
@@ -152,6 +155,7 @@ for i, term in enumerate(L_terms):
         continue
     else:
         print(f"failed, COEFF = {coeff}, INTEGRAND = {integrand}")
+        
     # (6) fallback – let SymPy try the definite integral itself
     integrand = sp.Integral(integrand, (x, -sp.oo, sp.oo))
 
@@ -162,5 +166,128 @@ for i, term in enumerate(L_terms):
 L_a = total
 print("Effective Lagrangian:", declutter(sp.multiline_latex((L_a_symbol), L_a, 2)))
 
+coords = (A(t), X(t), B(t), C(t))
+EL_eqns = []
+
+for q in coords:
+    qdot = sp.diff(q, t)
+    EL = sp.diff(sp.diff(L_a, qdot), t) - sp.diff(L_a, q)
+    EL_eqns.append(sp.cancel(sp.expand(EL)))
+
+# pretty print --------------------------------------------------
+for q, eq in zip(coords, EL_eqns):
+    print(f"{'🐨'*10}\nq={q}\n{'🐨'*10}")
+    print(sp.multiline_latex(0, eq, 2))
+
+# -------------------------------------------------------------------------
+# constants and substitutions dictated by the EL constraints observed above
+# -------------------------------------------------------------------------
+A0 = sp.symbols(r'\mathcal{A}_0', positive=True)   # constant width
+
+freeze_A = {A(t): A0, sp.diff(A(t), t): 0}         # only A is frozen here
+full_subs = {**freeze_A,
+             C(t):  sp.diff(X(t), t),              # C → Ẋ  (after EL’s)
+             sp.diff(C(t), t): sp.diff(X(t), t, 2)}
+
+# ---------- 1.  derive EL‑eqn for X BEFORE imposing C = Ẋ ----------
+L_c = L_a.subs(freeze_A)                           # A frozen, C kept
+Xdot = sp.diff(X(t), t)
+EL_X_raw = sp.simplify(
+             sp.diff(sp.diff(L_c, Xdot), t) - sp.diff(L_c, X(t)))
+
+# now impose the kinematic relation C = Ẋ
+EL_X = sp.simplify(EL_X_raw.subs({C(t): Xdot,
+                                  sp.diff(C(t), t): sp.diff(X(t), t, 2)}))
+
+# ---------- 2.  solve for  Ẍ  --------------------------------------
+Xddot = sp.diff(X(t), t, 2)
+sol_X = sp.solve(EL_X, Xddot)
+if not sol_X:
+    raise RuntimeError("❌  SymPy could not isolate Xddot. Check algebra.")
+Xddot_expr = sp.cancel(sp.expand(sol_X[0]))
+
+print("\n🎉  Newton–type equation obtained:")
+print(declutter(sp.multiline_latex(Xddot, Xddot_expr, 1)))
+
+# ---------- 3.  substitute ALL static relations in L --------------
+L_eff = L_a.subs(full_subs)
+print("\nEffective Lagrangian with all constraints:")
+print(declutter(sp.multiline_latex(L_a_symbol, L_eff, 2)))
+
+# ---------- 4.  obtain 𝔅̇ from the A‑equation -----------------------
+Adot = sp.diff(A(t), t)            # still appears in EL_A before freeze
+EL_A = sp.cancel(
+          sp.expand(sp.diff(sp.diff(L_eff, Adot), t) - sp.diff(L_eff, A0)))
+
+Bdot = sp.diff(B(t), t)
+sol_B = sp.solve(EL_A, Bdot)
+if not sol_B:
+    raise RuntimeError("❌  Could not solve for 𝔅̇.")
+Bdot_expr = sp.cancel(sp.expand(sol_B[0]))
+
+# optional pretty partial‑fraction trick
+s, z = sp.symbols('s z')
+Bdot_expr = (Bdot_expr
+             .subs(A0*X(t), s)
+             .subs(sp.exp(2*s), z)
+             .apart(z)
+             .subs({z: sp.exp(2*A0*X(t)), s: A0*X(t)}))
+
+print("\nExpression for $\\dot{\\mathcal{B}}(t)$:")
+print(declutter(sp.multiline_latex(Bdot, Bdot_expr, 2)))
+
+# ---------- 5.  pretty partial‑fraction form for  Ẍ  -----------------
+s, z = sp.symbols('s z')
+
+Xddot_pf = (Xddot_expr
+            .subs(A0*X(t), s)       # s := 𝒜₀ X
+            .subs(sp.exp(2*s), z)   # z := e^{2s}
+            .apart(z)               # partial‑fraction in z
+            .subs({z: sp.exp(2*A0*X(t)),
+                   s: A0*X(t)}))    # restore original variables
+
+print("\nPartial‑fraction form of $\\ddot{\\mathcal{X}}(t)$:")
+print(declutter(sp.multiline_latex(Xddot, Xddot_pf, 3)))
+assert(Xddot_expr.equals(Xddot_pf))
+
+# ---------- 6.  extract the effective potential directly -------------
+m_eff = sp.Rational(4,3)*A0        # from  T = (2/3)A0 Ẋ²
+U_from_int = sp.integrate(-m_eff*Xddot_pf, (X(t),))
+print("\nU_eff(𝓧) (from integration):")
+U_from_int = (U_from_int.subs(A0*X(t), s)
+                .subs(sp.exp(2*s), z)
+                .apart(z)
+                .subs({z: sp.exp(2*A0*X(t)), s: A0*X(t)}))
+print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_from_int, 2)))
 
 
+# set EVERY explicit time-derivative to zero
+zeros = {sp.diff(X(t), t): 0,
+         sp.diff(X(t), t, 2): 0,
+         sp.diff(B(t), t): 0}
+
+U_eff = sp.simplify(-L_eff.subs(zeros))   # flip sign:  L = T - U
+U_eff = sp.cancel(U_eff)
+
+# compact partial-fraction version for neat LaTeX
+s, z = sp.symbols('s z')
+U_pf = (U_eff
+        .subs(A0*X(t), s)
+        .subs(sp.exp(2*s), z)
+        .apart(z)
+        .subs({z: sp.exp(2*A0*X(t)), s: A0*X(t)}))
+
+print("\nRaw U_eff(𝓧):")
+print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_eff, 2)))
+
+print("\nPretty U_eff(𝓧):")
+print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_eff, 3)))
+
+# ---------- sanity:  m_eff * Ẍ  + ∂U/∂X  = 0  ----------------------
+chk = sp.simplify(m_eff*Xddot_pf + sp.diff(U_eff, X(t)))
+assert chk == 0
+print("\n✅  m_eff Ẍ + ∂U/∂X = 0   (check passed)")
+
+# compare directive integration potential with zero'd Lagrangian potential
+diff = sp.simplify(U_from_int - U_eff)
+print("\nDifference between the two U’s:", sp.latex(diff.expand()))
