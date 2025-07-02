@@ -258,7 +258,7 @@ U_from_int = (U_from_int.subs(A0*X(t), s)
                 .subs(sp.exp(2*s), z)
                 .apart(z)
                 .subs({z: sp.exp(2*A0*X(t)), s: A0*X(t)}))
-print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_from_int, 2)))
+print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_from_int, 3)))
 
 
 # set EVERY explicit time-derivative to zero
