@@ -987,7 +987,7 @@ struct Board
                 new_expression[op_idx] = "-1"; //change 'tanh' to '-1'
                 new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
             }
-            else if ((new_expression[first_arg_idx_low] == "~") && (new_expression.size() < first_arg_idx_low+2) && (new_expression[first_arg_idx_low+1] == "inf")) // tanh ~ inf -> 1
+            else if ((new_expression[first_arg_idx_low] == "~") && ((first_arg_idx_low+1) < (new_expression.size()))  && (new_expression[first_arg_idx_low+1] == "inf")) // tanh ~ inf -> 1
             {
     //            puts("hi 421");
                 new_expression[op_idx] = "-1"; //change 'tanh' to '-1'
@@ -1005,6 +1005,12 @@ struct Board
             {
                 //puts("hi 416");
                 new_expression[op_idx] = "1"; //change 'sech' to '1'
+                new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
+            }
+            else if (new_expression[first_arg_idx_low] == "inf") // sech inf -> 0
+            {
+                //puts("hi 440");
+                new_expression[op_idx] = "0"; //change 'sech' to '1'
                 new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
             }
         }
@@ -1606,9 +1612,15 @@ struct Board
         {
             int first_arg_idx_low = new_expression.size();
             graspSimplifyPostfixHelper(expression, low, up-1, grasp, new_expression, true); //x
-            if (new_expression.back() == "0") // 0 sech -> 1 (because, since postfix operators come at the end, if the end of the argument of 'sech' is 0, then the whole argument MUST be 0, therefore the expression reduces to 0 sech, which is 0)
+            if (new_expression.back() == "0") // 0 sech -> 1 (because, since postfix operators come at the end, if the end of the argument of 'sech' is 0, then the whole argument MUST be 0, therefore the expression reduces to 0 sech, which is 1)
             {
                 //puts("hi 395");
+                new_expression[first_arg_idx_low] = "1";
+                new_expression.erase(new_expression.begin() + first_arg_idx_low + 1, new_expression.end()); //erase the rest of x and y
+            }
+            else if (new_expression.back() == "inf") // inf sech -> 0 (because, since postfix operators come at the end, if the end of the argument of 'sech' is inf, then the whole argument MUST be inf, therefore the expression reduces to inf sech, which is 0)
+            {
+    //            puts("hi 419");
                 new_expression[first_arg_idx_low] = "0";
                 new_expression.erase(new_expression.begin() + first_arg_idx_low + 1, new_expression.end()); //erase the rest of x and y
             }
@@ -6612,14 +6624,14 @@ int main(int argc, char* argv[])
     DataRow new_result;
     constexpr double time = 10000;
 
-//    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 12 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
-    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("0.998417 100.000000 x0 * cos cos ~ acos /") /*seed expression for simulated annealing*/);
-//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 10 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("asin arccos - 1.570796 sin cos tanh ~ cos ^ 100.000000 tanh x0") /*seed expression for simulated annealing*/);
+//    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 13 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("0.967785 100.000000 x0 * cos cos ~ acos /") /*seed expression for simulated annealing*/);
+    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 10 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("asin arccos - 1.570796 sin cos tanh ~ cos ^ 100.000000 tanh x0") /*seed expression for simulated annealing*/);
     
     
     return 0;
 }
-// 0.998417 100.000000 x0 * cos cos ~ acos / (MSE = 3.61169)
+// 0.967785 100.000000 x0 * cos cos ~ acos / (MSE = 3.51666)
 // asin arccos - 1.570796 sin cos tanh ~ cos ^ 100.000000 tanh x0 (MSE = 5.57543)
 //git push --set-upstream origin PrefixPostfixSymbolicDifferentiator
 
