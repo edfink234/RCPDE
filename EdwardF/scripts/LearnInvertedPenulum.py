@@ -429,7 +429,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         loss.backward()  # Backpropagate
         return loss
 
-#f(x)|_{expanded about x=a} = f(a) + (x-a)f'(a) + ((x-a)^2)/2)*f''(a) + ...
+    #f(x)|_{expanded about x=a} = f(a) + (x-a)f'(a) + ((x-a)^2)/2)*f''(a) + ...
     # Define Newton's method function
     def newton_method():
         global best_loss, df, t_test_values, best_t_value
