@@ -41,7 +41,7 @@ def declutter(latex_string):
     return latex_string
 
 # Define symbols
-L_dens_symbol, L_a_symbol, u, x, t = sp.symbols('\\mathcal{L} L_a u x t', real=True)
+L_dens_symbol, L_a_symbol, u, x, t, meff = sp.symbols('\\mathcal{L} L_a u x t m_{\\text{eff}}', real=True)
 A, X, B, C = sp.symbols('\\mathcal{A} \\mathcal{X} \\mathcal{B} \\mathcal{C}', real=True, cls=sp.Function)  # Variational parameters as functions of t
 #V = sp.Function('V')(x)  # External arbitrary potential V(x)
 Omega, A0, b = sp.symbols('Omega A b', real=True)
@@ -278,7 +278,7 @@ U_pf = (U_eff
         .subs({z: sp.exp(2*A0*X(t)), s: A0*X(t)}))
 
 print("\nRaw U_eff(𝓧):")
-print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_eff, 2)))
+print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_eff, 3)))
 
 print("\nPretty U_eff(𝓧):")
 print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_eff, 3)))
