@@ -15,11 +15,11 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Paul_Potential = False):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
-    ICsFile = '../dataFiles/ICsPaul.txt' if use_Paul_Potential else '../dataFiles/ICs.txt'
+    ICsFile = '../dataFiles/ICsVariational.txt' if use_Variational_Potential else '../dataFiles/ICs.txt'
 
     def sech(x):
         if isinstance(x, torch.Tensor):
@@ -65,31 +65,21 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             (temp_df['A'] == new_row_data['A']) &
             (temp_df['b'] == new_row_data['b']) &
             (temp_df['m'] == new_row_data['m']) &
-            (temp_df['Omega'] == new_row_data['Omega'])
-        ]
-
-        if not matching_rows.empty:
+            (temp_df['Omega'] == new_row_data['Omega'])]
+            
+        if matching_rows.empty:
+            # Add a new row
+            df.loc[len(df)] = new_row_data
+        else:
             # Overwrite existing row
             row_index = matching_rows.index[0]  # Get the index of the first (and only) match
             df.loc[row_index] = new_row_data
-        else:
-            # Add a new row
-            df.loc[len(df)] = new_row_data
 
         return df
 
-    #NOTE: Roberto has periodic boundary conditions in his PDE.
-    # Constants for the potential
-#    m = 1.0        # Mass
-#    Omega = 0.2    # Frequency of the harmonic trap
-#    A = 1.2        # Amplitude of the potential
-#    b = 1.0        # Width of the potential
-    sigma = 1.0    # Width of the (Gaussian) potential, not used currently
     T = T       # Final time
     dt = 0.01      # Time step
     x_star = 0.0   # Final position sought
-    v_th = 0.01    # Velocity threshold, not used currently
-    x_th = 0.01    # Position threshold, not used currently
     to_time = {"timed": False, "time": 3600}
     to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
     raiseBaseException = True
@@ -110,12 +100,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         elif isinstance(x, (torch.Tensor, np.ndarray)) and x.ndim == 0:
             return True
         return False
-    
-    def potential(x, xi):
-        V_MT = 0.5 * Omega * Omega * x * x
-        temp = torch.sech(A * (x - xi))
-        V_SECH = A * A * temp * temp
-        return V_MT + V_SECH
 
     def potential(x, xi):
         V_MT = 0.5 * Omega * Omega * x * x
@@ -126,89 +110,87 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     # Function to compute the force (negative derivative of potential)
     def force(x, xi):
         temp = x - xi
-        temp_sech = torch.sech(A * (temp))
-        return -(Omega*Omega * x) + (2 * A*A*A * temp_sech*temp_sech * tanh(A * (temp)))
-
-    def force(x, xi):
-        temp = x - xi
         temp_sech = torch.sech(b * (temp))
         return -(Omega*Omega * x) + (2 * A*b * temp_sech*temp_sech * tanh(b * (temp)))
+       
+    # Define the effective potential function
+    def Veff_plus_trap(x, xi=0):
+        """
+        Compute the variational effective potential U_eff + trap term.
 
-    # Define the effective potential functions
-    #$V_{\text{eff}}(x) = \frac{8B\left(Ae^{4A(x-\xi)}(x-\xi)+Ae^{2A(x-\xi)}(x-\xi)-e^{4A(x-\xi)}+e^{2A(x-\xi)}\right)}{e^{6A(x-\xi)}-3e^{4A(x-\xi)}+3e^{2A(x-\xi)}-1}$
-    def Veff(x, xi = 0):
-        temp = x-xi
-        temp_2_exp = np.exp(2 * A * temp)
-        temp_4_exp = np.exp(4 * A * temp)
-        return (8 * b * (A * temp_4_exp * temp + A * temp_2_exp * temp - temp_4_exp + temp_2_exp) /
-            (np.exp(6 * A * temp) - 3 * temp_4_exp + 3 * temp_2_exp - 1))
+        Parameters:
+        -----------
+        x : float or array-like
+            Position(s) to evaluate the potential at.
+        xi : float
+            Control shift value (center of the hill), default is 0.
+        
+        Returns:
+        --------
+        Potential : float or array-like
+            Evaluated potential energy at each position.
+        """
+        X = x - xi
+        exp_term = np.exp(2 * b * X) - 1
 
-    #$V_{\text{eff\_tay}}(x) = - \frac{4}{15} B \left( A^2 (x-\xi)^2 - \frac{5}{2} \right)$
-    def Veff_tay(x, xi = 0):
-        temp=x-xi
-        return - 4 / 15 * (b) * (A*A * (temp*temp) - 5 / 2)
+        # Avoid divide-by-zero instability
+        exp_term = np.where(exp_term == 0, 1e-12, exp_term)
 
-    # Define the effective potential function that switches between Veff and Veff_tay
-    def Veff_plus_trap(x, xi = 0):
-        L, R = -0.01, 0.01
-        #print(f"type(x) = {type(x)}, x = {x}")
-        if is_number(x):
-            return ((Veff_tay(x, xi) if (L <= (x - xi) <= R) else Veff(x, xi)) + 0.5*Omega*Omega*x*x)
-        else:
-            #print(f"x.shape = {x.shape}")
-            effpot = np.zeros_like(x)
-            for i in range(len(x)):
-                if L <= (x[i] - xi) <= R:
-                    effpot[i] = Veff_tay(x[i], xi)
-                else:
-                    effpot[i] = Veff(x[i], xi)
-            return effpot + 0.5*Omega*Omega*x*x
+        # Compute each term
+        term1 = -256 * A * b**2 * X / exp_term**5
+        term2 = -256 * A * b * (2 * b * X - 1) / exp_term**3
+        term3 = -128 * A * b * (5 * b * X - 1) / exp_term**4
+        term4 = -32  * A * b * (12 * b * X - 13) / (3 * exp_term**2)
+        term5 =  32  * A * b / (3 * exp_term)
+        trap  =  2 * Omega**2 * b * X**2 / 3
 
-    # Define the effective force functions
-    #Force $F = \frac{8AB\mathrm{e}^{2A \left(x - {\xi}\right)} \left(\left(2Ax - 2A{\xi} - 3\right) \mathrm{e}^{4A \left(x - {\xi}\right)} + \left(8Ax - 8A{\xi}\right) \mathrm{e}^{2A \left(x - {\xi}\right)} + 2Ax - 2A{\xi} + 3\right)}{\left(\mathrm{e}^{2A \left(x - {\xi}\right)} - 1\right)^{4}}$
-    def Feff(x, xi=0):
-        temp = x - xi
-        if isinstance(x, torch.Tensor):
-            return (8 * A * b * torch.exp(2 * A * temp) * ((2 * A * temp - 3) * torch.exp(4 * A * temp) + (8 * A * temp) * torch.exp(2 * A * temp) + 2 * A * temp + 3) /
-                (torch.exp(2 * A * temp) - 1) ** 4)
-        return (8 * A * b * np.exp(2 * A * temp) * ((2 * A * temp - 3) * np.exp(4 * A * temp) + (8 * A * temp) * np.exp(2 * A * temp) + 2 * A * temp + 3) /
-                (np.exp(2 * A * temp) - 1) ** 4)
+        return term1 + term2 + term3 + term4 + term5 + trap
 
-    #Force $F = \frac{8A^{2} B \left(x - {\xi}\right)}{15}$
-    def Feff_tay(x, xi=0):
-        return (8 * A ** 2 * b * (x - xi)) / 15
-
-    # Define the effective force function that switches between Feff and Feff_tay
+    # Define the effective force function
     def Force_eff_plus_trap(x, xi=0):
-        L, R = -0.01, 0.01
-        if is_number(x):
-            return ((Feff_tay(x, xi) if (L <= (x - xi) <= R) else Feff(x, xi)) - (Omega*Omega * x))
-        else:
-            eff_force = np.zeros_like(x)
-            for i in range(len(x)):
-                if L <= (x[i] - xi) <= R:
-                    eff_force[i] = Feff_tay(x[i], xi)
-                else:
-                    eff_force[i] = Feff(x[i], xi)
-            return eff_force - (Omega*Omega * x)
-    
-    potential = Veff_plus_trap if use_Paul_Potential else potential
-    force = Force_eff_plus_trap if use_Paul_Potential else force
-    min_force = lambda x: force(x, 0)
-    
-    #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
-    automate = True
-    produceInverse = False
-    saveLibTorch = True
-    useLibTorch = True
+        """
+        Compute the variational force (effective + trap) for scalar or array input.
+        
+        Parameters:
+        -----------
+        x : float or array-like
+            Position(s) to evaluate the force at.
+        xi : float
+            Control shift value (center of the hill), default is 0.
+        
+        Returns:
+        --------
+        Force : float or array-like
+            Evaluated force at each position.
+        """
+        X = x - xi
+        exp_term = np.exp(2 * b * X) - 1
 
-    smoothness_penalty_factor = 1e-3 # penalty for lack of smoothness of xi
-    time_penalty_factor = 1e-3 #penalty for taking longer
-    velocity_penalty = 1e-3 #penalty for max(abs(v))
-    xi_penalty = 1e-3 #penalty for max(abs(xi))
-    x_star_x_diff_mse_penalty = 1 #penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func
-    v_mse_penalty = 1 #penalty for (v*v) term in MSE in loss_func
-    x_star_xi_diff_mse_penalty = 1 #penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
+        # Avoid divide-by-zero and warnings
+        exp_term = np.where(exp_term == 0, 1e-12, exp_term)
+
+        # Compute each term
+        term1 = -2560 * A * b**3 * X / exp_term**6
+        term2 = -1280 * A * b**2 * (6 * b * X - 1) / exp_term**5
+        term3 = -64   * A * b**2 * (8 * b * X - 11) / exp_term**2
+        term4 = -128  * A * b * (64 * b * X - 25) / exp_term**4
+        term5 = -128  * A * b**2 * (84 * b * X - 61) / (3 * exp_term**3)
+        term6 =  64   * A * b**2 / (3 * exp_term)
+        trap  = -4/3 * b * Omega**2 * x
+
+        return term1 + term2 + term3 + term4 + term5 + term6 + trap
+        
+    potential = Veff_plus_trap if use_Variational_Potential else potential
+    force = Force_eff_plus_trap if use_Variational_Potential else force
+    min_force = lambda x: force(x, 0)
+
+    smoothness_penalty_factor = 1e-3 #α: penalty for lack of smoothness of xi
+    time_penalty_factor = 1e-3 #β: penalty for taking longer
+    velocity_penalty = 1e-3 #γ: penalty for max(abs(v))
+    xi_penalty = 1e-3 #δ: penalty for max(abs(xi))
+    x_star_x_diff_mse_penalty = 1 #ε: penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func
+    v_mse_penalty = 1 #ζ: penalty for (v*v) term in MSE in loss_func
+    x_star_xi_diff_mse_penalty = 1 #η: penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
     
     t_values = np.linspace(1e-8, T, int(T / dt))
     delta_t = t_values[1] - t_values[0]
@@ -255,11 +237,9 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     # Instantiate the model
     model = XiModel()
     example = torch.tensor([[0.5]], dtype=torch.float32)
-    global best_loss
+    global best_loss, best_t_value, df
     best_loss = np.inf
-    global best_t_value
     best_t_value = T
-    global df
     df = None
     try:
         df = pd.read_csv(ICsFile, names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
@@ -270,17 +250,15 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         df = pd.DataFrame(columns=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
 
     parameters = df[(df['x_0']==x_start) & (df['A']==A) & (df['b']==b) & (df['m']==m) & (df['Omega']==Omega)]
-    closest_row_idx = -1
     closest_x, closest_A, closest_b, closest_m, closest_Omega = x_start, A, b, m, Omega
 
     if len(parameters):
-        print(parameters)
+        print(f"parameters = {parameters}")
         best_loss, best_t_value = parameters['best_loss'].item(), parameters['best_time'].item()
         try:
             t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
         except:
             t_test_values = None if simulate_only else t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
-        closest_row_idx = parameters.index[0]
     elif len(df):
         #Extract the row with the closest 'x_0', 'A', 'b', 'm', 'Omega' to (x_start, A, b, m, Omega) based on euclidean distance
         # Create a new DataFrame with the relevant columns for distance calculation
@@ -295,18 +273,13 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 6), round(parameters['A'], 6), round(parameters['b'], 6), round(parameters['m'], 6), round(parameters['Omega'], 6)
 
     # Load or instantiate the model
-    file_suffix = ("_Paul_" if use_Paul_Potential else "_")
+    file_suffix = ("_Variational_" if use_Variational_Potential else "_")
     model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 6))}_{flt_to_str(round(closest_b, 6))}_{flt_to_str(round(closest_m, 6))}_{flt_to_str(round(closest_Omega, 6))}{file_suffix}.pth" if not base_model else base_model
     new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.pth"
-    print(model_path)
-    print(new_model_path)
+    print(f"model_path = {model_path}")
+    print(f"new_model_path = {new_model_path}")
     if closest_x == x_start and round(closest_A, 4) == round(A, 4) and round(closest_b, 4) == round(b, 4) and round(closest_m, 4) == round(m, 4) and round(closest_Omega, 4) == round(Omega, 4):
         assert(model_path == new_model_path or base_model)
-    else:
-        print(f"closest_x = {closest_x}, closest_A = {closest_A}, closest_b = {closest_b}, closest_m = {closest_m}, closest_Omega = {closest_Omega}")
-        print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
-#        print("problem!")
-#        exit()
     if useLibTorch:
         new_model_path = new_model_path.replace(".pth", ".pt")
     if os.path.exists(model_path) and load_model:
@@ -323,7 +296,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             new_model_path = new_model_path.replace(".pth", ".pt")
     else:
         print("No saved model found.")
-
+    
     def dxdt(v):
         return v
 
@@ -416,24 +389,21 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                 xi_best = abs_xi_temp_i
                 
         smoothness_penalty /= best_time_idx
-        
     #    print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
     #    exit()
         return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
     # Loss function for optimization
-
     def closure():
         optimizer.zero_grad()  # Clear previous gradients
         loss, _ = loss_func()  # Compute the loss
         loss.backward()  # Backpropagate
         return loss
 
-    #f(x)|_{expanded about x=a} = f(a) + (x-a)f'(a) + ((x-a)^2)/2)*f''(a) + ...
+    # f(x)|_{expanded about x=a} = f(a) + (x-a)f'(a) + ((x-a)^2)/2)*f''(a) + ...
     # Define Newton's method function
     def newton_method():
         global best_loss, df, t_test_values, best_t_value
-#        global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values, criterion, saveLibTorch
         # Extract model parameters
         current_params = {name: param.clone() for name, param in model.named_parameters()}
         
@@ -534,7 +504,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     # Define brute force function
     def brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 1):
         global best_loss, df, t_test_values, best_t_value
-#        global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
         # Extract model parameters
         current_params = {name: param.clone() for name, param in model.named_parameters()}
         temperature = initial_temp
@@ -567,7 +536,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
             # Compute change in loss
             delta_loss = new_loss - best_loss
-            
 
             # Metropolis criterion
             if delta_loss < 0:
@@ -607,7 +575,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             temperature *= cooling_rate
             print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}")
 
-
         # Restore best parameters to the model
         with torch.no_grad():
             for name, param in model.named_parameters():
@@ -617,8 +584,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
     print("best_loss =",best_loss)
     print("Current loss and time =", loss_func())
-    #model = torch.jit.load("../NeuralNetworkData/xi_model_IC_2_point_225840410642715_.pt")
-    #print("Current loss and time =", loss_func())
     if not automate:
         ans = input("Proceed? (y/n): ")
         if ans.lower() != 'y':
@@ -626,8 +591,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     # Training loop
     global learning_rate
-    learning_rate = 0.1
-    Algorithm = "lbfgs"
+    learning_rate = 1e-4
+    Algorithm = "adamax"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     optimizer = None
     if Algorithm == "lbfgs":
@@ -734,18 +699,26 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             exit()
         
         model = XiModel()
-        print("New model path loaded =",new_model_path)
         if useLibTorch and os.path.exists(new_model_path):
             model = torch.jit.load(new_model_path)
         else:
             model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
+        print("New model path loaded =",new_model_path)
         xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
         # Save data to CSV
         data_path = "../dataFiles/trajectory_data.csv"
         x_values, v_values, a_values, xi_values = [], [], [], []
         x, v = x_start, v_start # Initial conditions
         a = force(torch.tensor(x_start), xi(0.0)) / m
-#        print(f"x_0, v_0 = {x}, {v}")
+        
+        print(f"t_values.shape = {t_values.shape}")
+        if ((isinstance(t_test_values, np.ndarray) and not len(t_test_values)) or (not isinstance(t_test_values, np.ndarray) and not t_test_values)):
+            assert best_t_value, f"best_t_value = {best_t_value}"
+            try:
+                t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
+            except:
+                t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+
         for i, t in enumerate(t_test_values):
             xi_t = xi(t) if i > 0 else torch.tensor([[0]], dtype=torch.float32)[0, 0]
             xi_values.append(xi_t.detach().numpy())
@@ -773,7 +746,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
 
         plt.xlabel('t')
-        plt.title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+        plt.title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
         plt.savefig("trajectory_data.svg")
         system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.pdf trajectory_data.svg")
@@ -800,7 +773,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
             
             plt.xlabel('t')
-            plt.title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+            plt.title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             plt.legend()
             plt.savefig("trajectory_data.svg")
             system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.pdf trajectory_data.svg")
@@ -832,7 +805,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
         ax.legend()
-        ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+        ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
 
         # Initialization function
         def init():
@@ -848,7 +821,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-            ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+            ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
             if movie_x_lims:
                 ax.set_xlim(movie_x_lims)
             if movie_y_lims:
@@ -864,7 +837,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         
         # Save the animation
         ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}_.mp4")
+        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.mp4")
         print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.mp4'")
         plt.close()
 
@@ -881,14 +854,14 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             ax.set_xlabel("x")
             ax.set_ylabel("Potential")
             ax.legend()
-            ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+            ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             def update(i):
                 t = (i) * (best_t_value / (N - 1))  # Calculate current time
                 y_values = potential(x_range, -xi_values[i])
                 dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
                 curve.set_data(x_range, y_values)
     #            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
-                ax.set_title((r'$V_{\mathrm{eff}}$: ' if use_Paul_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+                ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
                 if movie_x_lims:
                     ax.set_xlim(movie_x_lims)
                 if movie_y_lims:
@@ -905,84 +878,27 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         return {"result": "target achieved", "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega}
 
 if __name__=='__main__':
-#    Before (Friday March 7, 2025, 3:20 am), cat -n result_times.txt yields 99 lines
-#    master_func_learn_ivp_ode(A = 0.06747453989858264, b = 0.6657915466867125, load_model = True, movie_y_lims = (0.01, 0.15), movie_x_lims = (-1, 1))
-#    master_func_learn_ivp_ode(A = 1, b = 0.1, use_Paul_Potential = True, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt")
-    master_func_learn_ivp_ode(A = 1, b = 0.1, use_Paul_Potential = True)
-
-    exit()
-#    A_space = np.linspace(0.67277778, 0.06747453989858264, 6)
-#    b_space = np.linspace(0.67344445, 0.6657915466867125, 6)
-#    dA = A_space[1] - A_space[0]
-#    dB = b_space[0] - b_space[1]
-#    print(f"dA={dA}, dB={dB}")
-#    titles = open("result_times.txt").readlines()[-40:]
-#    titles = [title.strip().split() for title in titles]
-#    print("\n"*100)
-#    print(*titles,sep='\n')
-#    print("\n"*10)
-#    for i, A, b, title in zip(range(len(A_space)), A_space, b_space, titles):
-#        title[6] = str(A)
-#        title[11] = str(b)
-#        if A == 0.99:
-#            title[4] = '1'
-#            title[9] = '1'
-#        else:
-#            title[4] = str(A+dA)
-#            title[9] = str(b+dB)
-#        print(' '.join(title))
-#        
+#    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 99 lines
+    start_A, end_A = 1.1, 1.08
+    start_b, end_b = 1.0, 0.8
+    start_Ω, end_Ω = 0.2, 0.23
+    A_space = np.linspace(start_A, end_A, 21)
+    b_space = np.linspace(start_b, end_b, 21)
+    Ω_space = np.linspace(start_Ω, end_Ω, 21)
+    dA = A_space[1] - A_space[0]
+    db = b_space[1] - b_space[0]
+    dΩ = Ω_space[1] - Ω_space[0]
         
-    for A, b in zip(A_space, b_space):
+    for A, b, Ω in zip(A_space, b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(A=round(A, 6), b = round(b, 6))
+        result = master_func_learn_ivp_ode(m = 1.0, A=round(A, 6), b = round(b, 6), Omega = round(Ω, 6), load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
         achieved = result["result"]
         with open("result_times.txt", "a") as f:
-            f.write(f"Time from A = {result['closest_A']:.4f} to {A:.4f}, b = {result['closest_b']:.4f} to {b:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
+            prev_A = A-dA if A != start_A else result['closest_A']
+            prev_b = b-db if b != start_b else result['closest_b']
+            prev_Ω = Ω-dΩ if Ω != start_Ω else result['closest_Omega']
+            f.write(f"Time from A = {prev_A:.4f} to {A:.4f}, b = {prev_b:.4f} to {b:.4f}, Ω = {prev_Ω:.4f} to {Ω:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
     
-    exit()
-
-    for A in np.arange(1.4099, 1.4899, 0.01):
-        start = time()
-        result = master_func_learn_ivp_ode(A=round(A, 6))
-        achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-        with open("result_times.txt", "a") as f:
-            f.write(f"Time from A = {A-0.01:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-            
-    master_func_learn_ivp_ode(A=1.5, load_model = True)
-
-    for A in np.arange(1.1, 2.1, 0.1):
-        master_func_learn_ivp_ode(A=round(A, 6))
-    #    start = time()
-    #    result = master_func_learn_ivp_ode(A=A)
-    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-    #    with open("result_times.txt", "a") as f:
-    #        f.write(f"Time from A = {A-0.1:.2f} to {A:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-    for m in np.arange(1.1, 2.1, 0.1):
-        master_func_learn_ivp_ode(m=round(m, 6))
-    #    start = time()
-    #    result = master_func_learn_ivp_ode(m=m)
-    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-    #    with open("result_times.txt", "a") as f:
-    #        f.write(f"Time from m = {m-0.1:.2f} to {m:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-    for b in np.arange(1., 2.1, 0.1):
-        master_func_learn_ivp_ode(b=round(b, 6))
-    #    start = time()
-    #    result = master_func_learn_ivp_ode(b=b)
-    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-    #    with open("result_times.txt", "a") as f:
-    #        f.write(f"Time from b = {b-0.1:.2f} to {b:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-    for Omega in np.arange(0.3, 1.3, 0.1):
-        master_func_learn_ivp_ode(Omega=round(Omega, 6))
-    #    start = time()
-    #    result = master_func_learn_ivp_ode(Omega=Omega)
-    #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
-    #    with open("result_times.txt", "a") as f:
-    #        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-    
-
-
-
 #../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
 #../movies/trajectory_trap_plus_sech_squared/
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
