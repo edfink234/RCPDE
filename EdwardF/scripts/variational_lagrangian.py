@@ -291,3 +291,13 @@ print("\n✅  m_eff Ẍ + ∂U/∂X = 0   (check passed)")
 # compare directive integration potential with zero'd Lagrangian potential
 diff = sp.simplify(U_from_int - U_eff)
 print("\nDifference between the two U’s:", sp.latex(diff.expand()))
+
+# -----------------------------------------------------------------
+#  Clean 2-nd-order Taylor expansion  U_eff(ξ + s)  at  s = 0
+# -----------------------------------------------------------------
+Xs  = sp.symbols('Xs')                         # dummy series variable
+U_T2 = sp.series(U_from_int.subs({X(t): Xs}), Xs, 0, 3).removeO().expand().cancel()
+U_T2 = U_T2.subs(Xs, X(t))
+print(declutter(sp.multiline_latex(sp.Symbol(r'\text{Taylor Expansion: }'), U_T2, 3)))
+print(U_T2)
+#How do I do this line up above on my `U_eff` to get the same result `2*A0*(56*A + X**2*(-32*A*A0**2 + 35*Omega**2))/105`?

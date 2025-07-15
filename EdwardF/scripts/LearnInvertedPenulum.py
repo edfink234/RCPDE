@@ -112,7 +112,16 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         temp = x - xi
         temp_sech = torch.sech(b * (temp))
         return -(Omega*Omega * x) + (2 * A*b * temp_sech*temp_sech * tanh(b * (temp)))
-       
+    
+    def isclose_zero(x, atol=1e-12):
+        if isinstance(x, np.ndarray):
+            return np.isclose(x, 0.0, atol=atol)
+        elif 'torch' in str(type(x)):
+            import torch
+            return torch.isclose(x, torch.tensor(0.0, dtype=x.dtype, device=x.device), atol=atol)
+        else:
+            return abs(x) < atol
+
     # Define the effective potential function
     def Veff_plus_trap(x, xi=0):
         """
@@ -131,10 +140,11 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             Evaluated potential energy at each position.
         """
         X = x - xi
-        exp_term = np.exp(2 * b * X) - 1
+        module = torch if isinstance(x, torch.Tensor) else np
+        exp_term = module.exp(2 * b * X) - 1
 
         # Avoid divide-by-zero instability
-        exp_term = np.where(exp_term == 0, 1e-12, exp_term)
+        exp_term = module.where(isclose_zero(exp_term), 1e-12, exp_term)
 
         # Compute each term
         term1 = -256 * A * b**2 * X / exp_term**5
@@ -164,10 +174,11 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             Evaluated force at each position.
         """
         X = x - xi
-        exp_term = np.exp(2 * b * X) - 1
+        module = torch if isinstance(x, torch.Tensor) else np
+        exp_term = module.exp(2 * b * X) - 1
 
         # Avoid divide-by-zero and warnings
-        exp_term = np.where(exp_term == 0, 1e-12, exp_term)
+        exp_term = module.where(isclose_zero(exp_term), 1e-12, exp_term)
 
         # Compute each term
         term1 = -2560 * A * b**3 * X / exp_term**6
@@ -592,7 +603,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     # Training loop
     global learning_rate
     learning_rate = 1e-4
-    Algorithm = "adamax"
+    Algorithm = "brute force"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     optimizer = None
     if Algorithm == "lbfgs":
@@ -619,7 +630,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1)
+            brute_force(fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -738,7 +749,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         
         plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
         plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-        plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+        if not use_Variational_Potential:
+            plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
         plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
     #    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
     #    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
@@ -878,26 +890,29 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         return {"result": "target achieved", "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega}
 
 if __name__=='__main__':
-#    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 99 lines
-    start_A, end_A = 1.1, 1.08
-    start_b, end_b = 1.0, 0.8
-    start_Ω, end_Ω = 0.2, 0.23
-    A_space = np.linspace(start_A, end_A, 21)
-    b_space = np.linspace(start_b, end_b, 21)
-    Ω_space = np.linspace(start_Ω, end_Ω, 21)
-    dA = A_space[1] - A_space[0]
-    db = b_space[1] - b_space[0]
-    dΩ = Ω_space[1] - Ω_space[0]
-        
-    for A, b, Ω in zip(A_space, b_space, Ω_space):
-        start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A=round(A, 6), b = round(b, 6), Omega = round(Ω, 6), load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
-        achieved = result["result"]
-        with open("result_times.txt", "a") as f:
-            prev_A = A-dA if A != start_A else result['closest_A']
-            prev_b = b-db if b != start_b else result['closest_b']
-            prev_Ω = Ω-dΩ if Ω != start_Ω else result['closest_Omega']
-            f.write(f"Time from A = {prev_A:.4f} to {A:.4f}, b = {prev_b:.4f} to {b:.4f}, Ω = {prev_Ω:.4f} to {Ω:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
+#    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 120 lines
+#    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "xi_model_IC_2_point_438068_1_point_08_0_point_8_1_point_0_0_point_23_.pth", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
+    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
+
+#    start_A, end_A = 1.1, 1.08
+#    start_b, end_b = 1.0, 0.8
+#    start_Ω, end_Ω = 0.2, 0.23
+#    A_space = np.linspace(start_A, end_A, 21)
+#    b_space = np.linspace(start_b, end_b, 21)
+#    Ω_space = np.linspace(start_Ω, end_Ω, 21)
+#    dA = A_space[1] - A_space[0]
+#    db = b_space[1] - b_space[0]
+#    dΩ = Ω_space[1] - Ω_space[0]
+#        
+#    for A, b, Ω in zip(A_space, b_space, Ω_space):
+#        start = time()
+#        result = master_func_learn_ivp_ode(m = 1.0, A=round(A, 6), b = round(b, 6), Omega = round(Ω, 6), load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
+#        achieved = result["result"]
+#        with open("result_times.txt", "a") as f:
+#            prev_A = A-dA if A != start_A else result['closest_A']
+#            prev_b = b-db if b != start_b else result['closest_b']
+#            prev_Ω = Ω-dΩ if Ω != start_Ω else result['closest_Omega']
+#            f.write(f"Time from A = {prev_A:.4f} to {A:.4f}, b = {prev_b:.4f} to {b:.4f}, Ω = {prev_Ω:.4f} to {Ω:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
     
 #../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
 #../movies/trajectory_trap_plus_sech_squared/

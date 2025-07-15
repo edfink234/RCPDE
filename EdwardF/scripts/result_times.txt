@@ -86,7 +86,7 @@ Time from A = 0.7023076923076922 to 0.6938461538461538 b = 0.7807692307692308 to
 Time from A = 0.6938461538461538 to 0.6853846153846154 b = 0.7746153846153846 to 0.7684615384615384 = 795.92 with learning rate 0.000125, target achieved
 Time from A = 0.6853846153846154 to 0.676923076923077 b = 0.7684615384615385 to 0.7623076923076924 = 1012.40 with learning rate 0.000125, target achieved
 Time from A = 0.6769230769230768 to 0.6684615384615384 b = 0.7623076923076924 to 0.7561538461538462 = 1815.88 with learning rate 0.000125, target achieved
-Time from A = 0.6684615384615384 to 0.66 b = 0.7561538461538462 to 0.75 = 2129.84 with learning rate 0.000125, target achievedTime from A = 0.66 to 0.66, b = 0.74 to 0.74, = 24.35 with learning rate 0.000125, target achieved
+Time from A = 0.6684615384615384 to 0.66 b = 0.7561538461538462 to 0.75 = 2129.84 with learning rate 0.000125, target achieved
 Time from A = 0.66 to 0.655, b = 0.75 to 0.745, = 8577.24 with learning rate 0.000125, target achieved
 Time from A = 0.655 to 0.6572, b = 0.745 to 0.7356, = 7824.01 with learning rate 0.000125, target achieved
 Time from A = 0.6572 to 0.6594, b = 0.7356 to 0.7261, = 24.6484 with learning rate 0.000125, target achieved
