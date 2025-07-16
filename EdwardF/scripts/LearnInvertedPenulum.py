@@ -15,11 +15,14 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
     ICsFile = '../dataFiles/ICsVariational.txt' if use_Variational_Potential else '../dataFiles/ICs.txt'
+    A_times_b = A*b
+    Omega_squared = Omega*Omega
+    b_squared = b*b
 
     def sech(x):
         if isinstance(x, torch.Tensor):
@@ -140,21 +143,32 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             Evaluated potential energy at each position.
         """
         X = x - xi
+        X_squared = X*X
+        U_taylor = (
+            - (64 * A_times_b*b_squared / 105) * X_squared
+            + (16 * A_times_b / 15)
+            + (2 * Omega_squared * b / 3) * X_squared
+        )
         module = torch if isinstance(x, torch.Tensor) else np
         exp_term = module.exp(2 * b * X) - 1
 
         # Avoid divide-by-zero instability
         exp_term = module.where(isclose_zero(exp_term), 1e-12, exp_term)
+        exp_term_squared = exp_term*exp_term
+        exp_term_fourth = exp_term_squared*exp_term_squared
 
         # Compute each term
-        term1 = -256 * A * b**2 * X / exp_term**5
-        term2 = -256 * A * b * (2 * b * X - 1) / exp_term**3
-        term3 = -128 * A * b * (5 * b * X - 1) / exp_term**4
-        term4 = -32  * A * b * (12 * b * X - 13) / (3 * exp_term**2)
-        term5 =  32  * A * b / (3 * exp_term)
-        trap  =  2 * Omega**2 * b * X**2 / 3
+        term1 = (-256 * A*b_squared * X) / (exp_term_fourth*exp_term)
+        term2 = (-256 * A_times_b * (2 * b * X - 1)) / (exp_term_squared*exp_term)
+        term3 = (-128 * A_times_b * (5 * b * X - 1)) / (exp_term_fourth)
+        term4 = (-32  * A_times_b * (12 * b * X - 13)) / (3 * exp_term_squared)
+        term5 =  (32  * A_times_b) / (3 * exp_term)
+        trap  =  (2 * Omega_squared * b * X_squared) / 3
 
-        return term1 + term2 + term3 + term4 + term5 + trap
+        U_eff = term1 + term2 + term3 + term4 + term5 + trap
+        # Apply patch
+        use_taylor = (module.abs(X) < epsilon)
+        return np.where(use_taylor, U_taylor, U_eff)
 
     # Define the effective force function
     def Force_eff_plus_trap(x, xi=0):
@@ -174,6 +188,11 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             Evaluated force at each position.
         """
         X = x - xi
+        #F_{\text{Taylor}}(\mathcal{X}) = & \dfrac{128 A \mathcal{A}_0^{3} \mathcal{X}}{105} - \dfrac{4 \Omega^{2} \mathcal{A}_0 \mathcal{X}}{3}
+        F_taylor = (
+              ((128 * A_times_b*b_squared * X) / 105)
+            - ((4 * Omega_squared * b * X) / 3)
+        )
         module = torch if isinstance(x, torch.Tensor) else np
         exp_term = module.exp(2 * b * X) - 1
 
@@ -189,7 +208,11 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         term6 =  64   * A * b**2 / (3 * exp_term)
         trap  = -4/3 * b * Omega**2 * x
 
-        return term1 + term2 + term3 + term4 + term5 + term6 + trap
+        Feff = term1 + term2 + term3 + term4 + term5 + term6 + trap
+        # Apply patch
+        use_taylor = (module.abs(X) < epsilon)
+        return np.where(use_taylor, F_taylor, F_eff)
+
         
     potential = Veff_plus_trap if use_Variational_Potential else potential
     force = Force_eff_plus_trap if use_Variational_Potential else force
@@ -630,7 +653,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1)
+            brute_force(fine = False, coolingRate = 0.999, anneal = False, initial_temp = 100)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -746,11 +769,10 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             for i in range(len(t_test_values)):
                 writer.writerow([t_values[i], xi_values[i].item(), x_values[i].item(), v_values[i].item()])
         print("Data saved to CSV.")
-        
+#        print("x_values, v_values, a_values = ", x_values, v_values, a_values, sep='\n')
         plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
         plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-        if not use_Variational_Potential:
-            plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+        plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
         plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
     #    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
     #    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01

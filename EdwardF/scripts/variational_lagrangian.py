@@ -259,7 +259,13 @@ U_from_int = (U_from_int.subs(A0*X(t), s)
                 .apart(z)
                 .subs({z: sp.exp(2*A0*X(t)), s: A0*X(t)}))
 print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{eff}}'), U_from_int, 3)))
-
+F_Ueff = -sp.diff(U_from_int, X(t))
+print("\nF_eff(𝓧) = -∂U_eff(𝓧)/∂𝓧:")
+print(declutter(sp.multiline_latex(sp.Symbol(r'F_{\text{eff}}(\mathcal{X})'), F_Ueff, 3)))
+assert(F_Ueff.equals(Xddot_pf*m_eff))
+print("\nF_eff(𝓧) = m_eff(𝓧)*(∂^2/∂t^2)(𝓧)")
+F_Ueff = sp.expand(Xddot_pf*m_eff)
+print(declutter(sp.multiline_latex(sp.Symbol(r'F_{\text{eff}}(\mathcal{X})'), F_Ueff, 3)))
 
 # set EVERY explicit time-derivative to zero
 zeros = {sp.diff(X(t), t): 0,
@@ -298,6 +304,9 @@ print("\nDifference between the two U’s:", sp.latex(diff.expand()))
 Xs  = sp.symbols('Xs')                         # dummy series variable
 U_T2 = sp.series(U_from_int.subs({X(t): Xs}), Xs, 0, 3).removeO().expand().cancel()
 U_T2 = U_T2.subs(Xs, X(t))
-print(declutter(sp.multiline_latex(sp.Symbol(r'\text{Taylor Expansion: }'), U_T2, 3)))
-print(U_T2)
-#How do I do this line up above on my `U_eff` to get the same result `2*A0*(56*A + X**2*(-32*A*A0**2 + 35*Omega**2))/105`?
+print("\nU_Taylor(𝓧):")
+print(declutter(sp.multiline_latex(sp.Symbol(r'U_{\text{Taylor}}(\mathcal{X})'), U_T2, 3)))
+
+print("\nF_Taylor(𝓧) = -∂U_Taylor(𝓧)/∂𝓧:")
+F_T2 = -sp.diff(U_T2, X(t))
+print(declutter(sp.multiline_latex(sp.Symbol(r'F_{\text{Taylor}}(\mathcal{X})'), F_T2, 3)))
