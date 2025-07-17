@@ -61,7 +61,41 @@ ax[1].set_xlabel(r'$x$ or $\mathcal{X}$')
 fig.suptitle(r'$V(x)\,$ vs $\,U_{\mathrm{eff}}(\mathcal{X})$ for $\Omega = 0.2$, $A = b = \mathcal{A}_0 = 1$')
 plt.tight_layout()
 plt.savefig("U_eff_vs_V_ext.pdf")
+plt.close()
 sys("open U_eff_vs_V_ext.pdf")
+
+# ---------------- U_eff(𝓧) near 𝓧 = ξ ----------------
+# plotting
+fig, ax = plt.subplots(2, 1, figsize=(6, 8), sharex=True)
+# Define tight grid near X = 0
+x_zoom = np.linspace(-10, 10, 20000)
+U_zoom = U_eff(x_zoom)
+
+ax[0].plot(x_zoom, U_zoom, lw=2, color='darkred')
+ax[0].set_ylabel(r'$U_{\mathrm{eff}}(\mathcal{X})$')
+ax[0].set_title(r'$U_{\mathrm{eff}}(\mathcal{X})$')
+ax[0].grid(True)
+
+x_zoom_squared = x_zoom*x_zoom
+U_taylor = (
+    - (64 * A_val*A0*A0*A0 * x_zoom_squared) / 105
+    + ((16 * A_val*A0) / 15)
+    + ((2 * Ω*Ω*A0 * x_zoom_squared) / 3)
+)
+epsilon = 1e-2
+use_taylor = (np.abs(x_zoom) < epsilon)
+U_patch = np.where(use_taylor, U_taylor, U_eff(x_zoom))
+ax[1].plot(x_zoom, U_patch, lw=2, color='darkgreen')
+ax[1].set_ylabel(r'$U_{\mathrm{patched}}(\mathcal{X})$')
+ax[1].set_title(r'$U_{\mathrm{patched}}(\mathcal{X})$ with $\epsilon = 10^{-2}$')
+ax[1].set_xlabel(r'$\mathcal{X}$')
+ax[1].grid(True)
+plt.suptitle(r'$U_{\mathrm{eff}}(\mathcal{X})$ vs $U_{\mathrm{patched}}(\mathcal{X})$''\n'r'$\left(N=2\times 10^4 \: \mathrm{points}, \: U_{\mathrm{Taylor}}(\mathcal{X}) \: \mathrm{at} \: |\mathcal{X}| < \epsilon\right)$', fontsize=12)
+
+plt.tight_layout()
+plt.savefig("U_eff_unpatched_vs_patched.pdf")
+plt.close()
+sys("open U_eff_unpatched_vs_patched.pdf")
 
 # ---------------- Fixed variational potential parameters ----------------
 Ω_var = 0.2   # omega in U_eff
@@ -89,7 +123,15 @@ xgrid = np.linspace(-10, 10, 1001)
 U_ref = U_eff_fixed(xgrid)
 valid_mask = np.isfinite(U_ref)
 x_fit = xgrid[valid_mask]
-U_fit = U_ref[valid_mask]
+x_zoom_squared = x_fit*x_fit
+U_taylor = (
+    - (64 * A_val*A0*A0*A0 * x_zoom_squared) / 105
+    + ((16 * A_val*A0) / 15)
+    + ((2 * Ω*Ω*A0 * x_zoom_squared) / 3)
+)
+epsilon = 1e-2
+use_taylor = (np.abs(x_fit) < epsilon)
+U_fit = np.where(use_taylor, U_taylor, U_ref[valid_mask])
 
 # Fit external potential parameters (A, b, Ω) to U_eff
 popt, _ = curve_fit(V_ext_fit, x_fit, U_fit, p0=[1.0, 1.0, 0.2])
@@ -103,14 +145,15 @@ print(f"Mean squared error of fit: {mse}")
 
 # ------------------------- Plotting ------------------------------------
 fig3, ax3 = plt.subplots(figsize=(6, 4))
-ax3.plot(xgrid, U_ref, label=r'$U_{\mathrm{eff}}(\mathcal{X})$', lw=2)
+ax3.plot(xgrid, U_ref, label=r'$U_{\mathrm{patched}}(\mathcal{X})$', lw=2)
 ax3.plot(xgrid, V_best, '--', label=fr'$V(x)$ ($A={A_fit:.2f}$, $b={b_fit:.2f}$, $\Omega={Ω_fit:.2f}$)', lw=2)
 ax3.set_xlabel(r'$x$ or $\mathcal{X}$')
 ax3.set_ylabel('Potential energy')
-ax3.set_title(r'Fit of $V$ to $U_{\mathrm{eff}}$ (fixed to $\mathcal{A}_0=1$, $A=1$, $\Omega=0.2$)'f", MSE = {sci_to_latex(f'{mse:.2e}')}")
+ax3.set_title(r'Fit of $V$ to $U_{\mathrm{patched}}$ (fixed to $\mathcal{A}_0=1$, $A=1$, $\Omega=0.2$)'f",\nMSE = {sci_to_latex(f'{mse:.2e}')}")
 ax3.legend()
 plt.tight_layout()
 plt.savefig("V_ext_fit_vs_U_eff.pdf")
+plt.close()
 sys("open V_ext_fit_vs_U_eff.pdf")
 
 

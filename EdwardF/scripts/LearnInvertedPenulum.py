@@ -193,7 +193,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
               ((128 * A_times_b*b_squared * X) / 105)
             - ((4 * Omega_squared * b * X) / 3)
         )
-        module = torch if isinstance(x, torch.Tensor) else np
+        module = torch if isinstance(X, torch.Tensor) else np
         exp_term = module.exp(2 * b * X) - 1
 
         # Avoid divide-by-zero and warnings
@@ -211,7 +211,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         Feff = term1 + term2 + term3 + term4 + term5 + term6 + trap
         # Apply patch
         use_taylor = (module.abs(X) < epsilon)
-        return np.where(use_taylor, F_taylor, F_eff)
+        return module.where(use_taylor, F_taylor, Feff)
 
         
     potential = Veff_plus_trap if use_Variational_Potential else potential
@@ -625,8 +625,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
     # Training loop
     global learning_rate
-    learning_rate = 1e-4
-    Algorithm = "brute force"
+    learning_rate = 1e-6
+    Algorithm = "asgd"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     optimizer = None
     if Algorithm == "lbfgs":
@@ -653,7 +653,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = False, coolingRate = 0.999, anneal = False, initial_temp = 100)
+            brute_force(fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -914,7 +914,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 if __name__=='__main__':
 #    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 120 lines
 #    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "xi_model_IC_2_point_438068_1_point_08_0_point_8_1_point_0_0_point_23_.pth", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
-    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
+    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True)
 
 #    start_A, end_A = 1.1, 1.08
 #    start_b, end_b = 1.0, 0.8
