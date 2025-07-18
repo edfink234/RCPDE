@@ -15,7 +15,7 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adamw"):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -622,12 +622,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ans = input("Proceed? (y/n): ")
         if ans.lower() != 'y':
             exit()
-
-    # Training loop
-    global learning_rate
-    learning_rate = 1e-6
-    Algorithm = "asgd"
-    #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    
     optimizer = None
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -640,12 +635,15 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     elif Algorithm == "adafactor":
         optimizer = optim.Adafactor(model.parameters(), lr=learning_rate)
     elif Algorithm == "adamw":
-        optimizer = optim.Adafactor(model.parameters(), lr=learning_rate)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay = weight_decay)
     elif Algorithm == "asgd":
         optimizer = optim.ASGD(model.parameters(), lr=learning_rate)
     elif Algorithm == "sparse adam":
         optimizer = optim.SparseAdam(model.parameters(), lr=learning_rate)
-
+    
+    scheduler = None
+    if lrScheduler:
+        scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=1e-6, max_lr=1e-4, step_size_up=500)
     plot_progress = False
     epoch = 0
     start_time = time()
@@ -694,6 +692,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                     optimizer.step(closure)
                 else:
                     optimizer.step()
+                if lrScheduler:
+                    scheduler.step()
                 
                 print(f'Epoch {epoch}, Loss: {loss_value.item()}')
 
@@ -914,7 +914,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 if __name__=='__main__':
 #    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 120 lines
 #    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "xi_model_IC_2_point_438068_1_point_08_0_point_8_1_point_0_0_point_23_.pth", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
-    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True)
+    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.01, lrScheduler = True, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adamw")
 
 #    start_A, end_A = 1.1, 1.08
 #    start_b, end_b = 1.0, 0.8
