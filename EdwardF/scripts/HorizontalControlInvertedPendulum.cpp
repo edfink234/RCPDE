@@ -1083,7 +1083,7 @@ struct Board
     void simplifyPN_Helper(std::vector<std::string>& expression)
     {
         bool simplified = true;
-        bool isFloat1, isFloat2;
+        bool isFloat1, isFloat2, isConst1, isConst2;
         while (simplified)
         {
             simplified = false;
@@ -1135,9 +1135,20 @@ struct Board
                             }
                         }
                         
+                        isConst1 = is_const(expression[i+1]);
+                        isConst2 = is_const(expression[i+2]);
+                        
+                        if ((isConst1 && isConst2) && ((expression[i+1].find("nan") != std::string::npos) || (expression[i+2].find("nan") != std::string::npos))) //binary_op nan x = binary_op x nan = nan
+                        {
+                            //puts("hi 570");
+                            expression[i] = "nan";
+                            expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
+                            simplified = true;
+                            break;
+                        }
                         else if (expression[i] == "-")
                         {
-                            if ((is_const(expression[i+1]) && is_const(expression[i+2])) && (expression[i+1] == expression[i+2])) //- x x => 0
+                            if ((isConst1 && isConst2) && (expression[i+1] == expression[i+2])) //- x x => 0
                             {
                                 expression[i] = "0";
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
@@ -1151,7 +1162,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "0" && is_const(expression[i+1])) //- x 0 -> x
+                            else if (expression[i+2] == "0" && isConst1) //- x 0 -> x
                             {
                                 expression[i] = expression[i+1];
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
@@ -1159,10 +1170,9 @@ struct Board
                                 break;
                             }
                         }
-                        
                         else if (expression[i] == "*")
                         {
-                            if (expression[i+1] == "0" && is_const(expression[i+2])) //* 0 x -> 0
+                            if (expression[i+1] == "0" && isConst2) //* 0 x -> 0
                             {
                                 //puts("hi 131");
                                 expression[i] = "0";
@@ -1170,7 +1180,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "0" && is_const(expression[i+1])) //* x 0 -> 0
+                            else if (expression[i+2] == "0" && isConst1) //* x 0 -> 0
                             {
                                 //puts("hi 139");
                                 expression[i] = "0";
@@ -1178,7 +1188,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+1] == "1" && is_const(expression[i+2])) //* 1 x -> x
+                            else if (expression[i+1] == "1" && isConst2) //* 1 x -> x
                             {
                                 //puts("hi 147");
                                 expression[i] = expression[i+2];
@@ -1186,7 +1196,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "1" && is_const(expression[i+1])) //* x 1 -> x
+                            else if (expression[i+2] == "1" && isConst1) //* x 1 -> x
                             {
                                 //puts("hi 155");
                                 expression[i] = expression[i+1];
@@ -1195,10 +1205,9 @@ struct Board
                                 break;
                             }
                         }
-                        
                         else if (expression[i] == "+")
                         {
-                            if (expression[i+1] == "0" && is_const(expression[i+2])) //+ 0 x -> x
+                            if (expression[i+1] == "0" && isConst2) //+ 0 x -> x
                             {
                                 //puts("hi 167");
                                 expression[i] = expression[i+2];
@@ -1206,7 +1215,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "0" && is_const(expression[i+1])) //+ x 0 -> x
+                            else if (expression[i+2] == "0" && isConst1) //+ x 0 -> x
                             {
                                 //puts("hi 175");
                                 expression[i] = expression[i+1];
@@ -1215,10 +1224,9 @@ struct Board
                                 break;
                             }
                         }
-                        
                         else if (expression[i] == "/")
                         {
-                            if (expression[i+1] == "0" && is_const(expression[i+2])) // / 0 x -> 0
+                            if (expression[i+1] == "0" && isConst2) // / 0 x -> 0
                             {
                                 //puts("hi 187");
                                 expression[i] = "0";
@@ -1226,7 +1234,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "1" && is_const(expression[i+1])) // / x 1 -> x
+                            else if (expression[i+2] == "1" && isConst1) // / x 1 -> x
                             {
                                 //puts("hi 195");
                                 expression[i] = expression[i+1];
@@ -1234,7 +1242,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (is_const(expression[i+1]) && is_const(expression[i+2]) && (expression[i+1] == expression[i+2])) // / x x -> 1
+                            else if (isConst1 && isConst2 && (expression[i+1] == expression[i+2])) // / x x -> 1
                             {
                                 //puts("hi 203");
                                 expression[i] = "1";
@@ -1243,10 +1251,9 @@ struct Board
                                 break;
                             }
                         }
-                        
                         else if (expression[i] == "^")
                         {
-                            if (expression[i+2] == "0" && is_const(expression[i+1])) // ^ x 0 -> 1
+                            if (expression[i+2] == "0" && isConst1) // ^ x 0 -> 1
                             {
                                 //puts("hi 223");
                                 expression[i] = "1";
@@ -1254,7 +1261,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+1] == "0" && is_const(expression[i+2])) // ^ 0 x -> 0 (x > 0)
+                            else if (expression[i+1] == "0" && isConst2) // ^ 0 x -> 0 (x > 0)
                             {
                                 //puts("hi 215");
                                 expression[i] = "0";
@@ -1262,7 +1269,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+1] == "1" && is_const(expression[i+2])) // ^ 1 x -> 1
+                            else if (expression[i+1] == "1" && isConst2) // ^ 1 x -> 1
                             {
                                 //puts("hi 231");
                                 expression[i] = "1";
@@ -1270,7 +1277,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i+2] == "1" && is_const(expression[i+1])) // ^ x 1 -> x
+                            else if (expression[i+2] == "1" && isConst1) // ^ x 1 -> x
                             {
                                 //puts("hi 239");
                                 expression[i] = expression[i+1];
@@ -1279,7 +1286,6 @@ struct Board
                                 break;
                             }
                         }
-                        
                     }
                     
                     else if (is_unary(expression[i]) && isFloat(expression[i+1]))
@@ -1364,6 +1370,8 @@ struct Board
                             simplified = true;
                             break;
                         }
+                        //TODO: Add 0 ~ -> 0
+                        //TODO: Add inf ~ -> -inf
                         else if (expression[i] == "exp" && (expression[i+1] == "ln" || expression[i+1] == "log"))
                         {
                             //puts("hi 361");
@@ -1418,7 +1426,7 @@ struct Board
             }
         }
     }
-    
+
     void simplifyPN(std::vector<std::string>& expression)
     {
         size_t size_before, size_after;
@@ -1742,7 +1750,7 @@ struct Board
     void simplifyRPN_Helper(std::vector<std::string>& expression)
     {
         bool simplified = true;
-        bool isFloat1, isFloat2;
+        bool isFloat1, isFloat2, isConst1, isConst2;
         while (simplified)
         {
             simplified = false;
@@ -1794,16 +1802,27 @@ struct Board
                             }
                         }
                         
+                        isConst1 = is_const(expression[i-1]);
+                        isConst2 = is_const(expression[i-2]);
+                        
+                        if ((isConst1 && isConst2) && ((expression[i-1].find("nan") != std::string::npos) || (expression[i-2].find("nan") != std::string::npos))) //x nan binary_op = nan x binary_op = nan
+                        {
+                            //puts("hi 549");
+                            expression[i] = "nan";
+                            expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
+                            simplified = true;
+                            break;
+                        }
                         else if (expression[i] == "-")
                         {
-                            if ((is_const(expression[i-1]) && is_const(expression[i-2])) && (expression[i-1] == expression[i-2])) //x x - => 0
+                            if ((isConst1 && isConst2) && (expression[i-1] == expression[i-2])) //x x - => 0
                             {
                                 expression[i] = "0";
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-2] == "0" && is_const(expression[i-1])) //"0 x -" -> "x ~"
+                            else if (expression[i-2] == "0" && isConst1) //"0 x -" -> "x ~"
                             {
                                 expression[i] = "~";
                                 expression.erase(expression.begin() + i - 2);
@@ -1818,10 +1837,10 @@ struct Board
                                 break;
                             }
                         }
-                        
+
                         else if (expression[i] == "*")
                         {
-                            if (expression[i-2] == "0" && is_const(expression[i-1])) //"0 x *" -> "0"
+                            if (expression[i-2] == "0" && isConst1) //"0 x *" -> "0"
                             {
                                 //puts("hi 131");
                                 expression[i] = "0";
@@ -1829,7 +1848,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-1] == "0" && is_const(expression[i-2])) //"x 0 *" -> "0"
+                            else if (expression[i-1] == "0" && isConst2) //"x 0 *" -> "0"
                             {
                                 //puts("hi 139");
                                 expression[i] = "0";
@@ -1837,7 +1856,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-2] == "1" && is_const(expression[i-1])) //"1 x *" -> "x"
+                            else if (expression[i-2] == "1" && isConst1) //"1 x *" -> "x"
                             {
                                 //puts("hi 147");
                                 expression[i] = expression[i-1];
@@ -1845,7 +1864,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-1] == "1" && is_const(expression[i-2])) //"x 1 *" -> "x"
+                            else if (expression[i-1] == "1" && isConst2) //"x 1 *" -> "x"
                             {
                                 //puts("hi 155");
                                 expression[i] = expression[i-2];
@@ -1854,10 +1873,10 @@ struct Board
                                 break;
                             }
                         }
-                        
+
                         else if (expression[i] == "+")
                         {
-                            if (expression[i-2] == "0" && is_const(expression[i-1])) //"0 x +" -> "x"
+                            if (expression[i-2] == "0" && isConst1) //"0 x +" -> "x"
                             {
                                 //puts("hi 167");
                                 expression[i] = expression[i-1];
@@ -1865,7 +1884,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-1] == "0" && is_const(expression[i-2])) //"x 0 +" -> "x"
+                            else if (expression[i-1] == "0" && isConst2) //"x 0 +" -> "x"
                             {
                                 //puts("hi 175");
                                 expression[i] = expression[i-2];
@@ -1874,10 +1893,10 @@ struct Board
                                 break;
                             }
                         }
-                        
+
                         else if (expression[i] == "/")
                         {
-                            if (expression[i-2] == "0" && is_const(expression[i-1])) // "0 x /" -> "0"
+                            if (expression[i-2] == "0" && isConst1) // "0 x /" -> "0"
                             {
                                 //puts("hi 187");
                                 expression[i] = "0";
@@ -1885,7 +1904,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-1] == "1" && is_const(expression[i-2])) // "x 1 /" -> "x"
+                            else if (expression[i-1] == "1" && isConst2) // "x 1 /" -> "x"
                             {
                                 //puts("hi 195");
                                 expression[i] = expression[i-2];
@@ -1893,7 +1912,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (is_const(expression[i-1]) && is_const(expression[i-2]) && (expression[i-1] == expression[i-2])) // "x x /" -> "1"
+                            else if (isConst1 && isConst2 && (expression[i-1] == expression[i-2])) // "x x /" -> "1"
                             {
                                 //puts("hi 203");
                                 expression[i] = "1";
@@ -1902,10 +1921,10 @@ struct Board
                                 break;
                             }
                         }
-                        
+
                         else if (expression[i] == "^")
                         {
-                            if (expression[i-1] == "0" && is_const(expression[i-2])) // "x 0 ^" -> "1"
+                            if (expression[i-1] == "0" && isConst2) // "x 0 ^" -> "1"
                             {
                                 //puts("hi 223");
                                 expression[i] = "1";
@@ -1913,7 +1932,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-2] == "0" && is_const(expression[i-1])) // "0 x ^" -> "0" (x > 0)
+                            else if (expression[i-2] == "0" && isConst1) // "0 x ^" -> "0" (x > 0)
                             {
                                 //puts("hi 215");
                                 expression[i] = "0";
@@ -1921,7 +1940,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-2] == "1" && is_const(expression[i-1])) // "1 x ^" -> "1"
+                            else if (expression[i-2] == "1" && isConst1) // "1 x ^" -> "1"
                             {
                                 //puts("hi 231");
                                 expression[i] = "1";
@@ -1929,7 +1948,7 @@ struct Board
                                 simplified = true;
                                 break;
                             }
-                            else if (expression[i-1] == "1" && is_const(expression[i-2])) // "x 1 ^" -> "x"
+                            else if (expression[i-1] == "1" && isConst2) // "x 1 ^" -> "x"
                             {
                                 //puts("hi 239");
                                 expression[i] = expression[i-2];
@@ -2022,6 +2041,7 @@ struct Board
                             simplified = true;
                             break;
                         }
+                        //TODO: Add 0 ~ -> 0
                         else if (expression[i] == "exp" && (expression[i-1] == "ln" || expression[i-1] == "log"))
                         {
                             //puts("hi 360");
@@ -2076,7 +2096,7 @@ struct Board
             }
         }
     }
-    
+
     void simplifyRPN(std::vector<std::string>& expression)
     {
         size_t size_before, size_after;
@@ -6716,9 +6736,9 @@ int main(int argc, char* argv[])
     DataRow new_result;
     constexpr double time = 10000;
 
-//    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 12 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
+    new_result = RandomSearch(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 13 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/);
 //    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 6 /*fixed depth of generated solutions*/, "postfix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("0.967785 100.000000 x0 * cos cos ~ acos /") /*seed expression for simulated annealing*/);
-    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 10 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("asin arccos - 1.570796 sin cos tanh ~ cos ^ 100.000000 tanh x0") /*seed expression for simulated annealing*/);
+//    new_result = SimulatedAnnealing(createLinspaceMatrix(1000, 1, {0.0f}, {InvertedPendulum::T}) /*data used to solve differential equation*/, 10 /*fixed depth of generated solutions*/, "prefix" /*expression representation*/, "LevenbergMarquardt" /*fit method if expression contains const tokens*/, 5 /*number of fit iterations*/, "autodiff" /*method for computing the gradient*/, true /*cache*/, time /*time to run the algorithm in seconds*/, 0 /*num threads*/, true /*`const_tokens`: whether to include const tokens {0, 1, 2, 4}*/, 1.0e-5f /*lower limit for variance of solution*/, 0.01 /*upper limit for variance of solution*/, true /*whether to include "const" token to be optimized, though `const_tokens` must be true as well*/, split("asin arccos - 1.570796 sin cos tanh ~ cos ^ 100.000000 tanh x0") /*seed expression for simulated annealing*/);
     
     
     return 0;
