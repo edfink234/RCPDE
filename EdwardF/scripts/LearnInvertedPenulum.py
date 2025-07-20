@@ -15,7 +15,7 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adamw", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adamw", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -23,7 +23,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     A_times_b = A*b
     Omega_squared = Omega*Omega
     b_squared = b*b
-
     def sech(x):
         if isinstance(x, torch.Tensor):
             return 1 / torch.cosh(x)
@@ -627,7 +626,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate, max_iter=20, history_size=50)
     elif Algorithm == "adam":
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate, amsgrad = amsgrad)
     elif Algorithm == "sgd":
         optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     elif Algorithm == "adamax":
@@ -635,7 +634,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     elif Algorithm == "adafactor":
         optimizer = optim.Adafactor(model.parameters(), lr=learning_rate)
     elif Algorithm == "adamw":
-        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay = weight_decay)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay = weight_decay, amsgrad = amsgrad)
     elif Algorithm == "asgd":
         optimizer = optim.ASGD(model.parameters(), lr=learning_rate)
     elif Algorithm == "sparse adam":
@@ -769,7 +768,9 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             for i in range(len(t_test_values)):
                 writer.writerow([t_values[i], xi_values[i].item(), x_values[i].item(), v_values[i].item()])
         print("Data saved to CSV.")
-#        print("x_values, v_values, a_values = ", x_values, v_values, a_values, sep='\n')
+        title_sep = '\n' if use_Variational_Potential else ' '
+
+#        print("x_values[-10:], v_values[-10:], a_values[-10:] = ", x_values[-10:], v_values[-10:], a_values[-10:], sep='\n')
         plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
         plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
         plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
@@ -780,7 +781,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
 
         plt.xlabel('t')
-        plt.title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+        b_symb = r'$\mathcal{A}_0$' if use_Variational_Potential else '$b$'
+        plt.title((r'$U_{\mathrm{patched}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f},{title_sep}{b_symb} = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}")
         plt.legend()
         plt.savefig("trajectory_data.svg")
         system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.pdf trajectory_data.svg")
@@ -807,7 +809,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
             
             plt.xlabel('t')
-            plt.title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+            b_symb = r'$\mathcal{A}_0$' if use_Variational_Potential else '$b$'
+            plt.title((r'$U_{\mathrm{patched}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f},{title_sep}{b_symb} = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}")
             plt.legend()
             plt.savefig("trajectory_data.svg")
             system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.pdf trajectory_data.svg")
@@ -839,8 +842,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
         ax.legend()
-        ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
-
+        b_symb = r'$\mathcal{A}_0$' if use_Variational_Potential else '$b$'
+        ax.set_title((r'$U_{\mathrm{patched}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f},{title_sep}{b_symb} = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
         # Initialization function
         def init():
     #        gold_dot.set_data([], [])
@@ -855,7 +858,8 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             dot.set_data([x_values[i]], [potential(x_values[i], xi_values[i])])
             curve.set_data(x_range, y_values)
     #        gold_dot.set_data([x_star], [potential(x_star, xi_values[i])])
-            ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.3f}, $b$ = {b:.3f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+            b_symb = r'$\mathcal{A}_0$' if use_Variational_Potential else '$b$'
+            ax.set_title((r'$U_{\mathrm{patched}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f},{title_sep}{b_symb} = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
             if movie_x_lims:
                 ax.set_xlim(movie_x_lims)
             if movie_y_lims:
@@ -888,14 +892,16 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             ax.set_xlabel("x")
             ax.set_ylabel("Potential")
             ax.legend()
-            ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
+            b_symb = r'$\mathcal{A}_0$' if use_Variational_Potential else '$b$'
+            ax.set_title((r'$U_{\mathrm{patched}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f},{title_sep}{b_symb} = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
             def update(i):
                 t = (i) * (best_t_value / (N - 1))  # Calculate current time
                 y_values = potential(x_range, -xi_values[i])
                 dot.set_data([-x_values[i]], [potential(-x_values[i], -xi_values[i])])
                 curve.set_data(x_range, y_values)
     #            gold_dot.set_data([x_star], [potential(-x_star, -xi_values[i])])
-                ax.set_title((r'$U_{\mathrm{eff}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
+                b_symb = r'$\mathcal{A}_0$' if use_Variational_Potential else '$b$'
+                ax.set_title((r'$U_{\mathrm{patched}}$: ' if use_Variational_Potential else '') + f"$x_0$ = {-x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f},{title_sep}{b_symb} = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
                 if movie_x_lims:
                     ax.set_xlim(movie_x_lims)
                 if movie_y_lims:
@@ -914,7 +920,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 if __name__=='__main__':
 #    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 120 lines
 #    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "xi_model_IC_2_point_438068_1_point_08_0_point_8_1_point_0_0_point_23_.pth", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
-    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.01, lrScheduler = True, learning_rate = 1, weight_decay = 1e-4, Algorithm = "brute force", fine = True, coolingRate = 0.9999, anneal = False, initial_temp = 100)
+    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.2, lrScheduler = False, learning_rate = 1e-3, weight_decay = 1e-4, Algorithm = "brute force", fine = False, coolingRate = 0.99, anneal = False, initial_temp = .01, amsgrad = True)
 
 #    start_A, end_A = 1.1, 1.08
 #    start_b, end_b = 1.0, 0.8
@@ -941,4 +947,4 @@ if __name__=='__main__':
 #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
 
 #ls -t -r ../movies/trajectory_trap_plus_sech_squared/*mp4 | tail -n 10| xargs
-#ls -t -r ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/*png | tail -n 10 | xargs 
+#ls -t -r ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/*png | tail -n 10 | xargs

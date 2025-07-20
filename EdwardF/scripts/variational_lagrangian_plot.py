@@ -82,15 +82,15 @@ U_taylor = (
     + ((16 * A_val*A0) / 15)
     + ((2 * Ω*Ω*A0 * x_zoom_squared) / 3)
 )
-epsilon = 1e-2
-use_taylor = (np.abs(x_zoom) < epsilon)
+rho = 2e-1
+use_taylor = (np.abs(x_zoom) < rho)
 U_patch = np.where(use_taylor, U_taylor, U_eff(x_zoom))
 ax[1].plot(x_zoom, U_patch, lw=2, color='darkgreen')
 ax[1].set_ylabel(r'$U_{\mathrm{patched}}(\mathcal{X})$')
-ax[1].set_title(r'$U_{\mathrm{patched}}(\mathcal{X})$ with $\epsilon = 10^{-2}$')
+ax[1].set_title(r'$U_{\mathrm{patched}}(\mathcal{X})$ with $\rho = $'+sci_to_latex(f"{rho:.2e}"))
 ax[1].set_xlabel(r'$\mathcal{X}$')
 ax[1].grid(True)
-plt.suptitle(r'$U_{\mathrm{eff}}(\mathcal{X})$ vs $U_{\mathrm{patched}}(\mathcal{X})$''\n'r'$\left(N=2\times 10^4 \: \mathrm{points}, \: U_{\mathrm{Taylor}}(\mathcal{X}) \: \mathrm{at} \: |\mathcal{X}| < \epsilon\right)$', fontsize=12)
+plt.suptitle(r'$U_{\mathrm{eff}}(\mathcal{X})$ vs $U_{\mathrm{patched}}(\mathcal{X})$''\n'r'$\left(N=2\times 10^4 \: \mathrm{points}, \: U_{\mathrm{Taylor}}(\mathcal{X}) \: \mathrm{at} \: |\mathcal{X}| < \rho\right)$', fontsize=12)
 
 plt.tight_layout()
 plt.savefig("U_eff_unpatched_vs_patched.pdf")
@@ -129,8 +129,8 @@ U_taylor = (
     + ((16 * A_val*A0) / 15)
     + ((2 * Ω*Ω*A0 * x_zoom_squared) / 3)
 )
-epsilon = 1e-2
-use_taylor = (np.abs(x_fit) < epsilon)
+rho = 2e-1
+use_taylor = (np.abs(x_fit) < rho)
 U_fit = np.where(use_taylor, U_taylor, U_ref[valid_mask])
 
 # Fit external potential parameters (A, b, Ω) to U_eff
