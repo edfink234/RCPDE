@@ -52,7 +52,25 @@ double timeElapsedSince(T start_time)
 {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start_time).count()/1e9;
 }
-
+float Stof(const std::string& param)
+{
+    try
+    {
+        float val = std::stof(param);
+        return val;
+    }
+    catch (const std::out_of_range&)
+    {
+        if (!param.empty() && param[0] == '-')
+        {
+            return -std::numeric_limits<float>::infinity();
+        }
+        else
+        {
+            return std::numeric_limits<float>::infinity();
+        }
+    }
+}
 //https://medium.com/@ryan_forrester_/c-check-if-string-is-number-practical-guide-c7ba6db2febf
 bool isFloat(const std::string& s)
 {
@@ -387,6 +405,13 @@ public:
     }
 };
 
+void print_container(const std::vector<std::string>& c, int low, int up)
+{
+    for (int i = low; i <= up; i++)
+        std::cout << c[i] << ' ';
+    puts("");
+}
+
 float MSE(const Eigen::VectorXf& actual)
 {
     return actual.squaredNorm() / actual.size();
@@ -398,7 +423,7 @@ float MSE(const Eigen::VectorXf& actual, const Eigen::VectorXf& predicted)
     {
         throw std::invalid_argument("Vectors must be of the same size");
     }
-    return (actual - predicted).squaredNorm() / actual.size();
+    return (actual - predicted).cwiseAbs().squaredNorm();
 }
 
 Eigen::AutoDiffScalar<Eigen::VectorXf> MSE(const Eigen::Vector<Eigen::AutoDiffScalar<Eigen::VectorXf>, Eigen::Dynamic>& actual)
@@ -700,7 +725,7 @@ struct Board
     
     bool is_unary(const std::string& token) const
     {
-        return (std::find(__unary_operators.begin(), __unary_operators.end(), token) != __unary_operators.end());
+        return ((std::find(__unary_operators.begin(), __unary_operators.end(), token) != __unary_operators.end()) || (token == "abs"));
     }
     
     bool is_binary(const std::string& token) const
@@ -1062,6 +1087,12 @@ struct Board
     //            new_expression.erase(new_expression.begin() + op_idx + 1, new_expression.end()); //erase the rest
     //        }
         }
+        else if (expression[low] == "abs") // abs x
+        {
+            new_expression.push_back(expression[low]); // abs
+            int temp = low+1+grasp[low+1];
+            graspSimplifyPrefixHelper(expression, low+1, temp, grasp, new_expression, true); // abs x
+        }
         else
         {
             for (int i = low; i <= up; i++)
@@ -1100,35 +1131,35 @@ struct Board
                         {
                             if (expression[i] == "+")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i+1]) + std::stof(expression[i+2])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i+1]) + Stof(expression[i+2])));
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "-")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i+1]) - std::stof(expression[i+2])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i+1]) - Stof(expression[i+2])));
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "*")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i+1]) * std::stof(expression[i+2])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i+1]) * Stof(expression[i+2])));
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "/")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i+1]) / std::stof(expression[i+2])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i+1]) / Stof(expression[i+2])));
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "^")
                             {
-                                expression[i] = simplifyString(std::to_string(std::powf(std::stof(expression[i+1]), std::stof(expression[i+2]))));
+                                expression[i] = simplifyString(std::to_string(std::powf(Stof(expression[i+1]), Stof(expression[i+2]))));
                                 expression.erase(expression.begin() + i + 1, expression.begin() + i + 3); // Remove elements at i + 1 and i + 2
                                 simplified = true;
                                 break;
@@ -1292,70 +1323,77 @@ struct Board
                     {
                         if (expression[i] == "cos")
                         {
-                            expression[i] = simplifyString(std::to_string(cos(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(cos(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "~")
                         {
-                            expression[i] = simplifyString(std::to_string(-(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(-(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sin")
                         {
-                            expression[i] = simplifyString(std::to_string(sin(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(sin(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if ((expression[i] == "ln") || (expression[i] == "log"))
                         {
-                            expression[i] = simplifyString(std::to_string(log(std::stof(expression[i+1])))); // Natural log (ln)
+                            expression[i] = simplifyString(std::to_string(log(Stof(expression[i+1])))); // Natural log (ln)
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "asin" || expression[i] == "arcsin")
                         {
-                            expression[i] = simplifyString(std::to_string(asin(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(asin(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "acos" || expression[i] == "arccos")
                         {
-                            expression[i] = simplifyString(std::to_string(acos(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(acos(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "exp")
                         {
-                            expression[i] = simplifyString(std::to_string(exp(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(exp(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sech")
                         {
-                            expression[i] = simplifyString(std::to_string(1 / cosh(std::stof(expression[i+1])))); // sech(x) = 1 / cosh(x)
+                            expression[i] = simplifyString(std::to_string(1 / cosh(Stof(expression[i+1])))); // sech(x) = 1 / cosh(x)
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "tanh")
                         {
-                            expression[i] = simplifyString(std::to_string(tanh(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(tanh(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sqrt")
                         {
-                            expression[i] = simplifyString(std::to_string(sqrt(std::stof(expression[i+1]))));
+                            expression[i] = simplifyString(std::to_string(sqrt(Stof(expression[i+1]))));
+                            expression.erase(expression.begin() + i + 1);
+                            simplified = true;
+                            break;
+                        }
+                        else if (expression[i] == "abs")
+                        {
+                            expression[i] = simplifyString(std::to_string(abs(Stof(expression[i+1]))));
                             expression.erase(expression.begin() + i + 1);
                             simplified = true;
                             break;
@@ -1729,6 +1767,11 @@ struct Board
                 new_expression.push_back(expression[up]);
             }
         }
+        else if (expression[up] == "abs") //x abs
+        {
+            graspSimplifyPostfixHelper(expression, low, up-1, grasp, new_expression, true); //x
+            new_expression.push_back(expression[up]); //abs
+        }
         else
         {
             for (int i = low; i <= up; i++)
@@ -1767,35 +1810,35 @@ struct Board
                         {
                             if (expression[i] == "+")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i-2]) + std::stof(expression[i-1])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i-2]) + Stof(expression[i-1])));
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "-")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i-2]) - std::stof(expression[i-1])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i-2]) - Stof(expression[i-1])));
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "*")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i-2]) * std::stof(expression[i-1])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i-2]) * Stof(expression[i-1])));
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "/")
                             {
-                                expression[i] = simplifyString(std::to_string(std::stof(expression[i-2]) / std::stof(expression[i-1])));
+                                expression[i] = simplifyString(std::to_string(Stof(expression[i-2]) / Stof(expression[i-1])));
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
                             }
                             else if (expression[i] == "^")
                             {
-                                expression[i] = simplifyString(std::to_string(std::powf(std::stof(expression[i-2]), std::stof(expression[i-1]))));
+                                expression[i] = simplifyString(std::to_string(std::powf(Stof(expression[i-2]), Stof(expression[i-1]))));
                                 expression.erase(expression.begin() + i - 2, expression.begin() + i); // Remove elements at i - 1 and i - 2
                                 simplified = true;
                                 break;
@@ -1963,70 +2006,77 @@ struct Board
                     {
                         if (expression[i] == "cos")
                         {
-                            expression[i] = simplifyString(std::to_string(cos(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(cos(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "~")
                         {
-                            expression[i] = simplifyString(std::to_string(-(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(-(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sin")
                         {
-                            expression[i] = simplifyString(std::to_string(sin(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(sin(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if ((expression[i] == "ln") || (expression[i] == "log"))
                         {
-                            expression[i] = simplifyString(std::to_string(log(std::stof(expression[i-1])))); // Natural log (ln)
+                            expression[i] = simplifyString(std::to_string(log(Stof(expression[i-1])))); // Natural log (ln)
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "asin" || expression[i] == "arcsin")
                         {
-                            expression[i] = simplifyString(std::to_string(asin(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(asin(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "acos" || expression[i] == "arccos")
                         {
-                            expression[i] = simplifyString(std::to_string(acos(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(acos(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "exp")
                         {
-                            expression[i] = simplifyString(std::to_string(exp(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(exp(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sech")
                         {
-                            expression[i] = simplifyString(std::to_string(1 / cosh(std::stof(expression[i-1])))); // sech(x) = 1 / cosh(x)
+                            expression[i] = simplifyString(std::to_string(1 / cosh(Stof(expression[i-1])))); // sech(x) = 1 / cosh(x)
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "tanh")
                         {
-                            expression[i] = simplifyString(std::to_string(tanh(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(tanh(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
                         }
                         else if (expression[i] == "sqrt")
                         {
-                            expression[i] = simplifyString(std::to_string(sqrt(std::stof(expression[i-1]))));
+                            expression[i] = simplifyString(std::to_string(sqrt(Stof(expression[i-1]))));
+                            expression.erase(expression.begin() + i - 1);
+                            simplified = true;
+                            break;
+                        }
+                        else if (expression[i] == "abs")
+                        {
+                            expression[i] = simplifyString(std::to_string(abs(Stof(expression[i-1]))));
                             expression.erase(expression.begin() + i - 1);
                             simplified = true;
                             break;
@@ -2603,7 +2653,7 @@ struct Board
         {
             token = pieces[i];
             
-            if (std::find(Board::__operators.begin(), Board::__operators.end(), token) == Board::__operators.end()) // leaf
+            if (is_const(token)) // leaf
             {
                 if (token.substr(0,5) == "const")
                 {
@@ -2614,7 +2664,7 @@ struct Board
                     stack.push(token);
                 }
             }
-            else if (std::find(Board::__unary_operators.begin(), Board::__unary_operators.end(), pieces[i]) != Board::__unary_operators.end()) // Unary operator
+            else if (is_unary(token)) // Unary operator
             {
                 std::string operand = stack.top();
                 stack.pop();
@@ -2684,7 +2734,7 @@ struct Board
         {
             token = pieces[i];
             
-            if (std::find(Board::__operators.begin(), Board::__operators.end(), token) == Board::__operators.end()) // leaf
+            if (is_const(token)) // leaf
             {
                 if (token.substr(0,5) == "const")
                 {
@@ -2695,8 +2745,7 @@ struct Board
                     stack.push(token);
                 }
             }
-            
-            else if (std::find(Board::__unary_operators.begin(), Board::__unary_operators.end(), pieces[i]) != Board::__unary_operators.end()) // Unary operator
+            else if (is_unary(token)) // Unary operator
             {
                 std::string operand = stack.top();
                 assert(!stack.empty());
@@ -2737,7 +2786,7 @@ struct Board
             token = pieces[i];
 //            std::cout << "pieces[i] = " << pieces[i] << '\n';
             assert(token.size());
-            if (std::find(Board::__operators.begin(), Board::__operators.end(), token) == Board::__operators.end()) //not an operator, i.e., a leaf
+            if (is_const(token)) //not an operator, i.e., a leaf
             {
                 if (token.substr(0,5) == "const")
                 {
@@ -2763,7 +2812,7 @@ struct Board
                 }
                 else if (isFloat(token))
                 {
-                    stack.push(std::stof(token));
+                    stack.push(Stof(token));
                 }
                 else if (token == "x0")
                 {
@@ -2774,7 +2823,7 @@ struct Board
                     throw(std::runtime_error("bad token"));
                 }
             }
-            else if (std::find(Board::__unary_operators.begin(), Board::__unary_operators.end(), token) != Board::__unary_operators.end()) // Unary operator
+            else if (is_unary(token)) // Unary operator
             {
                 if (token == "cos")
                 {
@@ -2836,7 +2885,12 @@ struct Board
                     stack.pop();
                     stack.push(-temp);
                 }
-                
+                else if (token == "abs") //unary abs
+                {
+                    float temp = stack.top();
+                    stack.pop();
+                    stack.push(abs(temp));
+                }
                 if (isInvalid(stack.top()))
                 {
                     expression_evaluator_valid_flag = false;
@@ -2908,7 +2962,7 @@ struct Board
             token = pieces[i];
 //            std::cout << "pieces[i] = " << pieces[i] << '\n';
             assert(token.size());
-            if (std::find(Board::__operators.begin(), Board::__operators.end(), token) == Board::__operators.end()) //not an operator, i.e., a leaf
+            if (is_const(token)) //not an operator, i.e., a leaf
             {
                 if (token.substr(0,5) == "const")
                 {
@@ -2934,14 +2988,14 @@ struct Board
                 }
                 else if (isFloat(token))
                 {
-                    stack.push_back(Eigen::VectorXf::Ones(Board::data.numRows())*std::stof(token));
+                    stack.push_back(Eigen::VectorXf::Ones(Board::data.numRows())*Stof(token));
                 }
                 else
                 {
                     stack.push_back(Board::data[token]);
                 }
             }
-            else if (std::find(Board::__unary_operators.begin(), Board::__unary_operators.end(), token) != Board::__unary_operators.end()) // Unary operator
+            else if (is_unary(token)) // Unary operator
             {
                 if (token == "cos")
                 {
@@ -3022,6 +3076,14 @@ struct Board
 //                    stack.push_back(-temp.array());
                     
                     (*(stack.end() - 1)).array() *= -1;
+                }
+                else if (token == "abs") //unary abs
+                {
+//                    Eigen::VectorXf temp = stack.back();
+//                    stack.pop_back();
+//                    stack.push_back(temp.array().acos());
+                    
+                    (*(stack.end() - 1)).array() = (*(stack.end() - 1)).array().cwiseAbs();
                 }
                 if (isInvalid(stack.back()))
                 {
@@ -3130,7 +3192,7 @@ struct Board
         {
             token = pieces[i];
             assert(token.size());
-            if (std::find(Board::__operators.begin(), Board::__operators.end(), token) == Board::__operators.end()) // leaf
+            if (is_const(token)) // leaf
             {
                 if (token.substr(0,5) == "const")
                 {
@@ -3159,14 +3221,14 @@ struct Board
                 }
                 else if (isFloat(token))
                 {
-                    stack.push(Eigen::Vector<Eigen::AutoDiffScalar<Eigen::VectorXf>, Eigen::Dynamic>::Constant(Board::data.numRows(), std::stof(token)));
+                    stack.push(Eigen::Vector<Eigen::AutoDiffScalar<Eigen::VectorXf>, Eigen::Dynamic>::Constant(Board::data.numRows(), Stof(token)));
                 }
                 else
                 {
                     stack.push(Board::data[token]);
                 }
             }
-            else if (std::find(Board::__unary_operators.begin(), Board::__unary_operators.end(), token) != Board::__unary_operators.end()) // Unary operator
+            else if (is_unary(token)) // Unary operator
             {
                 if (token == "cos")
                 {
@@ -3227,6 +3289,12 @@ struct Board
                     Eigen::Vector<Eigen::AutoDiffScalar<Eigen::VectorXf>, Eigen::Dynamic> temp = stack.top();
                     stack.pop();
                     stack.push(-temp.array());
+                }
+                else if (token == "abs") //unary minus
+                {
+                    Eigen::Vector<Eigen::AutoDiffScalar<Eigen::VectorXf>, Eigen::Dynamic> temp = stack.top();
+                    stack.pop();
+                    stack.push(temp.array().cwiseAbs());
                 }
             }
             else // binary operator
@@ -5366,7 +5434,7 @@ void overwriteCSVRow(const DataRow& result, const DataRow& new_result)
         std::istringstream ss(line);
         std::string token;
         std::getline(ss, token, ',');
-        float x0_val = std::stof(token);
+        float x0_val = Stof(token);
 
         if (std::fabs(x0_val - result.x0) < 1e-6)
         {
@@ -5426,7 +5494,7 @@ void addRow(const DataRow& new_result)
 
         if (std::getline(ss, line, ','))
         {
-            row.x0 = std::stof(line);
+            row.x0 = Stof(line);
         }
         else
         {
@@ -5436,7 +5504,7 @@ void addRow(const DataRow& new_result)
 
         if (std::getline(ss, line, ','))
         {
-            row.mse = std::stof(line);
+            row.mse = Stof(line);
         }
         else
         {
@@ -6711,8 +6779,8 @@ DataRow findClosestRow(float target)
         DataRow row;
         std::string depthStr;
 
-        if (std::getline(ss, line, ',')) row.x0 = std::stof(line);
-        if (std::getline(ss, line, ',')) row.mse = std::stof(line);
+        if (std::getline(ss, line, ',')) row.x0 = Stof(line);
+        if (std::getline(ss, line, ',')) row.mse = Stof(line);
         if (std::getline(ss, line, ',')) row.depth = std::stoi(line);
         if (std::getline(ss, line, ',')) row.expression_type = line;
         if (std::getline(ss, line, ',')) row.expression = line;
