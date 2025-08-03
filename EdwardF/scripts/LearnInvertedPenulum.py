@@ -205,7 +205,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         term4 = -128  * A * b * (64 * b * X - 25) / exp_term**4
         term5 = -128  * A * b**2 * (84 * b * X - 61) / (3 * exp_term**3)
         term6 =  64   * A * b**2 / (3 * exp_term)
-        trap  = -4/3 * b * Omega**2 * x
+        trap  = -4/3 * b * Omega*Omega * x
 
         Feff = term1 + term2 + term3 + term4 + term5 + term6 + trap
         # Apply patch
