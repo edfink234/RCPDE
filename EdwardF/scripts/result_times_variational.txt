@@ -1,2 +1,0 @@
-Time from b = 1.0000 to 1.0000, Ω = 0.2000 to 0.2000, = 26.1831 with learning rate 0.0001, target achieved
-Time from b = 1.0000 to 0.9896, Ω = 0.2000 to 0.1992, = 7.6853 with learning rate 0.0001, target achieved

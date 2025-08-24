@@ -83,7 +83,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     dt = 0.01      # Time step
     x_star = 0.0   # Final position sought
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.48e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -211,7 +211,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         # Apply patch
         use_taylor = (module.abs(X) < epsilon)
         return module.where(use_taylor, F_taylor, Feff)
-
         
     potential = Veff_plus_trap if use_Variational_Potential else potential
     force = Force_eff_plus_trap if use_Variational_Potential else force
@@ -291,7 +290,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         try:
             t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
         except:
-            t_test_values = None if simulate_only else t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
+            t_test_values = None if simulate_only["simulate_only"] else t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
     elif len(df):
         #Extract the row with the closest 'x_0', 'A', 'b', 'm', 'Omega' to (x_start, A, b, m, Omega) based on euclidean distance
         # Create a new DataFrame with the relevant columns for distance calculation
