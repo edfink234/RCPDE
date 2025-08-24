@@ -15,7 +15,7 @@ from scipy.optimize import fsolve
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adamw", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -83,7 +83,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     dt = 0.01      # Time step
     x_star = 0.0   # Final position sought
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.48e-2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -915,12 +915,30 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.mp4'")
 
         plt.close()
-        return {"result": "target achieved", "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega}
+        return {"result": "target achieved", "closest_x": closest_x, "closest_A": closest_A, "closest_b": closest_b, "closest_m": closest_m, "closest_Omega": closest_Omega, "learning_rate": learning_rate}
 
 if __name__=='__main__':
 #    On Saturday, July 12, 2025, 9:53 pm EST, cat -n result_times.txt yields 120 lines
 #    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "xi_model_IC_2_point_438068_1_point_08_0_point_8_1_point_0_0_point_23_.pth", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True)
-    master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = 1.0, Omega = 0.2, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.2, lrScheduler = False, learning_rate = 1e-3, weight_decay = 1e-4, Algorithm = "brute force", fine = False, coolingRate = 0.99, anneal = False, initial_temp = .01, amsgrad = True)
+
+    start_b, end_b = 1.0, 0.75
+    start_Ω, end_Ω = 0.2, 0.18
+    b_space = np.linspace(start_b, end_b, 25)
+    Ω_space = np.linspace(start_Ω, end_Ω, 25)
+    db = b_space[1] - b_space[0]
+    dΩ = Ω_space[1] - Ω_space[0]
+        
+    for b, Ω in zip(b_space, Ω_space):
+        start = time()
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = False, learning_rate = 1e-4, weight_decay = 1e-4, Algorithm = "adamax", fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1, amsgrad = True)
+        achieved = result["result"]
+        learning_rate = result["learning_rate"]
+        with open("result_times_variational.txt", "a") as f:
+            prev_b = b-db if b != start_b else result['closest_b']
+            prev_Ω = Ω-dΩ if Ω != start_Ω else result['closest_Omega']
+            f.write(f"Time from b = {prev_b:.4f} to {b:.4f}, Ω = {prev_Ω:.4f} to {Ω:.4f}, = {time() - start:.4f} with learning rate {learning_rate}, {achieved}\n")
+            
+
 
 #    start_A, end_A = 1.1, 1.08
 #    start_b, end_b = 1.0, 0.8
