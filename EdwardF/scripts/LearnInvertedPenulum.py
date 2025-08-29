@@ -12,6 +12,7 @@ import matplotlib.animation as animation
 from random import choice
 from time import time
 from scipy.optimize import fsolve
+from scipy.interpolate import UnivariateSpline
 from warnings import filterwarnings
 filterwarnings('ignore')
 
@@ -83,7 +84,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     dt = 0.01      # Time step
     x_star = 0.0   # Final position sought
     to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.3e-2}
+    to_loss = {"loss thresholded": True, "threshold": 1.4e-2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -230,12 +231,15 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     t_test_values = np.linspace(1e-8, T, int(T / dt))
 
     # Initial guess for the root (you might need to adjust this)
-    x0 = 1.0
+    x0 = 2.0
 
     # Find the root
     root, info, ier, mesg = fsolve(min_force, x0, full_output=True)
 
     if ier == 1:
+        residual = min_force(root[0])
+        tol = 1e-5
+        assert np.isclose(residual, 0.0, atol=tol), f"fsolve claimed convergence but residual {residual} exceeds tolerance {tol}"
         print(f"Root found: {root[0]}")
         x_start, v_start = float(root[0]), v_start
     else:
@@ -354,6 +358,27 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
         return x_new, v_new
 
+    def rk4_step_with_accel(x, v, xi_t, dt):
+        k1_x = dxdt(v)
+        k1_v = dvdt(x, xi_t)
+
+        k2_x = dxdt(v + 0.5 * dt * k1_v)
+        k2_v = dvdt(x + 0.5 * dt * k1_x, xi_t)
+
+        k3_x = dxdt(v + 0.5 * dt * k2_v)
+        k3_v = dvdt(x + 0.5 * dt * k2_x, xi_t)
+
+        k4_x = dxdt(v + dt * k3_v)
+        k4_v = dvdt(x + dt * k3_x, xi_t)
+
+        x_new = x + (dt / 6.0) * (k1_x + 2.0 * k2_x + 2.0 * k3_x + k4_x)
+        v_new = v + (dt / 6.0) * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v)
+
+        # RK4 "averaged" acceleration over this step
+        a_avg = (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v) / 6.0
+
+        return x_new, v_new, a_avg
+    
     # Define the xi function using the neural network
     def xi(t):
         t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
@@ -641,7 +666,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     
     scheduler = None
     if lrScheduler and optimizer:
-        scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=1e-6, max_lr=1e-4, step_size_up=500)
+        scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=learning_rate/10, max_lr=learning_rate, step_size_up=50)
     plot_progress = False
     epoch = 0
     start_time = time()
@@ -759,8 +784,13 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 #            print(f"x = {x}, xi = {xi_t}, a = {a}")
             x_values.append(x.detach().numpy())
             v_values.append(v.detach().numpy())
-            a_values.append(a.detach().numpy())
-            assert(len(a_values) == len(x_values))
+#            a_values.append(a.detach().numpy())
+#            assert(len(a_values) == len(x_values))
+        print(f"max(v_values) = {max(v_values)}")
+        spline = UnivariateSpline(t_test_values, v_values)
+        a_values = spline.derivative()(t_test_values)
+        assert(len(a_values) == len(x_values))
+
         with open(data_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["t_values", "xi_values", "x_values", "v_values"])
@@ -922,14 +952,14 @@ if __name__=='__main__':
 
     start_b, end_b = 1.0, 0.75
     start_Ω, end_Ω = 0.2, 0.18
-    b_space = np.linspace(start_b, end_b, 25)
-    Ω_space = np.linspace(start_Ω, end_Ω, 25)
+    b_space = np.linspace(start_b, end_b, 25)[2:]
+    Ω_space = np.linspace(start_Ω, end_Ω, 25)[2:]
     db = b_space[1] - b_space[0]
     dΩ = Ω_space[1] - Ω_space[0]
         
     for b, Ω in zip(b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = False, learning_rate = 1e-4, weight_decay = 1e-4, Algorithm = "adamax", fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1, amsgrad = True)
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = False, learning_rate = 1e-4, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1, amsgrad = True)
         achieved = result["result"]
         learning_rate = result["learning_rate"]
         with open("result_times_variational.txt", "a") as f:
