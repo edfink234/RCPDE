@@ -285,7 +285,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             print("File created successfully.")
         df = pd.DataFrame(columns=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
 
-    parameters = df[(df['x_0']==x_start) & (df['A']==A) & (df['b']==b) & (df['m']==m) & (df['Omega']==Omega)]
+    parameters = df[np.isclose(df['x_0'],x_start) & np.isclose(df['A'],A) & np.isclose(df['b'],b) & np.isclose(df['m'],m) & np.isclose(df['Omega'],Omega)]
     closest_x, closest_A, closest_b, closest_m, closest_Omega = x_start, A, b, m, Omega
 
     if len(parameters):
@@ -666,7 +666,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     
     scheduler = None
     if lrScheduler and optimizer:
-        scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=learning_rate/10, max_lr=learning_rate, step_size_up=50)
+        scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=learning_rate/10, max_lr=learning_rate, step_size_up=500)
     plot_progress = False
     epoch = 0
     start_time = time()
@@ -959,7 +959,7 @@ if __name__=='__main__':
         
     for b, Ω in zip(b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = False, learning_rate = 1e-4, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1, amsgrad = True)
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = 1e-3, weight_decay = 1e-4, Algorithm = "adamax", fine = False, coolingRate = 0.999, anneal = False, initial_temp = 1, amsgrad = True)
         achieved = result["result"]
         learning_rate = result["learning_rate"]
         with open("result_times_variational.txt", "a") as f:
