@@ -630,7 +630,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                         param.copy_(current_params[name])
             
             temperature *= cooling_rate
-            print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}")
+            print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}, Curr Temp = {temperature:.6f}")
 
         # Restore best parameters to the model
         with torch.no_grad():
@@ -952,14 +952,14 @@ if __name__=='__main__':
 
     start_b, end_b = 1.0, 0.75
     start_Ω, end_Ω = 0.2, 0.18
-    b_space = np.linspace(start_b, end_b, 25)[3:]
-    Ω_space = np.linspace(start_Ω, end_Ω, 25)[3:]
+    b_space = np.linspace(start_b, end_b, 25)[4:]
+    Ω_space = np.linspace(start_Ω, end_Ω, 25)[4:]
     db = b_space[1] - b_space[0]
     dΩ = Ω_space[1] - Ω_space[0]
         
     for b, Ω in zip(b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adamax", fine = False, coolingRate = 0.999, anneal = False, initial_temp = .1, amsgrad = True)
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = 2e-6, weight_decay = 1e-6, Algorithm = "adamax", fine = False, coolingRate = 1, anneal = False, initial_temp = 0.001, amsgrad = True)
         achieved = result["result"]
         learning_rate = result["learning_rate"]
         with open("result_times_variational.txt", "a") as f:
