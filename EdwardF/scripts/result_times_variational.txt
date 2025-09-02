@@ -3,3 +3,4 @@ Time from b = 0.9896 to 0.9792, Ω = 0.1992 to 0.1983, = 31.8191 with learning r
 Time from b = 0.9792 to 0.9688, Ω = 0.1983 to 0.1975, = 8.8012 with learning rate 1e-05, target achieved
 Time from b = 0.9896 to 0.9792, Ω = 0.1992 to 0.1983, = 2605.9554 with learning rate 1e-05, target achieved
 Time from b = 0.9792 to 0.9688, Ω = 0.1983 to 0.1975, = 13564.0580 with learning rate 2e-06, target achieved
+Time from b = 0.9688 to 0.9583, Ω = 0.1975 to 0.1967, = 64393.7482 with learning rate 2e-06, target achieved
