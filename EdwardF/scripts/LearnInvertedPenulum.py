@@ -12,11 +12,11 @@ import matplotlib.animation as animation
 from random import choice
 from time import time
 from scipy.optimize import fsolve
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, make_interp_spline
 from warnings import filterwarnings
 filterwarnings('ignore')
 
-def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False):
+def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2}):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -83,8 +83,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     T = T       # Final time
     dt = 0.01      # Time step
     x_star = 0.0   # Final position sought
-    to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.4e-2}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -784,11 +782,34 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 #            print(f"x = {x}, xi = {xi_t}, a = {a}")
             x_values.append(x.detach().numpy())
             v_values.append(v.detach().numpy())
-#            a_values.append(a.detach().numpy())
+            #a_values.append(a.detach().numpy())
 #            assert(len(a_values) == len(x_values))
         print(f"max(v_values) = {max(v_values)}")
-        spline = UnivariateSpline(t_test_values, v_values)
-        a_values = spline.derivative()(t_test_values)
+
+        v_array = np.array(v_values)
+        t_array = np.array(t_test_values)
+        dt = t_array[1] - t_array[0]
+
+        # Use central differences in interior
+        a_values = np.zeros_like(v_array)
+        a_values[1:-1] = (v_array[2:] - v_array[:-2]) / (2 * dt)
+
+        # Forward/backward difference at ends
+        a_values[0] = (v_array[1] - v_array[0]) / dt
+        a_values[-1] = (v_array[-1] - v_array[-2]) / dt
+
+        a_values_temp = a_values.tolist()
+        t_test_values_temp = t_test_values.tolist()
+        
+        indices = [i for i in range(len(a_values_temp)) if abs(a_values_temp[i]) < 0.25]
+        a_values_temp = [a_values[i] for i in indices]
+        print(f"max(a_values_temp) = {max([abs(i) for i in a_values_temp])}")
+        t_test_values_temp = [t_test_values[i] for i in indices]
+        
+        spline = make_interp_spline(t_test_values_temp, a_values_temp, k=2) #UnivariateSpline(t_arr_temp, v_arr_temp)#
+
+        a_values = spline(t_test_values)
+
         assert(len(a_values) == len(x_values))
 
         with open(data_path, mode='w', newline='') as file:
@@ -952,14 +973,16 @@ if __name__=='__main__':
 
     start_b, end_b = 1.0, 0.75
     start_Ω, end_Ω = 0.2, 0.18
-    b_space = np.linspace(start_b, end_b, 25)[5:]
-    Ω_space = np.linspace(start_Ω, end_Ω, 25)[5:]
+#    b_space = np.linspace(start_b, end_b, 25)[5:]
+#    Ω_space = np.linspace(start_Ω, end_Ω, 25)[5:]
+    b_space = np.linspace(start_b, end_b, 25)[1:]
+    Ω_space = np.linspace(start_Ω, end_Ω, 25)[1:]
     db = b_space[1] - b_space[0]
     dΩ = Ω_space[1] - Ω_space[0]
         
     for b, Ω in zip(b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = 1e-5, weight_decay = 1e-6, Algorithm = "adamax", fine = False, coolingRate = .99, anneal = False, initial_temp = 0.1, amsgrad = True)
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = 1e-5, weight_decay = 1e-6, Algorithm = "adamax", fine = False, coolingRate = .99, anneal = False, initial_temp = 0.1, amsgrad = True, to_time = {"timed": True, "time": 3600}, to_loss = {"loss thresholded": False, "threshold": 1.4e-2})
         achieved = result["result"]
         learning_rate = result["learning_rate"]
         with open("result_times_variational.txt", "a") as f:
