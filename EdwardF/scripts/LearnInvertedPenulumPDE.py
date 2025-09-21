@@ -12,7 +12,7 @@ import matplotlib.animation as animation
 from random import choice
 from time import time
 from scipy.optimize import fsolve
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, UnivariateSpline, make_interp_spline
 from scipy.integrate import solve_ivp
 from torch import diag
 from warnings import filterwarnings
@@ -22,7 +22,7 @@ from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 100, v_start = 0.0, interpolate = True, add_kick = False):
+def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.1e-4}):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -79,8 +79,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
         return df
 
-    #NOTE: Roberto has periodic boundary conditions in his PDE.
-    # Constants for the potential
+#    MARK: Roberto has periodic boundary conditions in his PDE.
+#     Constants for the potential
 #    m = 1.0        # Mass
 #    Omega = 0.2    # Frequency of the harmonic trap
 #    A = 1.2        # Amplitude of the potential
@@ -93,8 +93,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     x_star = 0.0   # Final position sought
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
-    to_time = {"timed": False, "time": 3600}
-    to_loss = {"loss thresholded": True, "threshold": 1.1e-4}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -136,18 +134,14 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     saveLibTorch = True
     useLibTorch = True
 
-    smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness of xi
-    time_penalty_factor = 1e-5 #penalty for taking longer
-    velocity_penalty = 1e-5 #penalty for max(abs(v))
-    xi_penalty = 1e-5 #penalty for max(abs(xi))
-    x_star_x_diff_mse_penalty = 1 #penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func
-    v_mse_penalty = 1 #penalty for (v*v) term in MSE in loss_func
-    x_star_xi_diff_mse_penalty = 1 #penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
-    
-    t_values = np.linspace(1e-8, T, num_steps)
-    delta_t = t_values[1] - t_values[0]
-    global t_test_values
-    t_test_values = np.linspace(1e-8, T, num_steps)
+    smoothness_penalty_factor = 1e-3 #α: penalty for lack of smoothness of xi
+    time_penalty_factor = 1e-3 #β: penalty for taking longer
+    velocity_penalty = 1e-3 #γ: penalty for max(abs(v))    t_values = np.linspace(1e-8, T, num_steps)
+    xi_penalty = 1e-3 #δ: penalty for max(abs(xi))    delta_t = t_values[1] - t_values[0]
+    x_star_x_diff_mse_penalty = 1 #ε: penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func    global t_test_values
+    v_mse_penalty = 1 #ζ: penalty for (v*v) term in MSE in loss_func    t_test_values = np.linspace(1e-8, T, num_steps)
+    x_star_xi_diff_mse_penalty = 1 #η: penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
+    width_penalty = 1 #κ: penalty for the bright-soliton width deviation
 
     def get_x_start_and_v_start():
         nonlocal v_start
@@ -164,6 +158,9 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                 if potential_val < potential_min:
                     potential_min = potential_val
                     root_min = root_val
+            residual = min_force(root_min)
+            tol = 1e-5
+            assert np.isclose(residual, 0.0, atol=tol), f"fsolve claimed convergence but residual {residual} exceeds tolerance {tol}"
             if not no_print:
                 print(f"Root found: {root_min}")
             x_start, v_start = float(root_min), v_start
@@ -187,16 +184,16 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         xStart = x_start if not xStart else xStart.numpy().item()
         tol = 1e-10
         g = -1;                         # g = 1 is defocusing and g =-1 is focusing
-        N = 1201;                        # number of mesh points
-        L = -20; R = 20;                # Left and right bounds of interval
+        N = 401;                        # number of mesh points
+        L = -10; R = 10;                # Left and right bounds of interval
         x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
         N -= 1
         dx = x[1]-x[0];                 # mesh size
-        point_5_over_dx_squared = (0.5 / dx**2)
+        point_5_over_dx_squared = (0.5 / dx*dx)
         one_over_six = 1.0/6.0
 #        assert(dt<0.7071067811865476*dx*dx)
 
-        A_sol = 1; c = 0                     # Amplitude, vel. & position
+        A_sol = 1; c = 0;                     # Amplitude, vel. & position
         u0 = A_sol*sech(A_sol*(x - xStart))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
         
@@ -214,7 +211,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ONE = np.ones(N)
         D2 = diags([ONE, -2 * ONE, ONE], [-1, 0, 1], shape=(N, N)).toarray()
         D2[0, -1] = D2[-1, 0] = 1  # Periodic boundary conditions
-        D2 /= dx**2
+        D2 /= (dx*dx)
 
         # Index for real and imaginary parts
         indR = slice(0, N)
@@ -229,7 +226,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             Ur = U[indR]
             Ui = U[indI]
             # Compute the modulus squared of u
-            U2 = Ur**2 + Ui**2
+            U2 = Ur*Ur + Ui*Ui
             common_term = (g * U2 + V + w_sol)
             return np.concatenate((-0.5 * (D2 @ Ur) + common_term * Ur,\
                                    -0.5 * (D2 @ Ui) + common_term * Ui))
@@ -249,7 +246,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                 Ui = U[indI]
                 
                 # Compute modulus squared of u
-                U2 = Ur**2 + Ui**2
+                U2 = Ur*Ur + Ui*Ui
 
                 # Right-hand side (RHS)
                 common_term = (g * U2 + V + w_sol)
@@ -428,15 +425,15 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         # Find the index of the row with the minimum distance
         closest_row_idx = temp_df['distance'].idxmin()
         parameters = temp_df.iloc[closest_row_idx]
-        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
+        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 4), round(parameters['b'], 4), round(parameters['m'], 4), round(parameters['Omega'], 4)
 
     # Load or instantiate the model
-    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_pde_.pth" if not base_model else base_model
-    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pth"
+    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 4))}_{flt_to_str(round(closest_b, 4))}_{flt_to_str(round(closest_m, 4))}_{flt_to_str(round(closest_Omega, 4))}_pde_.pth" if not base_model else base_model
+    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pth"
     if not no_print:
         print(f"model_path = {model_path}")
         print(f"new_model_path = {new_model_path}")
-    if closest_x == x_start and round(closest_A, 2) == round(A, 2) and round(closest_b, 2) == round(b, 2) and round(closest_m, 2) == round(m, 2) and round(closest_Omega, 2) == round(Omega, 2):
+    if closest_x == x_start and round(closest_A, 4) == round(A, 4) and round(closest_b, 4) == round(b, 4) and round(closest_m, 4) == round(m, 4) and round(closest_Omega, 4) == round(Omega, 4):
         if not no_print:
             print("exact match found")
         assert(model_path == new_model_path or base_model)
@@ -596,7 +593,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         x_flat = x
         for i in range(1, len(t_values)):
             V = potential(x, xi = 0)
-            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
+            u = torch.tensor(ODE_RK4(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
             
             # Compute the density (modulus squared of u)
             density_real_flat = (torch.conj(u)*u).real.flatten() # Equivalent to |u|^2
@@ -641,7 +638,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             numerator = torch.trapezoid(x * density_real_flat, x)
             denominator = torch.trapezoid(density_real_flat, x)
             x_values.append(numerator / denominator)
-            #TODO: plot x_values vs t_values here once just to check for sanity's sake that it matches what I see in `compareTrajectories.py`
+
         v = (x_values[2] - x_values[0]) / (2 * dt)
 
         v_values_temp.append(abs(v))
@@ -770,7 +767,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     if not no_print:
                         print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,4), 'b': round(b,4), 'm': round(m,4), 'Omega': round(Omega,4), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     if not no_print:
                         print(f"New best t value = {best_t_value}")
@@ -852,7 +849,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     if not no_print:
                         print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,4), 'b': round(b,4), 'm': round(m,4), 'Omega': round(Omega,4), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     if not no_print:
                         print(f"New best t value = {best_t_value}")
@@ -1185,14 +1182,14 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
         plt.savefig("trajectory_data_pde.svg")
-        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf trajectory_data_pde.svg")
-        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
-        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
-        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf trajectory_data_pde.svg")
+        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf")
+        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
+        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
         if not no_print:
-            print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png saved")
-        system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ")
+            print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png saved")
+        system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ")
         plt.close()
         
         if produceInverse:
@@ -1213,12 +1210,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             plt.title(f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             plt.legend()
             plt.savefig("trajectory_data_pde.svg")
-            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf trajectory_data_pde.svg")
-            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
-            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
-            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
-            system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
+            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf trajectory_data_pde.svg")
+            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf")
+            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
+            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
+            system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf")
 
             plt.close()
         
@@ -1287,10 +1284,10 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         ani = animation.FuncAnimation(fig, update, frames=range(0, N, 1), init_func=init, blit=True, interval = 1000/fps)
         
         # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
+        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4")
         if not no_print:
-            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
+            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4'")
         plt.close()
 
         if produceInverse:
@@ -1322,10 +1319,10 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             ani = animation.FuncAnimation(fig, update, frames=range(0, N, 10), init_func=init, blit=True, interval = 1000/fps)
         
             # Save the animation
-            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
+            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4")
             if not no_print:
-                print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
+                print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4'")
 
         plt.close()
 
@@ -1388,6 +1385,7 @@ if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
 #    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
+    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
     master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt", T = 10)

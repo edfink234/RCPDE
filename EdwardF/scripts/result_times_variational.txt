@@ -14,3 +14,4 @@ Time from b = 1.0000 to 0.9896, Ω = 0.2000 to 0.1992, = 24.5951 with learning r
 Time from b = 0.9896 to 0.9792, Ω = 0.1992 to 0.1983, = 27.3828 with learning rate 1e-05, target achieved
 Time from b = 0.9792 to 0.9688, Ω = 0.1983 to 0.1975, = 27.5131 with learning rate 1e-05, target achieved
 Time from b = 0.9688 to 0.9583, Ω = 0.1975 to 0.1967, = 25.7821 with learning rate 1e-05, target achieved
+Time from b = 0.9583 to 0.9479, Ω = 0.1967 to 0.1958, = 550023.9210 with learning rate 1e-05, target achieved
