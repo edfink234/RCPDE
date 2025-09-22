@@ -22,7 +22,7 @@ from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.1e-4}):
+def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.1e-4}):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
@@ -79,15 +79,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 
         return df
 
-#    MARK: Roberto has periodic boundary conditions in his PDE.
-#     Constants for the potential
-#    m = 1.0        # Mass
-#    Omega = 0.2    # Frequency of the harmonic trap
-#    A = 1.2        # Amplitude of the potential
-#    b = 1.0        # Width of the potential
     sigma = 1.0     # Width of the (Gaussian) potential, not used currently
-    T = T        # Final time
-    dt = 0.1      # Time step
+    dt = 0.001      # Time step
     num_steps = int(T / dt)
     
     x_star = 0.0   # Final position sought
@@ -127,12 +120,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
     def min_force(x):
         nonlocal A, b, Omega
         return (Omega**2 * x) - (2 * A*b * np.cosh(b * (x))**(-2) * np.tanh(b * (x)))
-
-    #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
-    automate = True
-    produceInverse = False
-    saveLibTorch = True
-    useLibTorch = True
 
     smoothness_penalty_factor = 1e-3 #α: penalty for lack of smoothness of xi
     time_penalty_factor = 1e-3 #β: penalty for taking longer
@@ -193,12 +180,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         one_over_six = 1.0/6.0
 #        assert(dt<0.7071067811865476*dx*dx)
 
-        A_sol = 1; c = 0;                     # Amplitude, vel. & position
+        A_sol = A_sol; c = 0;                     # Amplitude, vel. & position
         u0 = A_sol*sech(A_sol*(x - xStart))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
         
         U = np.concatenate((np.real(u0), np.imag(u0)))
-        w_sol = 0.5#A_sol*A_sol*0.5 #temporal freq
+        w_sol = w_sol #A_sol*A_sol*0.5 #temporal freq
     #    A_sol = 2; c = 0;
     #    w_sol = A*A*0.5 #temporal freq
     #    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
@@ -1418,8 +1405,8 @@ if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
 #    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
-    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 0.75, b = 0.75, load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_3_point_008519_1_point_0_0_point_75_1_point_0_0_point_18_Variational_.pth", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
-    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
+    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_3_point_008519_1_point_0_0_point_75_1_point_0_0_point_18_Variational_.pth", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
+#    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt", T = 10)
 
