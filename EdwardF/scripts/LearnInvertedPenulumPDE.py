@@ -629,7 +629,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
             xi_t = xi(t_values[i])
             xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
             V = potential(x, xi = xi_t)
-            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
+            u = torch.tensor(ODE_RK4(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
             
             # Compute the density (modulus squared of u)
             density_real_flat = (torch.conj(u)*u).real.flatten() # Equivalent to |u|^2
