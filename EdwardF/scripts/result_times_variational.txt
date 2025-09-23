@@ -38,3 +38,4 @@ Time from b = 0.7604 to 0.7500, Ω = 0.1808 to 0.1800, = 3626.0892 with learning
 Time from b = 0.9583 to 0.9479, Ω = 0.1967 to 0.1958, = 3816.3550 with learning rate 0.0001, target achieved
 Time from b = 0.9479 to 0.9375, Ω = 0.1958 to 0.1950, = 3628.8351 with learning rate 0.0001, target achieved
 Time from b = 0.9375 to 0.9271, Ω = 0.1950 to 0.1942, = 3625.8179 with learning rate 0.0001, target achieved
+Time from b = 0.9271 to 0.9167, Ω = 0.1942 to 0.1933, = 3626.2192 with learning rate 0.0001, target achieved
