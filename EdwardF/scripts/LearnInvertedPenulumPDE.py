@@ -1239,7 +1239,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png saved")
         system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ")
         plt.close()
-        
         if produceInverse:
             x_values_inv = [-i for i in x_values]
             v_values_inv = [-i for i in v_values]
