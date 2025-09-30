@@ -159,3 +159,5 @@ Time from b = 0.9583 to 0.9479, Ω = 0.1967 to 0.1958, = 3625.9003 with learning
 Time from b = 0.9479 to 0.9375, Ω = 0.1958 to 0.1950, = 3624.8901 with learning rate 1e-05, target achieved
 Time from b = 0.9375 to 0.9271, Ω = 0.1950 to 0.1942, = 3624.4361 with learning rate 1e-05, target achieved
 Time from b = 0.9271 to 0.9167, Ω = 0.1942 to 0.1933, = 3625.6447 with learning rate 1e-05, target achieved
+Time from b = 0.9167 to 0.9062, Ω = 0.1933 to 0.1925, = 3625.3042 with learning rate 1e-05, target achieved
+Time from b = 0.9062 to 0.8958, Ω = 0.1925 to 0.1917, = 3625.1670 with learning rate 1e-05, target achieved
