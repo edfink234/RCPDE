@@ -985,7 +985,7 @@ if __name__=='__main__':
         
     for b, Ω in zip(b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = (1e-5 if b > 0.83 else 1e-4), weight_decay = 1e-6, Algorithm = "adamax" if b > 0.89 else "brute force", fine = False, coolingRate = .999, anneal = False, initial_temp = .1, amsgrad = True, to_time = {"timed": True, "time": (3600 if b > 0.83 else 5400)}, to_loss = {"loss thresholded": False, "threshold": 1.4e-2})
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = (1e-5 if b > 0.83 else 1e-4), weight_decay = 1e-6, Algorithm = "adamax" if b > 0.83 else "brute force", fine = False, coolingRate = .999, anneal = False, initial_temp = .4, amsgrad = True, to_time = {"timed": True, "time": (900 if b > 0.83 else 7200)}, to_loss = {"loss thresholded": False, "threshold": 1.4e-2})
         achieved = result["result"]
         learning_rate = result["learning_rate"]
         with open("result_times_variational.txt", "a") as f:
