@@ -258,3 +258,6 @@ Time from b = 1.0000 to 1.0000, Ω = 0.2000 to 0.2000, = 631.2397 with learning 
 Time from b = 1.0000 to 0.9896, Ω = 0.2000 to 0.1992, = 624.0037 with learning rate 1e-05, target achieved
 Time from b = 0.9896 to 0.9792, Ω = 0.1992 to 0.1983, = 626.3484 with learning rate 1e-05, target achieved
 Time from b = 0.9792 to 0.9688, Ω = 0.1983 to 0.1975, = 625.8431 with learning rate 1e-05, target achieved
+Time from b = 1.0000 to 1.0000, Ω = 0.2000 to 0.2000, = 48.5745 with learning rate 1e-05, target achieved
+Time from b = 1.0000 to 1.0000, Ω = 0.2000 to 0.2000, = 31.1661 with learning rate 1e-05, target achieved
+Time from b = 1.0000 to 1.0000, Ω = 0.2000 to 0.2000, = 626.4203 with learning rate 1e-05, target achieved

@@ -163,10 +163,10 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         term5 =  (32  * A_times_b) / (3 * exp_term)
         trap  =  (2 * Omega_squared * b * x * x) / 3
 
-        U_eff = term1 + term2 + term3 + term4 + term5 + trap
+        U_eff = term1 + term2 + term3 + term4 + term5
         # Apply patch
         use_taylor = (module.abs(X) < epsilon)
-        return np.where(use_taylor, U_taylor, U_eff)
+        return np.where(use_taylor, U_taylor, U_eff) + trap
 
     # Define the effective force function
     def Force_eff_plus_trap(x, xi=0):
@@ -206,10 +206,10 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         term6 =  64   * A * b**2 / (3 * exp_term)
         trap  = -4/3 * b * Omega*Omega * x
 
-        Feff = term1 + term2 + term3 + term4 + term5 + term6 + trap
+        Feff = term1 + term2 + term3 + term4 + term5 + term6
         # Apply patch
         use_taylor = (module.abs(X) < epsilon)
-        return module.where(use_taylor, F_taylor, Feff)
+        return module.where(use_taylor, F_taylor, Feff) + trap
         
     potential = Veff_plus_trap if use_Variational_Potential else potential
     force = Force_eff_plus_trap if use_Variational_Potential else force
