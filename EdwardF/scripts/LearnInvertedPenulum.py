@@ -145,7 +145,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         U_taylor = (
             - (64 * A_times_b*b_squared / 105) * X_squared
             + (16 * A_times_b / 15)
-            #+ (2 * Omega_squared * b / 3) * X_squared
         )
         module = torch if isinstance(x, torch.Tensor) else np
         exp_term = module.exp(2 * b * X) - 1
@@ -189,7 +188,6 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         #F_{\text{Taylor}}(\mathcal{X}) = & \dfrac{128 A \mathcal{A}_0^{3} \mathcal{X}}{105} - \dfrac{4 \Omega^{2} \mathcal{A}_0 \mathcal{X}}{3}
         F_taylor = (
               ((128 * A_times_b*b_squared * X) / 105)
-            #- ((4 * Omega_squared * b * X) / 3)
         )
         module = torch if isinstance(X, torch.Tensor) else np
         exp_term = module.exp(2 * b * X) - 1
