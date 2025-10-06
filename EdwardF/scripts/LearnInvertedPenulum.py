@@ -973,18 +973,14 @@ if __name__=='__main__':
     start_b, end_b = 1.0, 0.75
     start_Ω, end_Ω = 0.2, 0.18
     num_points = 25
-#    b_space = np.linspace(start_b, end_b, num_points)[-1:]
-#    Ω_space = np.linspace(start_Ω, end_Ω, num_points)[-1:]
-    b_space = np.linspace(start_b, end_b, 25)
-    Ω_space = np.linspace(start_Ω, end_Ω, 25)
-#    b_space = np.linspace(start_b, end_b, 25)[1:]
-#    Ω_space = np.linspace(start_Ω, end_Ω, 25)[1:]
+    b_space = np.linspace(start_b, end_b, 25)[-2:-1]
+    Ω_space = np.linspace(start_Ω, end_Ω, 25)[-2:-1]
     db = (end_b - start_b) / (num_points - 1)
     dΩ = (end_Ω - start_Ω) / (num_points - 1)
         
     for b, Ω in zip(b_space, Ω_space):
         start = time()
-        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = (1e-5 if b > 0.83 else 1e-4), weight_decay = 1e-6, Algorithm = "adamax" if b > 0.83 else "brute force", fine = False, coolingRate = .998, anneal = False, initial_temp = .3, amsgrad = True, to_time = {"timed": True, "time": (600 if b > 0.83 else 7200)}, to_loss = {"loss thresholded": False, "threshold": 1.4e-2})
+        result = master_func_learn_ivp_ode(m = 1.0, A = 1.0, b = b, Omega = Ω, load_model = True, base_model = "", simulate_only = {"simulate_only": False, "xStart": 0}, T = 10, v_start = 0.0, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = True, automate = True, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.25/b, lrScheduler = True, learning_rate = 1e-4, weight_decay = 1e-6, Algorithm = "brute force", fine = False, coolingRate = .999, anneal = False, initial_temp = 1, amsgrad = True, to_time = {"timed": True, "time": 72000}, to_loss = {"loss thresholded": False, "threshold": 1.4e-2})
         achieved = result["result"]
         learning_rate = result["learning_rate"]
         with open("result_times_variational.txt", "a") as f:

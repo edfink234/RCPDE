@@ -689,8 +689,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         # --- Shape Penalty integrated up to best_time_idx ---
         delta_shape = [((s - sigma0) / sigma0) ** 2 for s in sigma_values[:best_time_idx]]
         shape_penalty = torch.trapezoid(torch.stack(delta_shape), torch.from_numpy(t_values[:best_time_idx])) / best_time
-        if not no_print:
-            print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
+#        if not no_print:
+#            print(f"best_loss_ = {best_loss_}\nsmoothness_penalty = {smoothness_penalty}\nbest_time = {best_time}\nv_best = {v_best:}\nabs_xi_temp_i = {xi_best}\nshape_penalty={shape_penalty}")
 #        return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
         return (
             (best_loss_ \
@@ -1186,7 +1186,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             xi_values.append(xi_t.detach().numpy())
             V = potential(x, xi = xi_values[-1])
 #            u_values.append(ODE_DOP853(u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1], N, g, V, t_test_values[i], dt))
-            u_values.append(ODE_RK4(u_values[-1], N, g, V, dt))
+            u_values.append(ODE_RK4(torch.tensor(u_values[-1]), N, g, V, dt).detach().numpy())
             # Compute the density (modulus squared of u)
             density = np.squeeze(u_values[-1] * np.conj(u_values[-1]))  # Equivalent to |u|^2
             #print(f"u_values[-1].shape = {u_values[-1].shape}, x.shape = {x.shape}, density.shape = {density.shape}")
@@ -1432,7 +1432,7 @@ if __name__ == "__main__":
 #    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
 #    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
-    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_3_point_008519_1_point_0_0_point_75_1_point_0_0_point_18_Variational_.pth", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
+    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_3_point_008519_1_point_0_0_point_75_1_point_0_0_point_18_Variational_.pth", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "brute force", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
 #    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt", T = 10)
