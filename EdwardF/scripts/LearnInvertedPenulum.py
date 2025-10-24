@@ -305,7 +305,7 @@ def master_func_learn_ivp_ode(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
         closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 6), round(parameters['A'], 6), round(parameters['b'], 6), round(parameters['m'], 6), round(parameters['Omega'], 6)
 
     # Load or instantiate the model
-    file_suffix = ("_Variational_" if use_Variational_Potential else "_")
+    1 ("_Variational_" if use_Variational_Potential else "_")
     model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 6))}_{flt_to_str(round(closest_b, 6))}_{flt_to_str(round(closest_m, 6))}_{flt_to_str(round(closest_Omega, 6))}{file_suffix}.pth" if not base_model else base_model
     new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 6))}_{flt_to_str(round(b, 6))}_{flt_to_str(round(m, 6))}_{flt_to_str(round(Omega, 6))}{file_suffix}.pth"
     print(f"model_path = {model_path}")
