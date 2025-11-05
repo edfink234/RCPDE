@@ -142,7 +142,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         x_star_xi_diff_mse_penalty = 0.1 #η: penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
         width_penalty = 1e-5
     else:
-        x_star_x_diff_mse_penalty = 10 #ε: penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func;
+        x_star_x_diff_mse_penalty = 1 #ε: penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func;
         v_mse_penalty = 1 #ζ: penalty for (v*v) term in MSE in loss_func
         x_star_xi_diff_mse_penalty = 1 #η: penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
         width_penalty = 1
@@ -1456,7 +1456,7 @@ if __name__ == "__main__":
     ExtPotA = (1.0, 0.2, 0.1, 0.075)[3]
     ExtPotb = (0.75, 1)[0]
     ExtPotΩ = (0.18, 0.2)[0]
-    master_func_learn_ivp_pde(m = 1.0, Omega = ExtPotΩ, A = ExtPotA, b = ExtPotb, A_sol = ExtPotb, w_sol = 0.5, load_model = True, base_model = base_model, no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-3, weight_decay = 1e-4, Algorithm = "brute force", fine = False, coolingRate = 1, anneal = False, initial_temp = 0.1, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2}, loss_option = "before")
+    master_func_learn_ivp_pde(m = 1.0, Omega = ExtPotΩ, A = ExtPotA, b = ExtPotb, A_sol = ExtPotb, w_sol = 0.5, load_model = True, base_model = base_model, no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 2e-4, weight_decay = 1e-4, Algorithm = "adamax", fine = False, coolingRate = 1, anneal = False, initial_temp = 0.1, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2}, loss_option = "before")
 #    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt", T = 10)
