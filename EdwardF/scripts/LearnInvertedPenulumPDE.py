@@ -627,6 +627,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
     if simulate_only["simulate_only"]:
         return simulate_trajectory(simulate_only["xStart"])
     
+    #TODO: If all else fails...
+    #https://github.com/edfink234/RCPDE/blob/7a6a9dc8ff6d1800a418a61454d9e144970bea29/EdwardF/scripts/LearnInvertedPenulumPDE.py
     def loss_func():
         nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, x, loss_breakdown_printed
         smoothness_penalty = 0.0  # Initialize smoothness penalty
