@@ -1,3 +1,11 @@
+from google.colab import drive
+drive.mount('/content/drive')
+DRIVE_BASE_PATH = '/content/drive/MyDrive/BrightSolitonPDE'
+
+#IDForModelWeights = 1YREdAZabLwQZyQx638yIaZpJPmscuClk
+#IDForTxtFile = 1thnAE0XN_Lhht2ryKlsU5D1Y9KI2qIN0
+
+
 import numpy as np
 import pandas as pd
 import torch
@@ -11,8 +19,8 @@ import csv
 import matplotlib.animation as animation
 from random import choice
 from time import time
-from scipy.optimize import fsolve, least_squares
-from scipy.interpolate import interp1d, UnivariateSpline, make_interp_spline
+from scipy.optimize import fsolve
+from scipy.interpolate import interp1d
 from scipy.integrate import solve_ivp
 from torch import diag
 from warnings import filterwarnings
@@ -22,14 +30,13 @@ from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
 
-def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.1e-4}, loss_option = "after"):
+def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 100, v_start = 0.0, interpolate = True, add_kick = False):
     #Setting the random seeds!!!
     np.random.seed(42)
     torch.manual_seed(42)
     torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    loss_breakdown_printed = False
 
     def sech(x):
         if isinstance(x, torch.Tensor):
@@ -46,8 +53,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 
     def add_or_update_row(df, new_row_data):
         """
-        Adds a new row to the DataFrame if no match is found 
-        for 'x_0', 'A', 'b', 'm', 'Omega'. 
+        Adds a new row to the DataFrame if no match is found
+        for 'x_0', 'A', 'b', 'm', 'Omega'.
         If a match exists, overwrites the existing row.
 
         Args:
@@ -80,17 +87,22 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 
         return df
 
+    #NOTE: Roberto has periodic boundary conditions in his PDE.
+    # Constants for the potential
+#    m = 1.0        # Mass
+#    Omega = 0.2    # Frequency of the harmonic trap
+#    A = 1.2        # Amplitude of the potential
+#    b = 1.0        # Width of the potential
     sigma = 1.0     # Width of the (Gaussian) potential, not used currently
+    T = T        # Final time
     dt = 0.001      # Time step
     num_steps = int(T / dt)
-    t_values = np.linspace(1e-8, T, num_steps)
-    delta_t = t_values[1] - t_values[0]
-    global t_test_values
-    t_test_values = np.linspace(1e-8, T, num_steps)
-    
+
     x_star = 0.0   # Final position sought
     v_th = 0.01    # Velocity threshold, not used currently
     x_th = 0.01    # Position threshold, not used currently
+    to_time = {"timed": False, "time": 3600}
+    to_loss = {"loss thresholded": True, "threshold": 1.1e-4}
     raiseBaseException = True
     def criterion():
 #        global to_time, to_loss, best_loss
@@ -109,7 +121,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         temp = torch.sech(b * (x - xi))
         V_SECH = A * temp * temp
         return V_MT + V_SECH
-    
+
     def sech_potential(x, xi):
         temp = torch.sech(b * (x - xi))
         return A*temp*temp
@@ -126,31 +138,29 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         nonlocal A, b, Omega
         return (Omega**2 * x) - (2 * A*b * np.cosh(b * (x))**(-2) * np.tanh(b * (x)))
 
-    if loss_option == "before":
-        smoothness_penalty_factor = 1e-7 # penalty for lack of smoothness of xi
-        time_penalty_factor = 1e-10 #penalty for taking longer
-        velocity_penalty = 1e-5 #penalty for max(abs(v))
-        xi_penalty = 1e-5 #penalty for max(abs(xi))
-    else:
-        smoothness_penalty_factor = 1e-3 #α: penalty for lack of smoothness of xi
-        time_penalty_factor = 1e-3 #β: penalty for taking longer
-        velocity_penalty = 1e-3 #γ: penalty for max(abs(v))
-        xi_penalty = 1e-3 #δ: penalty for max(abs(xi))
-    if loss_option == "before":
-        x_star_x_diff_mse_penalty = 1 #ε: penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func;
-        v_mse_penalty = 1e-5 #ζ: penalty for (v*v) term in MSE in loss_func
-        x_star_xi_diff_mse_penalty = 0.1 #η: penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
-        width_penalty = 1e-5
-    else:
-        x_star_x_diff_mse_penalty = 1 #ε: penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func;
-        v_mse_penalty = 1 #ζ: penalty for (v*v) term in MSE in loss_func
-        x_star_xi_diff_mse_penalty = 1 #η: penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
-        width_penalty = 1
+    #criterion = lambda: True if not to_time["timed"] else time() - start_time < to_time["time"]
+    automate = True
+    produceInverse = False
+    saveLibTorch = True
+    useLibTorch = True
+
+    smoothness_penalty_factor = 1e-5 # penalty for lack of smoothness of xi
+    time_penalty_factor = 1e-5 #penalty for taking longer
+    velocity_penalty = 1e-5 #penalty for max(abs(v))
+    xi_penalty = 1e-5 #penalty for max(abs(xi))
+    x_star_x_diff_mse_penalty = 1 #penalty for (x_star_x_diff*x_star_x_diff) term in MSE in loss_func
+    v_mse_penalty = 1 #penalty for (v*v) term in MSE in loss_func
+    x_star_xi_diff_mse_penalty = 1 #penalty for (x_star_xi_diff*x_star_xi_diff) term in MSE in loss_func
+
+    t_values = np.linspace(1e-8, T, num_steps)
+    delta_t = t_values[1] - t_values[0]
+    global t_test_values
+    t_test_values = np.linspace(1e-8, T, num_steps)
 
     def get_x_start_and_v_start():
         nonlocal v_start
         # Initial guess for the root (you might need to adjust this)
-        x0 = 2.0
+        x0 = 1.0
 
         # Find the root
         root, info, ier, mesg = fsolve(min_force, x0, full_output=True)
@@ -162,9 +172,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 if potential_val < potential_min:
                     potential_min = potential_val
                     root_min = root_val
-            residual = min_force(root_min)
-            tol = 1e-5
-            assert np.isclose(residual, 0.0, atol=tol), f"fsolve claimed convergence but residual {residual} exceeds tolerance {tol}"
             if not no_print:
                 print(f"Root found: {root_min}")
             x_start, v_start = float(root_min), v_start
@@ -176,15 +183,15 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 
         x_start = round(float(x_start), 4)
         return x_start, v_start
-    
+
     x_start, v_start = get_x_start_and_v_start()
     min_x_start = 1
     if np.abs(x_start) < min_x_start:
         raise Exception(f"Error, must modify A, b, Omega so that |x_start| >= {min_x_start}")
-    
+
     ###BEGIN NEWTON
     def refine_with_newton_helper(plot_steady_state = False, return_all = True, xStart = None, lr=1, scipySolve = True):
-        nonlocal A, b, Omega, x_start, v_start, A_sol, w_sol
+        nonlocal A, b, Omega, x_start, v_start
         xStart = x_start if not xStart else xStart.numpy().item()
         tol = 1e-10
         g = -1;                         # g = 1 is defocusing and g =-1 is focusing
@@ -193,65 +200,54 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
         N -= 1
         dx = x[1]-x[0];                 # mesh size
-        point_5_over_dx_squared = (0.5 / dx*dx)
+        point_5_over_dx_squared = (0.5 / dx**2)
         one_over_six = 1.0/6.0
 #        assert(dt<0.7071067811865476*dx*dx)
 
-        A_sol = A_sol; c = 0;                     # Amplitude, vel. & position
+        A_sol = 1; c = 0                     # Amplitude, vel. & position
         u0 = A_sol*sech(A_sol*(x - xStart))*np.exp(1j*c*x);    # initial condition (IC)
         V = potential(x, 0)
-        
+
         U = np.concatenate((np.real(u0), np.imag(u0)))
-        w_sol = w_sol #A_sol*A_sol*0.5 #temporal freq
+        w_sol = 0.5#A_sol*A_sol*0.5 #temporal freq
     #    A_sol = 2; c = 0;
     #    w_sol = A*A*0.5 #temporal freq
     #    u0 = w_sol*sech(w_sol*(x))*torch.exp(1j*c*x);    # initial condition (IC)
     #    V = potential(x, 0)
     #    U = torch.cat([torch.real(u0), torch.imag(u0)], dim=0)
-        
+
         err = np.inf
-        
+
         # Define the discrete Laplacian with periodic boundary conditions
         ONE = np.ones(N)
         D2 = diags([ONE, -2 * ONE, ONE], [-1, 0, 1], shape=(N, N)).toarray()
         D2[0, -1] = D2[-1, 0] = 1  # Periodic boundary conditions
-        D2 /= (dx*dx)
+        D2 /= dx**2
 
         # Index for real and imaginary parts
         indR = slice(0, N)
         indI = slice(N, 2 * N)
-        
+
         u = U[indR]+1j*U[indI];      # wrapping into a complex vector
         idx=np.where(np.isclose(abs(u), max(abs(u))))
         u_before = u.copy()
-        
+
         def fresid(U):
             # Split real and imaginary parts
             Ur = U[indR]
             Ui = U[indI]
             # Compute the modulus squared of u
-            U2 = Ur*Ur + Ui*Ui
+            U2 = Ur**2 + Ui**2
             common_term = (g * U2 + V + w_sol)
             return np.concatenate((-0.5 * (D2 @ Ur) + common_term * Ur,\
                                    -0.5 * (D2 @ Ui) + common_term * Ui))
-        def jacobian(U):
-            Ur = U[indR]
-            Ui = U[indI]
-            J11 = -0.5 * D2 + np.diag(g * (3 * Ur**2 + Ui**2) + V + w_sol)
-            J22 = -0.5 * D2 + np.diag(g * (Ur**2 + 3 * Ui**2) + V + w_sol)
-            J12 = np.diag(2 * g * Ur * Ui)
-            return np.block([[J11, J12], [J12, J22]])
-            
         if scipySolve:
-            res = least_squares(fresid, U, jac=jacobian, method='lm')
-            U = res.x
+            U, infodict, ier, msg = fsolve(fresid, U, full_output=True)
             if not no_print:
-                if res.success:
-                    print("Solution found, cost:", res.cost,
-                          "final residual norm:", np.linalg.norm(res.fun))
+                if ier == 1:
+                    print("Solution found, error estimate:", np.linalg.norm(infodict['fvec']))
                 else:
-                    print("Solution may not have converged:", res.message)
-
+                    print("Solution may not have converged:", msg)
         else:
             # Main loop: checking Newton tolerance
             num_iter = 0
@@ -259,9 +255,9 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 # Split real and imaginary parts
                 Ur = U[indR]
                 Ui = U[indI]
-                
+
                 # Compute modulus squared of u
-                U2 = Ur*Ur + Ui*Ui
+                U2 = Ur**2 + Ui**2
 
                 # Right-hand side (RHS)
                 common_term = (g * U2 + V + w_sol)
@@ -291,11 +287,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                     if not no_print:
                         print(f"Failed")
                     return [False]
-                
+
         u = U[indR]+1j*U[indI];      # wrapping into a complex vector
         Maxu=max(abs(u));
         idx=np.where(np.isclose(abs(u), Maxu))
-        
+
+
         if interpolate:
             # Compute the density (modulus squared of u)
             # density = u * np.conj(u)  # Equivalent to |u|^2
@@ -326,7 +323,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 
             # Replace NaN values with 0
             u = np.nan_to_num(u_displaced)
-        
+
         if plot_steady_state:
             # Plot real part
     #        plt.plot(x.numpy(), u_before.real.numpy() + V.numpy(), label="$u_{\mathrm{real}}$ before Newton + $V$", color='purple')
@@ -356,20 +353,20 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             system(f"rsvg-convert -f pdf -o newton_steady_state.pdf newton_steady_state.svg")
             system(f"open newton_steady_state.pdf")
 #        print(max(u))
-        
+
         return (True, u, x, dx, N, g, point_5_over_dx_squared, one_over_six) if return_all else (True, u)
-    
+
     def refine_with_newton(plot_steady_state = False, return_all = True, xStart = None, lr=1):
         result = refine_with_newton_helper(plot_steady_state = plot_steady_state, return_all = return_all, xStart = torch.tensor(xStart) if xStart else None, lr=lr)
         while not result[0]:
             lr *= 0.5
             result = refine_with_newton_helper(plot_steady_state = plot_steady_state, return_all = return_all, xStart = torch.tensor(xStart) if xStart else None, lr=lr)
         return result[1:]
-        
+
 #    refine_with_newton(plot_steady_state=True)
 #    exit()
     u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton()
-    
+
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
         def __init__(self):
@@ -382,7 +379,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             self.fc4 = nn.Linear(self.num_units, self.num_units)
             self.fc_out = nn.Linear(self.num_units, 1)
             self.fc_skip = nn.Linear(1, 1)
-            
+
         def forward(self, inputs):
             x = torch.tanh(self.fc1(inputs))
             x = torch.tanh(self.fc2(x))
@@ -402,12 +399,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
     global df
     df = pd.DataFrame(columns=["x_0", "A", "b", "m", "Omega", "best_loss", "best_time"])
     try:
-        df = pd.read_csv("../dataFiles/ICsPDE.txt", names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
+        df = pd.read_csv(f"{DRIVE_BASE_PATH}/dataFiles/ICsPDE.txt", names=("x_0", "A", "b", "m", "Omega", "best_loss", "best_time"))
     except FileNotFoundError:
         # Create the file if it doesn't exist
-        with open("../dataFiles/ICsPDE.txt", 'w') as f:
+        with open(f"{DRIVE_BASE_PATH}/dataFiles/ICsPDE.txt", 'w') as f:
             if not no_print:
-                print("File ../dataFiles/ICsPDE.txt created successfully.")
+                print(f"File {DRIVE_BASE_PATH}/dataFiles/ICsPDE.txt created successfully.")
 
     if not no_print:
         print(df)
@@ -426,7 +423,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
             except IndexError:
                 t_test_values = t_values
-                
+
         closest_row_idx = parameters.index[0]
     elif not df.empty:
         #Extract the row with the closest 'x_0', 'A', 'b', 'm', 'Omega' to (x_start, A, b, m, Omega) based on euclidean distance
@@ -439,15 +436,15 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         # Find the index of the row with the minimum distance
         closest_row_idx = temp_df['distance'].idxmin()
         parameters = temp_df.iloc[closest_row_idx]
-        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 4), round(parameters['b'], 4), round(parameters['m'], 4), round(parameters['Omega'], 4)
+        closest_x, closest_A, closest_b, closest_m, closest_Omega = round(parameters['x_0'], 4), round(parameters['A'], 2), round(parameters['b'], 2), round(parameters['m'], 2), round(parameters['Omega'], 2)
 
     # Load or instantiate the model
-    model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 4))}_{flt_to_str(round(closest_b, 4))}_{flt_to_str(round(closest_m, 4))}_{flt_to_str(round(closest_Omega, 4))}_pde_.pth" if not base_model else base_model
-    new_model_path = f"../NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pth"
+    model_path = f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_{flt_to_str(closest_x)}_{flt_to_str(round(closest_A, 2))}_{flt_to_str(round(closest_b, 2))}_{flt_to_str(round(closest_m, 2))}_{flt_to_str(round(closest_Omega, 2))}_pde_.pth" if not base_model else base_model
+    new_model_path = f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pth"
     if not no_print:
         print(f"model_path = {model_path}")
         print(f"new_model_path = {new_model_path}")
-    if closest_x == x_start and round(closest_A, 4) == round(A, 4) and round(closest_b, 4) == round(b, 4) and round(closest_m, 4) == round(m, 4) and round(closest_Omega, 4) == round(Omega, 4):
+    if closest_x == x_start and round(closest_A, 2) == round(A, 2) and round(closest_b, 2) == round(b, 2) and round(closest_m, 2) == round(m, 2) and round(closest_Omega, 2) == round(Omega, 2):
         if not no_print:
             print("exact match found")
         assert(model_path == new_model_path or base_model)
@@ -473,7 +470,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
     else:
         if not no_print:
             print("No saved model found.")
-    
+
     u = torch.tensor(u, dtype=torch.cfloat, requires_grad=True)
     density = u * torch.conj(u)  # Equivalent to |u|^2
     x = torch.tensor(x)
@@ -491,13 +488,13 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
     u_start = u.clone().detach().requires_grad_(True)
     if not no_print:
         print(f"len(u_start) = {len(u_start)}")
-    
+
     def dxdt(v):
         return v
 
     def dvdt(x, xi):
         return force(x, xi) / m
-    
+
     def NLS_RHS(u, N, g, V):
         """
         Compute the RHS of the NLS equation with periodic boundary conditions.
@@ -519,7 +516,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         RHS = 1j * (point_5_over_dx_squared * (up - 2 * u + um) - (g * u * torch.conj(u) + V) * u)
 
         return RHS
-    
+
     def ODE_RK4(u, N, g, V, dt):
         """
         Perform one step of the Runge-Kutta 4th order (RK4) method for the NLS equation.
@@ -534,24 +531,24 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         Returns:
             torch.Tensor: Updated solution after one RK4 step.
         """
-        
+
         # Compute RK4 coefficients
         k1 = dt * NLS_RHS(u, N, g, V)
         k2 = dt * NLS_RHS(u + 0.5 * k1, N, g, V)
         k3 = dt * NLS_RHS(u + 0.5 * k2, N, g, V)
         k4 = dt * NLS_RHS(u + k3, N, g, V)
-        
+
         # Update the solution
         RK4 = u + (k1 + 2 * k2 + 2 * k3 + k4) * one_over_six
-        
+
         return RK4
-    
+
     # Define the RHS function for solve_ivp
     def rhs_func(t, u_flat, V):
         u_flat = torch.tensor(u_flat, dtype=torch.complex64)
         rhs = NLS_RHS(u_flat, N, g, V)
         return rhs.detach().numpy().flatten()
-        
+
     def ODE_DOP853(u, N, g, V, t, dt):
         """
         Perform one step of the DOP853 method for the NLS equation.
@@ -582,7 +579,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
     def xi(t):
         t_input = torch.tensor([[t]], dtype=torch.float32)  # Convert to tensor
         return model(t_input)[0, 0]  # Get the output from the model
-    
+
     def simulate_trajectory(xStart = None):
         nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, add_kick
         xStart = x_start if not xStart else xStart
@@ -595,7 +592,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         numerator = np.trapz(x * density.real, x)
         denominator = np.trapz(density.real, x)
         xmax = numerator / denominator
-        
+
         mass_values = [denominator] if simulate_only["store mass values"] else None # Store mass at each time step
 
         if not no_print:
@@ -607,8 +604,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         x_flat = x
         for i in range(1, len(t_values)):
             V = potential(x, xi = 0)
-            u = torch.tensor(ODE_RK4(u, N, g, V, dt), dtype=torch.cfloat)
-            
+            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
+
             # Compute the density (modulus squared of u)
             density_real_flat = (torch.conj(u)*u).real.flatten() # Equivalent to |u|^2
             # Calculate xmax (center of mass)
@@ -623,14 +620,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 mass_values[i] = 1 - mass_values[i]/mass_values[0]
             mass_values[0] = 0
         return x_values, t_values, xmax, mass_values
-        
+
     if simulate_only["simulate_only"]:
         return simulate_trajectory(simulate_only["xStart"])
-    
-    #TODO: If all else fails...
-    #https://github.com/edfink234/RCPDE/blob/7a6a9dc8ff6d1800a418a61454d9e144970bea29/EdwardF/scripts/LearnInvertedPenulumPDE.py
+
     def loss_func():
-        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, x, loss_breakdown_printed
+        nonlocal A, b, Omega, u, u_start, dt, x_start, v_start, x
         smoothness_penalty = 0.0  # Initialize smoothness penalty
         xi_values_temp = [torch.tensor([[0]], dtype=torch.float32)[0, 0]]  # Temporary storage for xi values to calculate smoothness
         v_values_temp = [v_start] # Temporary storage for v values to calculate max velocity
@@ -638,59 +633,44 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         best_time = np.inf
         best_time_idx = np.inf
         x_values = [x_start]
-        sigma_values = []
         u = u_start.detach().requires_grad_(False)
 #        print(f"x_start in loss_func first = {x_start}")
-
-        # --- initial width σ0 ---
-        density0 = (torch.conj(u_start) * u_start).real.flatten()
-        num0 = torch.trapezoid(((x - x_start) ** 2) * density0, x)
-        den0 = torch.trapezoid(density0, x)
-        sigma0 = torch.sqrt(num0 / den0)
 
         for i in range(1, len(t_values)):
             xi_t = xi(t_values[i])
             xi_values_temp.append(xi_t)  # Store xi values for smoothness calculation
-            
             V = potential(x, xi = xi_t)
-#            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
-            u = ODE_RK4(u, N, g, V, dt)
-            
+            u = torch.tensor(ODE_DOP853(u, N, g, V, t_values[i], dt), dtype=torch.cfloat)
+
             # Compute the density (modulus squared of u)
             density_real_flat = (torch.conj(u)*u).real.flatten() # Equivalent to |u|^2
 
             # Calculate xmax (center of mass)
             numerator = torch.trapezoid(x * density_real_flat, x)
             denominator = torch.trapezoid(density_real_flat, x)
-            x_cm = numerator / denominator
-            x_values.append(x_cm)
-            
-            # width σ(t)
-            num = torch.trapezoid(((x - x_cm) ** 2) * density_real_flat, x)
-            sigma_t = torch.sqrt(num / denominator)
-            sigma_values.append(sigma_t)
-
+            x_values.append(numerator / denominator)
+            #TODO: plot x_values vs t_values here once just to check for sanity's sake that it matches what I see in `compareTrajectories.py`
         v = (x_values[2] - x_values[0]) / (2 * dt)
+
         v_values_temp.append(abs(v))
+
         for i in range(2, len(x_values)):
             v = (x_values[i + 1] - x_values[i - 1]) / (2 * dt) if i < len(x_values) - 1 else ((x_values[-1] - x_values[-2]) / dt)
             v_values_temp.append(abs(v))
-            
+
             x_star_x_diff = (x_star - x_values[i])
             x_star_xi_diff = (x_star - xi_values_temp[i])
-            
-            MSE = x_star_x_diff_mse_penalty * (x_star_x_diff*x_star_x_diff) \
-                    + v_mse_penalty * (v*v) \
-                    + x_star_xi_diff_mse_penalty * (x_star_xi_diff*x_star_xi_diff)
-        
+
+            MSE = x_star_x_diff_mse_penalty * (x_star_x_diff*x_star_x_diff) + v_mse_penalty * (v*v) + x_star_xi_diff_mse_penalty * (x_star_xi_diff*x_star_xi_diff)
+
             if MSE < best_loss_:
                 best_time = t_values[i]
                 best_loss_ = MSE
                 best_time_idx = i
-                    
+
         v_best = v_values_temp[0]
         xi_best = abs(xi_values_temp[0])
-        for i in range(1, int(best_time_idx) + 1):
+        for i in range(1, int(best_time_idx)+1):
             delta_xi = xi_values_temp[i] - xi_values_temp[i - 1]
             derivative = delta_xi / delta_t
             smoothness_penalty += derivative*derivative # Penalty based on the square of the "derivative"
@@ -699,24 +679,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             abs_xi_temp_i = abs(xi_values_temp[i])
             if abs_xi_temp_i > xi_best:
                 xi_best = abs_xi_temp_i
-                
+
         smoothness_penalty /= best_time_idx
-        # --- Shape Penalty integrated up to best_time_idx ---
-        delta_shape = [((s - sigma0) / sigma0) ** 2 for s in sigma_values[:best_time_idx]]
-        shape_penalty = torch.trapezoid(torch.stack(delta_shape), torch.from_numpy(t_values[:best_time_idx])) / best_time
-        
-        if not no_print and not loss_breakdown_printed:
-            print(f"best_loss_ = {best_loss_}\nsmoothness-penalty = {smoothness_penalty_factor*smoothness_penalty}\ntime-penalty = {time_penalty_factor*best_time}\nv-penalty = {velocity_penalty*v_best}\nxi-penalty = {xi_penalty*xi_best}\nshape_penalty={width_penalty*shape_penalty}")
-            loss_breakdown_printed = True
-            
-        return (
-            (best_loss_ \
-            + smoothness_penalty_factor*smoothness_penalty \
-            + time_penalty_factor*best_time \
-            + velocity_penalty*v_best \
-            + xi_penalty*xi_best
-            + width_penalty*shape_penalty), best_time
-        )
+        if not no_print:
+            print(f"best_loss_ = {best_loss_}, smoothness_penalty = {smoothness_penalty},\nbest_time = {best_time}, v_best = {v_best:}\nabs_xi_temp_i = {xi_best}")
+#        return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + time_penalty_factor*best_time + velocity_penalty*v_best + xi_penalty*xi_best), best_time
+        return (best_loss_ + smoothness_penalty_factor*smoothness_penalty + velocity_penalty*v_best + xi_penalty*xi_best), best_time
 
 
     def wrapped_loss_func(params):
@@ -737,10 +705,10 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 #        global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values, criterion, saveLibTorch
         # Extract model parameters
         current_params = {name: param.clone() for name, param in model.named_parameters()}
-        
+
         # Compute initial loss
         best_params = {name: param.clone() for name, param in current_params.items()}
-        
+
         while criterion():
             # Compute gradient and Hessian for each parameter
             grads = {}
@@ -770,7 +738,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             for name, param in current_params.items():
                 grad = grads[name].view(-1)  # Flatten gradient
                 hessian = hessians[name].view(grad.numel(), grad.numel())  # Reshape Hessian to match flattened gradient
-                
+
                 # Damped Hessian to ensure positive definiteness
                 hessian_damped = hessian + 1e-4 * torch.eye(hessian.size(0), device=hessian.device)
 
@@ -781,7 +749,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                     if not no_print:
                         print(f"Hessian inversion failed for parameter {name}: {e}")
                     update = -grad  # Fallback to gradient descent step
-                
+
                 # Reshape the update to match parameter shape
                 new_params[name] = param + learning_rate * update.view(param.shape)
 
@@ -810,7 +778,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     if not no_print:
                         print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,4), 'b': round(b,4), 'm': round(m,4), 'Omega': round(Omega,4), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     if not no_print:
                         print(f"New best t value = {best_t_value}")
@@ -819,7 +787,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 except:
                     t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
-                df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
+                df.to_csv(f'{DRIVE_BASE_PATH}/dataFiles/ICsPDE.txt', header=None, index=False)
                 if not no_print:
                     print(f"Best model saved with loss: {best_loss}")
             else:
@@ -838,14 +806,14 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 param.copy_(best_params[name])
 
     # Define brute force function
-    def brute_force(fine = fine, coolingRate = coolingRate, anneal = anneal, initial_temp = initial_temp):
+    def brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = 1):
         global best_loss, df, t_test_values, best_t_value
 #        global best_loss, best_t_value, model, new_model_path, df, x_start, t_test_values
         # Extract model parameters
         current_params = {name: param.clone() for name, param in model.named_parameters()}
         temperature = initial_temp
         cooling_rate=coolingRate
-        
+
         # Compute initial loss
         best_params = {name: param.clone() for name, param in current_params.items()}
 
@@ -873,7 +841,8 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 
             # Compute change in loss
             delta_loss = new_loss - best_loss
-            
+
+
             # Metropolis criterion
             if delta_loss < 0:
                 # Accept new parameters
@@ -884,14 +853,14 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 with torch.no_grad():
                     for name, param in model.named_parameters():
                         param.copy_(best_params[name])
-           
+
                 torch.save(model.state_dict(), new_model_path if new_model_path.endswith(".pth") else new_model_path+"h")  # Save the best model
                 if saveLibTorch:
                     traced_script_module = torch.jit.trace(model, example)
                     traced_script_module.save(new_model_path.replace(".pth",".pt"))
                     if not no_print:
                         print("libtorch version saved")
-                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,4), 'b': round(b,4), 'm': round(m,4), 'Omega': round(Omega,4), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
+                df = add_or_update_row(df, {'x_0': x_start, 'A': round(A,2), 'b': round(b,2), 'm': round(m,2), 'Omega': round(Omega,2), 'best_loss': best_loss.detach().numpy(), 'best_time': best_t_value})
                 if best_t_value != t_test_values[-1]:
                     if not no_print:
                         print(f"New best t value = {best_t_value}")
@@ -900,7 +869,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 except:
                     t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                 # Write to CSV
-                df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
+                df.to_csv(f'{DRIVE_BASE_PATH}/dataFiles/ICsPDE.txt', header=None, index=False)
                 if not no_print:
                     print(f"Best model saved with loss: {best_loss}")
 
@@ -911,10 +880,10 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 with torch.no_grad():
                     for name, param in model.named_parameters():
                         param.copy_(current_params[name])
-            
+
             temperature *= cooling_rate
             if not no_print:
-                print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}, Curr Temp = {temperature:.6e}")
+              print(f"Curr Loss = {new_loss:.6f}, Curr Time = {new_time:.6f}, Curr Temp = {temperature:.6e}")
 
         # Restore best parameters to the model
         with torch.no_grad():
@@ -927,31 +896,6 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         print(f"x_start = {x_start}, A = {A}, b = {b}, m = {m}, Omega = {Omega}")
         print("best_loss =", best_loss)
         print("Current loss and time =", loss_value_test)
-    
-    loss_value, t_value = loss_value_test
-
-    # Check if the current loss is the best (lowest)
-    if loss_value.item() < best_loss:
-        best_loss = loss_value.item()  #Update best loss
-        best_t_value = t_value #Update corresponding best time
-        torch.save(model.state_dict(), new_model_path if new_model_path.endswith(".pth") else new_model_path+"h")  # Save the best model
-        if saveLibTorch:
-            traced_script_module = torch.jit.trace(model, example)
-            traced_script_module.save(new_model_path.replace(".pth",".pt"))
-            if not no_print:
-                print("libtorch version saved")
-        df = add_or_update_row(df, {'x_0': x_start, 'A': A, 'b': b, 'm': m, 'Omega': Omega, 'best_loss': best_loss, 'best_time': best_t_value})
-        if best_t_value != t_test_values[-1]:
-            if not no_print:
-                print(f"New best t value = {best_t_value}")
-            try:
-                t_test_values = t_values[:np.where(t_values==best_t_value)[0][0]+1]
-            except:
-                t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
-        # Write to CSV
-        df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
-        if not no_print:
-            print(f"Best model saved with loss: {best_loss}")
 
     if get_model_loss_value:
         if optimize_A_b_Omega_m:
@@ -991,7 +935,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             global_best_value = loss_value_test[0].detach().numpy()
             print(f"Starting loss = {global_best_value}")
             print(f"Starting position: A = {A}, b = {b}, Omega = {Omega}")
-            
+
             try:
                 for i in (range(num_iterations) if num_iterations != np.inf else iter(int, 1)):
                     for particle in particles:
@@ -1010,15 +954,15 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                             perturbation_A = np.random.normal(0, epsilon)  # Small random perturbation for A
                             perturbation_b = np.random.normal(0, epsilon)  # Small random perturbation for b
                             perturbation_Omega = np.random.normal(0, epsilon)  # Small random perturbation for Omega
-                            
+
                             A = A + perturbation_A
                             b = b + perturbation_b
                             Omega = Omega + perturbation_Omega
                             x_start, v_start = get_x_start_and_v_start()
-                            
-                        
+
+
                         u = refine_with_newton(return_all = False)
-                            
+
                         u_start = torch.tensor(u, dtype=torch.cfloat, requires_grad=True).clone().detach()
                         loss = loss_func()[0].detach().numpy()
 
@@ -1047,13 +991,16 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 A, b, Omega = global_best_position["A"], global_best_position["b"], global_best_position["Omega"]
                 return loss_func()[0].detach().numpy(), A, b, Omega
         return loss_value_test
-        
+
     if not automate:
         ans = input("Proceed? (y/n): ")
         if ans.lower() != 'y':
             exit()
 
     # Training loop
+    global learning_rate
+    learning_rate = 0.001
+    Algorithm = "brute force"
     #optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     if Algorithm == "lbfgs":
         optimizer = torch.optim.LBFGS(model.parameters(), lr=learning_rate)
@@ -1079,7 +1026,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
     try:
         if Algorithm == "brute force":
             # Define constants and call the simulated annealing function
-            brute_force(fine = fine, coolingRate = coolingRate, anneal = anneal, initial_temp = initial_temp)
+            brute_force(fine = False, coolingRate = 0.99, anneal = False, initial_temp = .03)
             if raiseBaseException:
                 raise(KeyboardInterrupt)
         elif Algorithm == "newton":
@@ -1092,7 +1039,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 #                    return best_loss
                 optimizer.zero_grad()  # Zero the gradients
                 loss_value, t_value = loss_func()
-                
+
                 # Check if the current loss is the best (lowest)
                 if loss_value.item() < best_loss:
                     best_loss = loss_value.item()  #Update best loss
@@ -1112,7 +1059,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                         except:
                             t_test_values = t_values[:np.where(np.isclose(t_values, best_t_value))[0][0]+1]
                     # Write to CSV
-                    df.to_csv('../dataFiles/ICsPDE.txt', header=None, index=False)
+                    df.to_csv(f'{DRIVE_BASE_PATH}/dataFiles/ICsPDE.txt', header=None, index=False)
                     if not no_print:
                         print(f"Best model saved with loss: {best_loss}")
 
@@ -1134,7 +1081,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                         xi_values.append(xi_t.detach().numpy())
                         V = potential(x = x_values[-1], xi = xi_values[-1])
                         u = ODE_RK4(u, N, g, V, dt)
-                        
+
                         # Compute the density (modulus squared of u)
                         density = u * torch.conj(u)  # Equivalent to |u|^2
 
@@ -1144,20 +1091,20 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                         numerator = torch.trapezoid(x * density.real, x)
                         denominator = torch.trapezoid(density.real, x)
                         x_values.append((numerator / denominator).detach().numpy())
-            
+
                     v = (x_values[2] - x_values[0]) / (2 * dt)
                     v_values.append(v)
                     for i in range(2, len(x_values)):
                         v = (x_values[i + 1] - x_values[i - 1]) / (2 * dt) if i < len(x_values) - 1 else ((x_values[-1] - x_values[-2]) / dt)
                         v_values.append(v)
-                    
+
                     a = (v_values[2] - v_values[0]) / (2 * dt)
                     a_values.append(a)
                     for i in range(2, len(v_values)):
                         v = (v_values[i + 1] - v_values[i - 1]) / (2 * dt) if i < len(v_values) - 1 else ((v_values[-1] - v_values[-2]) / dt)
                         a_values.append(v)
-                    
-                                            
+
+
                     plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
                     plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
                     plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
@@ -1183,7 +1130,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             if not no_print:
                 print("No new best model found.")
             exit()
-        
+
         model = XiModel()
         if not no_print:
             print("New model path loaded =", new_model_path)
@@ -1195,14 +1142,13 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             model.load_state_dict(torch.load(new_model_path))#, weights_only=True))
         xi = lambda t: model(torch.tensor([[t]], dtype=torch.float32))[0, 0] # Get the output from the model
         # Save data to CSV
-        data_path = "../dataFiles/trajectory_data_pde.csv"
+        data_path = f"{DRIVE_BASE_PATH}/dataFiles/trajectory_data_pde.csv"
         x_values, v_values, xi_values, a_values, u_values, densities = [x_start], [v_start], [0.0], [0.0], [u_start.clone()], [np.squeeze(u_start.detach().numpy() * np.conj(u_start.detach().numpy()))]
         for i in range(1, len(t_test_values)):
             xi_t = xi(t_values[i])
             xi_values.append(xi_t.detach().numpy())
             V = potential(x, xi = xi_values[-1])
-#            u_values.append(ODE_DOP853(u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1], N, g, V, t_test_values[i], dt))
-            u_values.append(ODE_RK4(torch.tensor(u_values[-1]), N, g, V, dt).detach().numpy())
+            u_values.append(ODE_DOP853(u_values[-1].detach().numpy() if isinstance(u_values[-1], torch.Tensor) else u_values[-1], N, g, V, t_test_values[i], dt))
             # Compute the density (modulus squared of u)
             density = np.squeeze(u_values[-1] * np.conj(u_values[-1]))  # Equivalent to |u|^2
             #print(f"u_values[-1].shape = {u_values[-1].shape}, x.shape = {x.shape}, density.shape = {density.shape}")
@@ -1218,7 +1164,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         for i in range(2, len(x_values)):
             v = (x_values[i + 1] - x_values[i - 1]) / (2 * dt) if i < len(x_values) - 1 else ((x_values[-1] - x_values[-2]) / dt)
             v_values.append(v)
-        
+
         a = (v_values[2] - v_values[0]) / (2 * dt)
         a_values.append(a)
         for i in range(2, len(v_values)):
@@ -1232,10 +1178,10 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 writer.writerow([t_values[i], xi_values[i], x_values[i], v_values[i]])
         if not no_print:
             print("Data saved to CSV.")
-        
+
         plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
-#        plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-#        plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+        plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
+        plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
         plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
     #    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
     #    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
@@ -1246,15 +1192,16 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         plt.title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         plt.legend()
         plt.savefig("trajectory_data_pde.svg")
-        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf trajectory_data_pde.svg")
-        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf")
-        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
-        system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
+        system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf trajectory_data_pde.svg")
+        system(f"open trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
+        system(f"cp trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+        system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 {DRIVE_BASE_PATH}/imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+        system(f"open {DRIVE_BASE_PATH}/imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
         if not no_print:
-            print(f"image ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png saved")
-        system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ")
+            print(f"image {DRIVE_BASE_PATH}/imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png saved")
+        system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf ")
         plt.close()
+
         if produceInverse:
             x_values_inv = [-i for i in x_values]
             v_values_inv = [-i for i in v_values]
@@ -1268,27 +1215,27 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             #    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
             #    plt.axhline(y=-0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = -0.01
             plt.axhline(y=0.0, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.0
-            
+
             plt.xlabel('t')
             plt.title(f'$x_0$ = {-x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
             plt.legend()
             plt.savefig("trajectory_data_pde.svg")
-            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf trajectory_data_pde.svg")
-            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf")
-            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
-            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
-            system(f"open ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.png")
-            system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.pdf")
+            system(f"rsvg-convert -f pdf -o trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf trajectory_data_pde.svg")
+            system(f"open trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
+            system(f"cp trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf {DRIVE_BASE_PATH}/imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/")
+            system(f"sips -s format png -s dpiWidth 480 -s dpiHeight 480 -z 2400 2400 {DRIVE_BASE_PATH}/imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf --out ../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+            system(f"open {DRIVE_BASE_PATH}/imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.png")
+            system(f"rm trajectory_data_pde.svg trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.pdf")
 
             plt.close()
-        
+
         if not automate:
             answer = input("Movie (y/n)? ")
             if not answer.lower().startswith('y'):
                 if not no_print:
                     print("Movie creation skipped.")
                 exit()
-            
+
         N = len(t_test_values)
         x_range = np.linspace(-10, 10, len(u_start))
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -1303,7 +1250,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         ax.set_xlabel("x")
         ax.set_ylabel("Potential")
         ax.legend()
-        
+
         ax.set_title(f'$x_0$ = {x_start:.2f}, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}')
         sech = lambda x: 1/np.cosh(x)
 
@@ -1345,12 +1292,12 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
             print(f"Omega = {Omega}, b = {b}, A = {A}, xi_0 = {xi_values[0]}")
 
         ani = animation.FuncAnimation(fig, update, frames=range(0, N, 1), init_func=init, blit=True, interval = 1000/fps)
-        
+
         # Save the animation
-        ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-        system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4")
+        ani.save(f"{DRIVE_BASE_PATH}/movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+        system(f"open {DRIVE_BASE_PATH}/movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
         if not no_print:
-            print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4'")
+            print(f"Movie saved as '{DRIVE_BASE_PATH}/movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
         plt.close()
 
         if produceInverse:
@@ -1380,19 +1327,19 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
                 ax.set_title(f"$x_0$ = {x_values[0]:.2f}, $x^*$ = 0, $A$ = {A:.2f}, $b$ = {b:.2f}, $m$ = {m:.2f}, $\Omega$ = {Omega:.2f}, t = {t:.2f}")
                 return dot, curve, center#, gold_dot
             ani = animation.FuncAnimation(fig, update, frames=range(0, N, 10), init_func=init, blit=True, interval = 1000/fps)
-        
+
             # Save the animation
-            ani.save(f"../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
-            system(f"open ../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4")
+            ani.save(f"{DRIVE_BASE_PATH}/movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4", writer=animation.FFMpegWriter(fps=2*fps))
+            system(f"open {DRIVE_BASE_PATH}/movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4")
             if not no_print:
-                print(f"Movie saved as '../movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 4))}_{flt_to_str(round(b, 4))}_{flt_to_str(round(m, 4))}_{flt_to_str(round(Omega, 4))}_pde_.mp4'")
+                print(f"Movie saved as '{DRIVE_BASE_PATH}/movies/trajectory_trap_plus_sech_squared/trajectory_data_IC_{flt_to_str(-x_start)}_{flt_to_str(round(A, 2))}_{flt_to_str(round(b, 2))}_{flt_to_str(round(m, 2))}_{flt_to_str(round(Omega, 2))}_pde_.mp4'")
 
         plt.close()
 
 def check_losses_on_pde_for_learned_odes(file_choice = "all"):
     loss_file_pairs = []
     if file_choice == "all":
-        for model_file in glob("../NeuralNetworkData/*pth"):
+        for model_file in glob("{DRIVE_BASE_PATH}/NeuralNetworkData/*pth"):
             try:
                 loss = master_func_learn_ivp_pde(load_model = True, base_model = model_file, no_print = True, get_model_loss_value = True)[0].item()
                 print(f"model_file = {model_file}, loss = {loss}")
@@ -1418,14 +1365,14 @@ def check_losses_on_pde_for_learned_odes(file_choice = "all"):
     print(f"Worst loss = {worst_loss}")
     print(f"Worst file = {worst_file}")
 #    Best loss = 4.934653040667099
-#    Best file = ../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth
+#    Best file = {DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth
 #    Worst loss = 5.5253880920493375
-#    Worst file = ../NeuralNetworkData/xi_model_IC_2_point_4513_1_point_7_1_point_0_1_point_0_0_point_2_.pth
+#    Worst file = {DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_2_point_4513_1_point_7_1_point_0_1_point_0_0_point_2_.pth
 
 def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
     if file_choice == "all":
         loss_file_pairs = []
-        for model_file in glob("../NeuralNetworkData/*pth"):
+        for model_file in glob("{DRIVE_BASE_PATH}/NeuralNetworkData/*pth"):
     #        try:
             loss, optim_A, optim_b, optim_Omega = master_func_learn_ivp_pde(load_model = True, base_model = model_file, no_print = False, get_model_loss_value = True, optimize_A_b_Omega_m = True)
             print(f"model_file = {model_file}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
@@ -1445,27 +1392,16 @@ def optimize_losses_on_pde_for_learned_odes(file_choice = "all"):
         print(f"file_choice = {file_choice}, loss = {loss}, A = {optim_A}, b = {optim_b}, Omega = {optim_Omega}")
 
 if __name__ == "__main__":
-#    optimize_losses_on_pde_for_learned_odes(file_choice = "../NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
+#    optimize_losses_on_pde_for_learned_odes(file_choice = f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_2_point_2258_1_point_0_1_point_0_1_point_3_0_point_2_.pth")
 #    check_losses_on_pde_for_learned_odes(file_choice="xi_model_IC_2_point_4063_0_point_66_0_point_75_1_point_0_0_point_2_.pt")
 #    master_func_learn_ivp_pde(load_model = True, base_model = "xi_model_IC_2_point_5715_0_point_68_0_point_67_1_point_0_0_point_2_.pt", T = 10)
-#    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_3_point_008519_1_point_0_0_point_75_1_point_0_0_point_18_Variational_.pth", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "brute force", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
-    base_model = (\
-    "", \
-    "../NeuralNetworkData/xi_model_IC_2_point_7615_1_point_0_0_point_75_1_point_0_0_point_18_pde_.pth", \
-    "xi_model_IC_2_point_979229_1_point_0_0_point_760417_1_point_0_0_point_180833_Variational_.pth", \
-    "../NeuralNetworkData/xi_model_IC_1_point_227_0_point_1_1_1_point_0_0_point_2_pde_.pth", \
-    "../NeuralNetworkData/xi_model_IC_1_point_2065_0_point_075_0_point_75_1_point_0_0_point_18_pde_.pth")[-1]
-    ExtPotA = (1.0, 0.2, 0.1, 0.075)[2]
-    ExtPotb = (0.75, 1)[1]
-    ExtPotΩ = (0.18, 0.2)[1]
-    master_func_learn_ivp_pde(m = 1.0, Omega = ExtPotΩ, A = ExtPotA, b = ExtPotb, A_sol = ExtPotb, w_sol = 0.5, load_model = True, base_model = base_model, no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 2e-4, weight_decay = 1e-4, Algorithm = "adamax", fine = False, coolingRate = 1, anneal = False, initial_temp = 0.1, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2}, loss_option = "before")
-#    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.1, b = 1)
+    master_func_learn_ivp_pde(load_model = True, T = 10, A = 0.75, b = 1, Omega = .2)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_787127_1_0_point_1_1_point_0_0_point_2_Paul_.pt", T = 10)
 #    master_func_learn_ivp_pde(load_model = True, A = 0.1, b = 1, base_model = "xi_model_IC_0_point_848359_0_point_067475_0_point_665792_1_point_0_0_point_2_.pt", T = 10)
 
 #    master_func_learn_ivp_pde(load_model = True)
 
-    #master_func_learn_ivp_pde(load_model = True, base_model = "../NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
+    #master_func_learn_ivp_pde(load_model = True, base_model = f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_0_point_9432_1_point_29_2_point_85_1_point_0_0_point_38_pde_.pth", no_print = False, A = 1.287276611039334, b = 2.852755931077745, Omega = 0.37507858278618567)
     exit()
     for A in np.arange(1.1, 2.1, 0.1):
         master_func_learn_ivp_pde(A=round(A,2))
@@ -1495,11 +1431,12 @@ if __name__ == "__main__":
     #    achieved = 'target achieved' if result is None else f'target not achieved, best loss after epoch 1000 = {result}'
     #    with open("result_times.txt", "a") as f:
     #        f.write(f"Time from Omega = {Omega-0.1:.2f} to {Omega:.2f} = {time() - start:.2f} with learning rate {learning_rate}, {achieved}\n")
-        
+
 
 
 
     #../imgs/pdfs/trajectory_pdfs_trap_plus_sech_squared/
     #../movies/trajectory_trap_plus_sech_squared/
     #/Users/edwardfinkelstein/RCPDE/EdwardF/scripts/result_times.txt
+
 
