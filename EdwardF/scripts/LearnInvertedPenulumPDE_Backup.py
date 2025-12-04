@@ -87,7 +87,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.2, A = 1.0, b = 1.0, load_model
 #    b = 1.0        # Width of the potential
     sigma = 1.0     # Width of the (Gaussian) potential, not used currently
     T = T        # Final time
-    dt = 0.001      # Time step
+    dt = 0.1      # Time step
     num_steps = int(T / dt)
     
     x_star = 0.0   # Final position sought
