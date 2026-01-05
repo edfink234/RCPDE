@@ -87,7 +87,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         return df
 
     sigma = 1.0     # Width of the (Gaussian) potential, not used currently
-    dt = 0.1      # Time step
+    dt = 0.001      # Time step
     num_steps = int(T / dt)
     t_values = np.linspace(1e-8, T, num_steps)
     delta_t = t_values[1] - t_values[0]
@@ -139,7 +139,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         xi_penalty = 1e-5 #penalty for max(abs(xi))
     else:
         smoothness_penalty_factor = 1e-3 #α: penalty for lack of smoothness of xi
-        time_penalty_factor = [1e-3, 1e-7][-1] #β: penalty for taking longer
+        time_penalty_factor = [1e-3, 1e-7][0] #β: penalty for taking longer
         velocity_penalty = 1e-3 #γ: penalty for max(abs(v))
         xi_penalty = 1e-3 #δ: penalty for max(abs(xi))
     if loss_option == "before":
@@ -1457,10 +1457,10 @@ if __name__ == "__main__":
 #    master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_3_point_008519_1_point_0_0_point_75_1_point_0_0_point_18_Variational_.pth", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = False, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "brute force", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 1, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.4e-2})
     base_model = (\
     "", \
-    "{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_2_point_7615_1_point_0_0_point_75_1_point_0_0_point_18_pde_.pth", \
+    f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_2_point_7615_1_point_0_0_point_75_1_point_0_0_point_18_pde_.pth", \
     "xi_model_IC_2_point_979229_1_point_0_0_point_760417_1_point_0_0_point_180833_Variational_.pth", \
-    "{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_1_point_227_0_point_1_1_1_point_0_0_point_2_pde_.pth", \
-    "{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_1_point_2065_0_point_075_0_point_75_1_point_0_0_point_18_pde_.pth")[0]
+    f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_1_point_227_0_point_1_1_1_point_0_0_point_2_pde_.pth", \
+    f"{DRIVE_BASE_PATH}/NeuralNetworkData/xi_model_IC_1_point_2065_0_point_075_0_point_75_1_point_0_0_point_18_pde_.pth")[1]
     ExtPotA = (1.0, 0.2, 0.1, 0.075)[0]
     ExtPotb = (0.75, 1)[0]
     ExtPotΩ = (0.18, 0.2)[0]
