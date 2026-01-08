@@ -1239,9 +1239,9 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         if not no_print:
             print("Data saved to CSV.")
         
-#        plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
+        plt.plot(t_test_values, x_values, label='x(t) [m]', color='blue')
 #        plt.plot(t_test_values, v_values, label='v(t) [m/s]', color='green', linestyle=':')
-        plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
+#        plt.plot(t_test_values, a_values, label='a(t) [m/$s^2$]', color='purple', linestyle='-.')
         plt.plot(t_test_values, xi_values, label=r'$\xi(t)$', color='red', linestyle='--')
     #    plt.axhline(y=0.5, color='black', linestyle='--', alpha = 0.2)  # Red dashed line at y = 0.5
     #    plt.axhline(y=0.01, color='black', linestyle='--', alpha=0.2, linewidth=0.5)  # Thin black dashed line at y = 0.01
