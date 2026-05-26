@@ -21,6 +21,7 @@ from scipy.sparse.linalg import splu
 from glob import glob
 from scipy.optimize import minimize
 filterwarnings('ignore')
+EXPORT_NEWTON_STATE_FOR_SR = True
 
 def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 0.75, w_sol = 0.5, load_model = True, base_model = "", no_print = False, get_model_loss_value = False, optimize_A_b_Omega_m = False, optimize_A_b_Omega_m_iterations = np.inf, simulate_only = {"simulate_only": False, "xStart": 0, "store mass values": False}, T = 10, v_start = 0.0, interpolate = True, add_kick = False, movie_x_lims = None, movie_y_lims = None, use_Variational_Potential = False, automate = False, produceInverse = False, saveLibTorch = True, useLibTorch = True, epsilon = 0.0, lrScheduler = False, learning_rate = 1e-5, weight_decay = 1e-4, Algorithm = "adam", fine = False, coolingRate = 0.999, anneal = True, initial_temp = 100, amsgrad = False, to_time = {"timed": False, "time": 3600}, to_loss = {"loss thresholded": True, "threshold": 1.1e-4}, loss_option = "after"):
     #Setting the random seeds!!!
@@ -193,7 +194,7 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
         x = np.linspace(L, R, N)[:-1];    # Adjust for periodic boundary conditions
         N -= 1
         dx = x[1]-x[0];                 # mesh size
-        point_5_over_dx_squared = (0.5 / dx*dx)
+        point_5_over_dx_squared = 0.5 / (dx*dx)
         one_over_six = 1.0/6.0
 #        assert(dt<0.7071067811865476*dx*dx)
 
@@ -369,6 +370,64 @@ def master_func_learn_ivp_pde(m = 1.0, Omega = 0.18, A = 1.0, b = 0.75, A_sol = 
 #    refine_with_newton(plot_steady_state=True)
 #    exit()
     u, x, dx, N, g, point_5_over_dx_squared, one_over_six = refine_with_newton()
+    
+    # ============================================================
+    # Export Newton-refined steady state for symbolic-regression C++
+    # ============================================================
+
+    if EXPORT_NEWTON_STATE_FOR_SR:
+        export_path = os.environ.get(
+            "NEWTON_STATE_CSV",
+            "bright_soliton_newton_state.csv"
+        )
+
+        x_np = np.asarray(x, dtype=np.float64)
+        u_np = np.asarray(u, dtype=np.complex128)
+
+        trapz = getattr(np, "trapezoid", np.trapz)
+
+        rho = np.abs(u_np) ** 2
+        mass = trapz(rho, x_np)
+        x_cm = trapz(x_np * rho, x_np) / mass
+        width = np.sqrt(trapz(((x_np - x_cm) ** 2) * rho, x_np) / mass)
+
+        with open(export_path, "w") as f:
+            f.write("# bright_soliton_newton_state_v1\n")
+            f.write(f"# A,{float(A):.17e}\n")
+            f.write(f"# b,{float(b):.17e}\n")
+            f.write(f"# Omega,{float(Omega):.17e}\n")
+            f.write(f"# A_sol,{float(A_sol):.17e}\n")
+            f.write(f"# w_sol,{float(w_sol):.17e}\n")
+            f.write(f"# x_start,{float(x_start):.17e}\n")
+            f.write(f"# v_start,{float(v_start):.17e}\n")
+            f.write(f"# L,{float(x_np[0]):.17e}\n")
+            f.write(f"# R_excluded,{float(x_np[-1]):.17e}\n")
+            f.write(f"# N,{int(N)}\n")
+            f.write(f"# dx,{float(dx):.17e}\n")
+            f.write(f"# g,{float(g):.17e}\n")
+            f.write(f"# point_5_over_dx_squared,{float(point_5_over_dx_squared):.17e}\n")
+            f.write(f"# interpolate,{bool(interpolate)}\n")
+            f.write(f"# exported_mass,{float(mass):.17e}\n")
+            f.write(f"# exported_x_cm,{float(x_cm):.17e}\n")
+            f.write(f"# exported_width,{float(width):.17e}\n")
+            f.write("x,u_real,u_imag\n")
+
+            for xx, uu in zip(x_np, u_np):
+                f.write(
+                    f"{float(xx):.17e},"
+                    f"{float(np.real(uu)):.17e},"
+                    f"{float(np.imag(uu)):.17e}\n"
+                )
+
+        print(f"Exported Newton steady state to: {export_path}")
+        print(f"  N      = {N}")
+        print(f"  dx     = {dx}")
+        print(f"  xstart = {x_start}")
+        print(f"  x_cm   = {x_cm}")
+        print(f"  mass   = {mass}")
+        print(f"  width  = {width}")
+
+        return export_path
     
     # Define the neural network for xi(t)
     class XiModel(nn.Module):
