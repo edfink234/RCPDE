@@ -284,6 +284,7 @@ saved_density = np.asarray(saved_density)
 # ============================================================
 
 saved_v = np.gradient(saved_xcm, saved_t)
+saved_a = np.gradient(saved_v, saved_t)
 
 sync_score = saved_xcm ** 2 + saved_v ** 2 + saved_xi ** 2
 
@@ -303,21 +304,65 @@ print(f"  score   = {sync_score[best_idx]:.6e}")
 # Save trajectory plot
 # ============================================================
 
-plt.figure(figsize=(8, 4))
-plt.plot(saved_t, saved_xcm, label=r"$x_{\rm cm}(t)$")
-plt.plot(saved_t, saved_xi, label=r"$\xi(t)$")
-plt.axhline(0.0, linestyle="--", linewidth=0.8)
-plt.axvline(saved_t[best_idx], linestyle=":", linewidth=0.8)
+plt.figure(figsize=(8, 6))
+
+plt.plot(
+    saved_t,
+    saved_xcm,
+    label=r"$x_{\mathrm{cm}}(t)$ [m]",
+    color="blue"
+)
+
+plt.plot(
+    saved_t,
+    saved_v,
+    label=r"$v(t)$ [m/s]",
+    color="green",
+    linestyle=":"
+)
+
+plt.plot(
+    saved_t,
+    saved_a,
+    label=r"$a(t)$ [m/s$^2$]",
+    color="purple",
+    linestyle="-."
+)
+
+plt.plot(
+    saved_t,
+    saved_xi,
+    label=r"$\xi(t)$",
+    color="red",
+    linestyle="--"
+)
+
+plt.axhline(
+    y=0.0,
+    color="black",
+    linestyle="--",
+    alpha=0.2,
+    linewidth=0.5
+)
+
+plt.axvline(
+    saved_t[best_idx],
+    linestyle=":",
+    linewidth=0.8,
+    alpha=0.5
+)
+
+print(f"Saved trajectory plot to {out_plot}")
+
 plt.xlabel("t")
 plt.ylabel("position")
-plt.title("SR-discovered control trajectory")
+plt.title("SR-discovered control trajectory\n"rf"$A_{{sol}}={A_sol:.2f},\,A={A:.2f},\,b={b:.2f},\,\Omega={Omega:.2f}$")
 plt.legend()
 plt.tight_layout()
 plt.savefig(out_plot, dpi=200)
 plt.close()
 
 print(f"Saved trajectory plot to {out_plot}")
-
 
 # ============================================================
 # Make movie
